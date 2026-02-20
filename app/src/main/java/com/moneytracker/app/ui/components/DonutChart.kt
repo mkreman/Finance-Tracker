@@ -17,8 +17,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.moneytracker.app.domain.model.ChartData
-import com.moneytracker.app.ui.theme.TextPrimary
-import com.moneytracker.app.ui.theme.TextSecondary
 import java.text.NumberFormat
 import java.util.Locale
 
@@ -38,7 +36,7 @@ fun DonutChart(
             Text(
                 text = "No data",
                 style = MaterialTheme.typography.bodyMedium,
-                color = TextSecondary
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
         return
@@ -86,7 +84,7 @@ fun DonutChart(
             Text(
                 text = centerLabel,
                 style = MaterialTheme.typography.bodySmall,
-                color = TextSecondary,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center
             )
             Text(
@@ -95,7 +93,7 @@ fun DonutChart(
                     fontWeight = FontWeight.Bold,
                     fontSize = 20.sp
                 ),
-                color = TextPrimary,
+                color = MaterialTheme.colorScheme.onSurface,
                 textAlign = TextAlign.Center
             )
         }
@@ -153,7 +151,7 @@ private fun DonutChartLegendItem(
         Text(
             text = name,
             style = MaterialTheme.typography.bodyMedium,
-            color = TextPrimary,
+            color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.weight(1f)
         )
 
@@ -161,7 +159,7 @@ private fun DonutChartLegendItem(
         Text(
             text = "${LocalCurrencySymbol.current}${formatAmount(amount)}",
             style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
-            color = TextPrimary
+            color = MaterialTheme.colorScheme.onSurface
         )
 
         Spacer(modifier = Modifier.width(8.dp))
@@ -170,7 +168,7 @@ private fun DonutChartLegendItem(
         Text(
             text = "${String.format("%.1f", percentage)}%",
             style = MaterialTheme.typography.bodySmall,
-            color = TextSecondary,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.width(48.dp),
             textAlign = TextAlign.End
         )

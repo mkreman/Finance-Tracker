@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.moneytracker.app"
-    android:versionCode="7"
-    android:versionName="0.5.2" >
+    android:versionCode="8"
+    android:versionName="0.5.4" >
 
     <uses-sdk
         android:minSdkVersion="26"
@@ -12,6 +12,7 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- suppress DeprecatedClassUsageInspection -->
     <uses-permission android:name="android.permission.USE_FINGERPRINT" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
@@ -71,6 +72,10 @@
                 android:name="android.appwidget.provider"
                 android:resource="@xml/appwidget_info" />
         </receiver>
+        <receiver
+            android:name="com.moneytracker.app.notifications.TransactionSuggestionActionReceiver"
+            android:enabled="true"
+            android:exported="false" />
 
         <activity
             android:name="androidx.glance.appwidget.action.ActionTrampolineActivity"

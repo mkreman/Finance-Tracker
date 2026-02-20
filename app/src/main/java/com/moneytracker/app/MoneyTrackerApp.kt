@@ -3,6 +3,7 @@ package com.moneytracker.app
 import android.app.Application
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
+import com.moneytracker.app.data.recurring.RecurringTransactionManager
 import com.moneytracker.app.data.sync.SyncManager
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
@@ -16,6 +17,9 @@ class MoneyTrackerApp : Application(), Configuration.Provider {
     @Inject
     lateinit var syncManager: SyncManager
 
+    @Inject
+    lateinit var recurringTransactionManager: RecurringTransactionManager
+
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder()
             .setWorkerFactory(workerFactory)
@@ -25,5 +29,7 @@ class MoneyTrackerApp : Application(), Configuration.Provider {
         super.onCreate()
         // Schedule periodic cloud sync
         syncManager.schedulePeriodicSync()
+        // Schedule recurring transaction check
+        recurringTransactionManager.scheduleRecurringCheck()
     }
 }

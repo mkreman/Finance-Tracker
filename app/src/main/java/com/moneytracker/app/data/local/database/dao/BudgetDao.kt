@@ -11,6 +11,9 @@ interface BudgetDao {
     @Query("SELECT * FROM budgets WHERE month = :month AND year = :year")
     fun getBudgetsForMonth(month: Int, year: Int): Flow<List<BudgetEntity>>
 
+    @Query("SELECT * FROM budgets ORDER BY year DESC, month DESC")
+    suspend fun getAllBudgets(): List<BudgetEntity>
+
     @Query("""
         SELECT 
             b.id as budgetId,

@@ -1,5 +1,6 @@
 package com.moneytracker.app.domain.model
 
+import com.moneytracker.app.data.local.database.entities.RecurringUnit
 import com.moneytracker.app.data.local.database.entities.TransactionType
 
 data class Transaction(
@@ -11,6 +12,12 @@ data class Transaction(
     val date: Long,
     val totalAmount: Double,
     val type: TransactionType,
+    val isRecurring: Boolean = false,
+    val recurringInterval: Int? = null,
+    val recurringUnit: RecurringUnit? = null,
+    val recurringEndDate: Long? = null,
+    val parentRecurringId: String? = null,
+    val notifyForRecurringEntries: Boolean = true,
     val toAccountId: String? = null,
     val toAccountName: String? = null,
     val splits: List<TransactionSplit>

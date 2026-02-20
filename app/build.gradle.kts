@@ -13,8 +13,8 @@ android {
         applicationId = "com.moneytracker.app"
         minSdk = 26
         targetSdk = 34
-        versionCode = 7
-        versionName = "0.5.2"
+        versionCode = 8
+        versionName = "0.5.4"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {

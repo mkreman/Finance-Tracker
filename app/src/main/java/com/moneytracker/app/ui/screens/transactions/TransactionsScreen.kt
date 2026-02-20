@@ -18,7 +18,6 @@ import com.moneytracker.app.domain.model.TransactionListItem
 import com.moneytracker.app.ui.components.MonthSelector
 import com.moneytracker.app.ui.components.TransactionDateHeader
 import com.moneytracker.app.ui.components.TransactionItem
-import com.moneytracker.app.ui.theme.*
 
 @Composable
 fun TransactionsScreen(
@@ -29,7 +28,7 @@ fun TransactionsScreen(
     val transactions by viewModel.transactions.collectAsState()
     val currentMonth by viewModel.currentMonth.collectAsState()
 
-    Box(modifier = Modifier.fillMaxSize().background(DarkBackground)) {
+    Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         Column(modifier = Modifier.fillMaxSize()) {
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -37,7 +36,7 @@ fun TransactionsScreen(
             Text(
                 text = "Transactions",
                 style = MaterialTheme.typography.headlineMedium,
-                color = TextPrimary,
+                color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.padding(horizontal = 16.dp)
             )
 
@@ -65,7 +64,7 @@ fun TransactionsScreen(
                     Text(
                         text = "No transactions this month",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = TextSecondary
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             } else {
@@ -109,8 +108,8 @@ fun TransactionsScreen(
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(end = 16.dp, bottom = 96.dp),
-            containerColor = AccentOrange,
-            contentColor = TextPrimary
+            containerColor = MaterialTheme.colorScheme.primary,
+            contentColor = MaterialTheme.colorScheme.onPrimary
         ) {
             Icon(Icons.Filled.Add, contentDescription = "Add Transaction")
         }

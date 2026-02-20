@@ -15,7 +15,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.moneytracker.app.ui.theme.*
 
 @Composable
 fun SummaryCard(
@@ -28,15 +27,15 @@ fun SummaryCard(
     modifier: Modifier = Modifier
 ) {
     val color = when (type) {
-        SummaryType.EXPENSE -> ExpenseRed
-        SummaryType.INCOME -> IncomeGreen
-        SummaryType.TRANSFER -> TransferBlue
+        SummaryType.EXPENSE -> MaterialTheme.colorScheme.error
+        SummaryType.INCOME -> MaterialTheme.colorScheme.tertiary
+        SummaryType.TRANSFER -> MaterialTheme.colorScheme.secondary
     }
 
     Column(
         modifier = modifier
             .clip(RoundedCornerShape(16.dp))
-            .background(CardBackground)
+            .background(MaterialTheme.colorScheme.surfaceVariant)
             .then(
                 if (isSelected) Modifier.border(1.5.dp, color, RoundedCornerShape(16.dp))
                 else Modifier
@@ -56,7 +55,7 @@ fun SummaryCard(
                 Icon(
                     imageVector = CategoryIcons.getIcon(
                         when (type) {
-                            SummaryType.EXPENSE -> "trending_up"
+                            SummaryType.EXPENSE -> "trending_down"
                             SummaryType.INCOME -> "trending_up"
                             SummaryType.TRANSFER -> "swap_horiz"
                         }
@@ -70,7 +69,7 @@ fun SummaryCard(
             Text(
                 text = title,
                 style = MaterialTheme.typography.bodySmall,
-                color = if (isSelected) TextPrimary else TextSecondary
+                color = if (isSelected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
 

@@ -8,6 +8,7 @@ data class AccountEntity(
     @PrimaryKey val id: String,
     val name: String,
     val type: AccountType,
+    val customTypeName: String? = null,
     val initialBalance: Double,
     val currentBalance: Double,
     val currency: String = "INR",

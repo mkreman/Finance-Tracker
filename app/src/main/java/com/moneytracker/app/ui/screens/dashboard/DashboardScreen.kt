@@ -22,7 +22,6 @@ import com.moneytracker.app.data.local.database.entities.TransactionType
 import com.moneytracker.app.domain.model.ChartData
 import com.moneytracker.app.domain.model.Transaction
 import com.moneytracker.app.ui.components.*
-import com.moneytracker.app.ui.theme.*
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -37,7 +36,7 @@ fun DashboardScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(DarkBackground)
+            .background(MaterialTheme.colorScheme.background)
             .verticalScroll(rememberScrollState())
     ) {
         Spacer(modifier = Modifier.height(16.dp))
@@ -99,7 +98,7 @@ fun DashboardScreen(
                 OverviewType.TRANSFER -> "Transfer Overview"
             },
             style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-            color = TextPrimary,
+            color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.padding(horizontal = 16.dp)
         )
 
@@ -117,7 +116,7 @@ fun DashboardScreen(
                     Text(
                         text = "No transfers this month",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = TextSecondary
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             } else {
@@ -162,7 +161,7 @@ fun DashboardScreen(
                     Text(
                         text = "No ${chartLabel.lowercase()} recorded this month",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = TextSecondary
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -200,19 +199,19 @@ private fun ClickableLegend(
                 Text(
                     text = item.categoryName,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = TextPrimary,
+                    color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.weight(1f)
                 )
                 Text(
                     text = "${LocalCurrencySymbol.current}${formatAmount(item.amount)}",
                     style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
-                    color = TextPrimary
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = "${String.format("%.1f", item.percentage)}%",
                     style = MaterialTheme.typography.bodySmall,
-                    color = TextSecondary,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.width(48.dp),
                     textAlign = TextAlign.End
                 )
@@ -236,13 +235,13 @@ private fun TransferEntryItem(transfer: Transaction) {
             modifier = Modifier
                 .size(42.dp)
                 .clip(RoundedCornerShape(12.dp))
-                .background(TransferBlue.copy(alpha = 0.15f)),
+                .background(MaterialTheme.colorScheme.secondary.copy(alpha = 0.15f)),
             contentAlignment = Alignment.Center
         ) {
             Icon(
                 imageVector = CategoryIcons.getIcon("swap_horiz"),
                 contentDescription = null,
-                tint = TransferBlue,
+                tint = MaterialTheme.colorScheme.secondary,
                 modifier = Modifier.size(22.dp)
             )
         }
@@ -253,19 +252,19 @@ private fun TransferEntryItem(transfer: Transaction) {
             Text(
                 text = "${transfer.accountName} → ${transfer.toAccountName ?: "Unknown"}",
                 style = MaterialTheme.typography.titleMedium,
-                color = TextPrimary
+                color = MaterialTheme.colorScheme.onSurface
             )
             Text(
                 text = timeString,
                 style = MaterialTheme.typography.bodySmall,
-                color = TextSecondary
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
 
         Text(
             text = "${LocalCurrencySymbol.current}${formatAmount(transfer.totalAmount)}",
             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-            color = TransferBlue
+            color = MaterialTheme.colorScheme.secondary
         )
     }
 }

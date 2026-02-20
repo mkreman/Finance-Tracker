@@ -21,8 +21,8 @@ fun BottomNavBar(
 
     NavigationBar(
         modifier = modifier.height(80.dp),
-        containerColor = DarkSurface,
-        contentColor = TextPrimary,
+        containerColor = MaterialTheme.colorScheme.surface,
+        contentColor = MaterialTheme.colorScheme.onSurface,
         tonalElevation = 0.dp
     ) {
         Screen.bottomNavItems.forEach { screen ->
@@ -56,11 +56,11 @@ fun BottomNavBar(
                     }
                 },
                 colors = NavigationBarItemDefaults.colors(
-                    selectedIconColor = AccentOrange,
-                    selectedTextColor = AccentOrange,
-                    unselectedIconColor = TextSecondary,
-                    unselectedTextColor = TextSecondary,
-                    indicatorColor = AccentOrange.copy(alpha = 0.12f)
+                    selectedIconColor = MaterialTheme.colorScheme.primary,
+                    selectedTextColor = MaterialTheme.colorScheme.primary,
+                    unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    indicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
                 )
             )
         }

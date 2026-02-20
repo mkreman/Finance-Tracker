@@ -8,13 +8,16 @@ import com.moneytracker.app.data.local.database.entities.SyncStatus
 import com.moneytracker.app.data.local.database.entities.TransactionEntity
 import com.moneytracker.app.data.local.database.entities.TransactionSplitEntity
 import com.moneytracker.app.data.local.database.entities.TransactionType
+import com.moneytracker.app.data.local.database.entities.RecurringUnit
 import com.moneytracker.app.data.local.repository.AccountRepository
 import com.moneytracker.app.data.local.repository.CategoryRepository
 import com.moneytracker.app.data.local.repository.TransactionRepository
+import com.moneytracker.app.data.recurring.RecurringTransactionManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import java.math.BigDecimal
 import java.util.UUID
 import javax.inject.Inject
 
@@ -24,8 +27,15 @@ class AddTransactionViewModel @Inject constructor(
     private val accountRepository: AccountRepository,
     private val categoryRepository: CategoryRepository,
     private val userPreferences: UserPreferences,
+    private val recurringTransactionManager: RecurringTransactionManager,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
+
+    private fun toEditableAmount(value: Double): String {
+        return BigDecimal.valueOf(value)
+            .stripTrailingZeros()
+            .toPlainString()
+    }
 
     private val _state = MutableStateFlow(AddTransactionState())
     val state: StateFlow<AddTransactionState> = _state.asStateFlow()
@@ -36,6 +46,9 @@ class AddTransactionViewModel @Inject constructor(
 
     private val editTransactionId: String? = savedStateHandle.get<String>("transactionId")
     private val initialType: String? = savedStateHandle.get<String>("type")
+    private val initialAmount: String? = savedStateHandle.get<String>("amount")
+    private val initialNote: String? = savedStateHandle.get<String>("note")
+    private val initialPayee: String? = savedStateHandle.get<String>("payee")
 
     init {
         loadData()
@@ -47,11 +60,30 @@ class AddTransactionViewModel @Inject constructor(
                 _state.update { it.copy(type = txnType) }
             }
         }
+
+        if (editTransactionId == null) {
+            _state.update { state ->
+                val amountValue = initialAmount?.takeIf { it.isNotBlank() }
+                val mergedNote = listOfNotNull(
+                    initialPayee?.takeIf { it.isNotBlank() },
+                    initialNote?.takeIf { it.isNotBlank() }
+                ).joinToString(" • ")
+
+                state.copy(
+                    amount = amountValue ?: state.amount,
+                    note = if (mergedNote.isNotBlank()) mergedNote else state.note
+                )
+            }
+        }
     }
 
     private fun loadTransaction(transactionId: String) {
         viewModelScope.launch {
             val transaction = transactionRepository.getTransactionById(transactionId) ?: return@launch
+            val parentRecurring = transaction.parentRecurringId?.let { parentId ->
+                transactionRepository.getTransactionById(parentId)
+            }
+            val recurrenceSource = if (transaction.isRecurring) transaction else parentRecurring
             // Determine if this is multi-tag (same amount per category = totalAmount) vs true split
             val isMultiTag = transaction.splits.size > 1 &&
                     transaction.splits.all { kotlin.math.abs(it.amount - transaction.totalAmount) < 0.01 }
@@ -62,12 +94,18 @@ class AddTransactionViewModel @Inject constructor(
                     isEditMode = true,
                     editTransactionId = transactionId,
                     type = transaction.type,
-                    amount = transaction.totalAmount.toLong().toString(),
+                    amount = toEditableAmount(transaction.totalAmount),
                     selectedAccountId = transaction.accountId,
                     toAccountId = transaction.toAccountId,
                     note = transaction.note ?: "",
                     date = transaction.date,
                     isSplitMode = isSplit,
+                    parentRecurringId = transaction.parentRecurringId,
+                    isRecurring = recurrenceSource?.isRecurring ?: false,
+                    recurringInterval = recurrenceSource?.recurringInterval?.toString() ?: "1",
+                    recurringUnit = recurrenceSource?.recurringUnit ?: RecurringUnit.MONTH,
+                    recurringEndDate = recurrenceSource?.recurringEndDate,
+                    notifyForRecurringEntries = recurrenceSource?.notifyForRecurringEntries ?: transaction.notifyForRecurringEntries,
                     selectedCategoryIds = if (!isSplit) {
                         transaction.splits.mapNotNull { it.categoryId.takeIf { id -> id.isNotEmpty() } }.toSet()
                     } else {
@@ -80,7 +118,7 @@ class AddTransactionViewModel @Inject constructor(
                             SplitState(
                                 categoryId = split.categoryId,
                                 categoryName = split.categoryName,
-                                amount = split.amount.toLong().toString()
+                                amount = toEditableAmount(split.amount)
                             )
                         }
                     }
@@ -106,6 +144,14 @@ class AddTransactionViewModel @Inject constructor(
                         accounts = accounts,
                         selectedAccountId = accountId
                     )
+                }
+            }
+        }
+        viewModelScope.launch {
+            userPreferences.defaultNotifyForRecurringEntries.collect { enabled ->
+                _state.update { currentState ->
+                    if (currentState.isEditMode) currentState
+                    else currentState.copy(notifyForRecurringEntries = enabled)
                 }
             }
         }
@@ -171,7 +217,17 @@ class AddTransactionViewModel @Inject constructor(
     }
 
     fun onTypeChange(type: TransactionType) {
-        _state.update { it.copy(type = type) }
+        _state.update { current ->
+            if (type == current.type) return@update current
+
+            current.copy(
+                type = type,
+                isSplitMode = false,
+                selectedCategoryIds = emptySet(),
+                splits = listOf(SplitState(amount = current.amount)),
+                toAccountId = if (type == TransactionType.TRANSFER) current.toAccountId else null
+            )
+        }
     }
 
     fun onAccountSelected(accountId: String) {
@@ -254,6 +310,25 @@ class AddTransactionViewModel @Inject constructor(
         }
     }
 
+    fun deleteCategory(categoryId: String) {
+        viewModelScope.launch {
+            categoryRepository.deleteCategory(categoryId)
+            _state.update { state ->
+                val updatedSelectedIds = state.selectedCategoryIds - categoryId
+                val updatedSplits = state.splits.filterNot { it.categoryId == categoryId }
+                val normalizedSplits = if (updatedSplits.isEmpty()) {
+                    listOf(SplitState(amount = state.amount))
+                } else {
+                    updatedSplits
+                }
+                state.copy(
+                    selectedCategoryIds = updatedSelectedIds,
+                    splits = normalizedSplits
+                )
+            }
+        }
+    }
+
     fun removeSplit(index: Int) {
         _state.update { state ->
             if (state.splits.size > 1) {
@@ -262,8 +337,29 @@ class AddTransactionViewModel @Inject constructor(
         }
     }
 
+    fun onRecurringToggle(isRecurring: Boolean) {
+        _state.update { it.copy(isRecurring = isRecurring) }
+    }
+
+    fun onRecurringIntervalChange(interval: String) {
+        _state.update { it.copy(recurringInterval = interval) }
+    }
+
+    fun onRecurringUnitChange(unit: RecurringUnit) {
+        _state.update { it.copy(recurringUnit = unit) }
+    }
+
+    fun onRecurringEndDateChange(endDate: Long?) {
+        _state.update { it.copy(recurringEndDate = endDate) }
+    }
+
+    fun onNotifyForRecurringEntriesChange(enabled: Boolean) {
+        _state.update { it.copy(notifyForRecurringEntries = enabled) }
+    }
+
     fun saveTransaction() {
         val currentState = _state.value
+        if (currentState.isSaving) return
         if (!currentState.isValid) {
             _state.update { it.copy(errorMessage = "Please fill all required fields") }
             return
@@ -275,6 +371,13 @@ class AddTransactionViewModel @Inject constructor(
             try {
                 val transactionId = currentState.editTransactionId ?: UUID.randomUUID().toString()
                 val now = System.currentTimeMillis()
+                val existingTransaction = if (currentState.isEditMode) {
+                    transactionRepository.getTransactionById(transactionId)
+                } else {
+                    null
+                }
+                val isSeriesChildEntry = currentState.parentRecurringId != null
+                val shouldPersistRecurringOnThisEntry = currentState.isRecurring && !isSeriesChildEntry
 
                 val transaction = TransactionEntity(
                     id = transactionId,
@@ -287,31 +390,68 @@ class AddTransactionViewModel @Inject constructor(
                     toAccountId = currentState.toAccountId,
                     createdAt = now,
                     modifiedAt = now,
-                    syncStatus = SyncStatus.DIRTY
+                    syncStatus = SyncStatus.DIRTY,
+                    isRecurring = shouldPersistRecurringOnThisEntry,
+                    recurringInterval = if (shouldPersistRecurringOnThisEntry) currentState.recurringInterval.toIntOrNull() else null,
+                    recurringUnit = if (shouldPersistRecurringOnThisEntry) currentState.recurringUnit else null,
+                    recurringEndDate = if (shouldPersistRecurringOnThisEntry) currentState.recurringEndDate else null,
+                    parentRecurringId = currentState.parentRecurringId ?: existingTransaction?.parentRecurringId,
+                    notifyForRecurringEntries = if (shouldPersistRecurringOnThisEntry) currentState.notifyForRecurringEntries else true
                 )
 
                 val splits = if (currentState.type == TransactionType.TRANSFER) {
                     emptyList()
                 } else {
-                    currentState.splits.map { split ->
+                    val validSplits = currentState.splits.mapNotNull { split ->
+                        val categoryId = split.categoryId?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
+                        val splitAmount = split.amount.toDoubleOrNull() ?: 0.0
+                        if (splitAmount <= 0.0) return@mapNotNull null
+
                         TransactionSplitEntity(
                             id = UUID.randomUUID().toString(),
                             transactionId = transactionId,
-                            categoryId = split.categoryId!!,
-                            amount = split.amount.toDoubleOrNull() ?: 0.0,
+                            categoryId = categoryId,
+                            amount = splitAmount,
                             note = null
                         )
                     }
+
+                    if (validSplits.isEmpty()) {
+                        throw IllegalStateException("Please select at least one valid category")
+                    }
+
+                    if (currentState.isSplitMode) {
+                        val splitTotal = validSplits.sumOf { it.amount }
+                        if (kotlin.math.abs(splitTotal - currentState.totalAmount) >= 0.01) {
+                            throw IllegalStateException("Split total must match the transaction amount")
+                        }
+                    }
+
+                    validSplits
                 }
 
                 if (currentState.isEditMode) {
                     transactionRepository.updateTransactionFull(transaction, splits)
+                    // If recurring toggle is turned OFF on any entry in the series,
+                    // stop future recurrences by disabling the parent template.
+                    // When toggle is ON, just save the individual entry as-is — future
+                    // occurrences are automatically copied from the latest entry in the
+                    // series by the worker, so no parent propagation is needed.
+                    if (currentState.parentRecurringId != null && !currentState.isRecurring) {
+                        transactionRepository.stopRecurringSeries(currentState.parentRecurringId)
+                    }
                 } else {
                     transactionRepository.saveTransaction(transaction, splits)
+                    // Trigger an immediate check so today's occurrences are created promptly
+                    if (shouldPersistRecurringOnThisEntry) {
+                        recurringTransactionManager.checkNow()
+                    }
                 }
                 _state.update { it.copy(isSaving = false) }
+                android.util.Log.d("AddTxnVM", "Save successful, sending navigateBack")
                 _navigateBack.trySend(Unit)
             } catch (e: Exception) {
+                android.util.Log.e("AddTxnVM", "Save failed", e)
                 _state.update {
                     it.copy(
                         isSaving = false,

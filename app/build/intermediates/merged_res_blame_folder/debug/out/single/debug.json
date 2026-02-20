@@ -8,6 +8,10 @@
         "source": "com.moneytracker.app-main-76:/mipmap-anydpi-v26/ic_launcher_round.xml"
     },
     {
+        "merged": "com.moneytracker.app-merged_res-74:/drawable_ic_notification.xml.flat",
+        "source": "com.moneytracker.app-main-76:/drawable/ic_notification.xml"
+    },
+    {
         "merged": "com.moneytracker.app-merged_res-74:/drawable_ic_launcher_foreground.xml.flat",
         "source": "com.moneytracker.app-main-76:/drawable/ic_launcher_foreground.xml"
     },

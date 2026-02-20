@@ -34,5 +34,15 @@ data class TransactionEntity(
     val createdAt: Long = System.currentTimeMillis(),
     val modifiedAt: Long = System.currentTimeMillis(),
     val isDeleted: Boolean = false,
-    val syncStatus: SyncStatus = SyncStatus.PENDING
+    val syncStatus: SyncStatus = SyncStatus.PENDING,
+    val isRecurring: Boolean = false,
+    val recurringInterval: Int? = null,
+    val recurringUnit: RecurringUnit? = null,
+    val recurringEndDate: Long? = null,
+    val parentRecurringId: String? = null,
+    val notifyForRecurringEntries: Boolean = true
 )
+
+enum class RecurringUnit {
+    DAY, WEEK, MONTH, YEAR
+}

@@ -62,7 +62,7 @@ public final class AccountDao_Impl implements AccountDao {
       @Override
       @NonNull
       protected String createQuery() {
-        return "INSERT OR REPLACE INTO `accounts` (`id`,`name`,`type`,`initialBalance`,`currentBalance`,`currency`,`colorHex`,`iconKey`,`isActive`,`createdAt`,`modifiedAt`,`isDeleted`,`syncStatus`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)";
+        return "INSERT OR REPLACE INTO `accounts` (`id`,`name`,`type`,`customTypeName`,`initialBalance`,`currentBalance`,`currency`,`colorHex`,`iconKey`,`isActive`,`createdAt`,`modifiedAt`,`isDeleted`,`syncStatus`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
       }
 
       @Override
@@ -72,26 +72,31 @@ public final class AccountDao_Impl implements AccountDao {
         statement.bindString(2, entity.getName());
         final String _tmp = __converters.fromAccountType(entity.getType());
         statement.bindString(3, _tmp);
-        statement.bindDouble(4, entity.getInitialBalance());
-        statement.bindDouble(5, entity.getCurrentBalance());
-        statement.bindString(6, entity.getCurrency());
-        statement.bindString(7, entity.getColorHex());
-        statement.bindString(8, entity.getIconKey());
+        if (entity.getCustomTypeName() == null) {
+          statement.bindNull(4);
+        } else {
+          statement.bindString(4, entity.getCustomTypeName());
+        }
+        statement.bindDouble(5, entity.getInitialBalance());
+        statement.bindDouble(6, entity.getCurrentBalance());
+        statement.bindString(7, entity.getCurrency());
+        statement.bindString(8, entity.getColorHex());
+        statement.bindString(9, entity.getIconKey());
         final int _tmp_1 = entity.isActive() ? 1 : 0;
-        statement.bindLong(9, _tmp_1);
-        statement.bindLong(10, entity.getCreatedAt());
-        statement.bindLong(11, entity.getModifiedAt());
+        statement.bindLong(10, _tmp_1);
+        statement.bindLong(11, entity.getCreatedAt());
+        statement.bindLong(12, entity.getModifiedAt());
         final int _tmp_2 = entity.isDeleted() ? 1 : 0;
-        statement.bindLong(12, _tmp_2);
+        statement.bindLong(13, _tmp_2);
         final String _tmp_3 = __converters.fromSyncStatus(entity.getSyncStatus());
-        statement.bindString(13, _tmp_3);
+        statement.bindString(14, _tmp_3);
       }
     };
     this.__updateAdapterOfAccountEntity = new EntityDeletionOrUpdateAdapter<AccountEntity>(__db) {
       @Override
       @NonNull
       protected String createQuery() {
-        return "UPDATE OR ABORT `accounts` SET `id` = ?,`name` = ?,`type` = ?,`initialBalance` = ?,`currentBalance` = ?,`currency` = ?,`colorHex` = ?,`iconKey` = ?,`isActive` = ?,`createdAt` = ?,`modifiedAt` = ?,`isDeleted` = ?,`syncStatus` = ? WHERE `id` = ?";
+        return "UPDATE OR ABORT `accounts` SET `id` = ?,`name` = ?,`type` = ?,`customTypeName` = ?,`initialBalance` = ?,`currentBalance` = ?,`currency` = ?,`colorHex` = ?,`iconKey` = ?,`isActive` = ?,`createdAt` = ?,`modifiedAt` = ?,`isDeleted` = ?,`syncStatus` = ? WHERE `id` = ?";
       }
 
       @Override
@@ -101,20 +106,25 @@ public final class AccountDao_Impl implements AccountDao {
         statement.bindString(2, entity.getName());
         final String _tmp = __converters.fromAccountType(entity.getType());
         statement.bindString(3, _tmp);
-        statement.bindDouble(4, entity.getInitialBalance());
-        statement.bindDouble(5, entity.getCurrentBalance());
-        statement.bindString(6, entity.getCurrency());
-        statement.bindString(7, entity.getColorHex());
-        statement.bindString(8, entity.getIconKey());
+        if (entity.getCustomTypeName() == null) {
+          statement.bindNull(4);
+        } else {
+          statement.bindString(4, entity.getCustomTypeName());
+        }
+        statement.bindDouble(5, entity.getInitialBalance());
+        statement.bindDouble(6, entity.getCurrentBalance());
+        statement.bindString(7, entity.getCurrency());
+        statement.bindString(8, entity.getColorHex());
+        statement.bindString(9, entity.getIconKey());
         final int _tmp_1 = entity.isActive() ? 1 : 0;
-        statement.bindLong(9, _tmp_1);
-        statement.bindLong(10, entity.getCreatedAt());
-        statement.bindLong(11, entity.getModifiedAt());
+        statement.bindLong(10, _tmp_1);
+        statement.bindLong(11, entity.getCreatedAt());
+        statement.bindLong(12, entity.getModifiedAt());
         final int _tmp_2 = entity.isDeleted() ? 1 : 0;
-        statement.bindLong(12, _tmp_2);
+        statement.bindLong(13, _tmp_2);
         final String _tmp_3 = __converters.fromSyncStatus(entity.getSyncStatus());
-        statement.bindString(13, _tmp_3);
-        statement.bindString(14, entity.getId());
+        statement.bindString(14, _tmp_3);
+        statement.bindString(15, entity.getId());
       }
     };
     this.__preparedStmtOfUpdateBalance = new SharedSQLiteStatement(__db) {
@@ -397,6 +407,7 @@ public final class AccountDao_Impl implements AccountDao {
           final int _cursorIndexOfId = CursorUtil.getColumnIndexOrThrow(_cursor, "id");
           final int _cursorIndexOfName = CursorUtil.getColumnIndexOrThrow(_cursor, "name");
           final int _cursorIndexOfType = CursorUtil.getColumnIndexOrThrow(_cursor, "type");
+          final int _cursorIndexOfCustomTypeName = CursorUtil.getColumnIndexOrThrow(_cursor, "customTypeName");
           final int _cursorIndexOfInitialBalance = CursorUtil.getColumnIndexOrThrow(_cursor, "initialBalance");
           final int _cursorIndexOfCurrentBalance = CursorUtil.getColumnIndexOrThrow(_cursor, "currentBalance");
           final int _cursorIndexOfCurrency = CursorUtil.getColumnIndexOrThrow(_cursor, "currency");
@@ -418,6 +429,12 @@ public final class AccountDao_Impl implements AccountDao {
             final String _tmp;
             _tmp = _cursor.getString(_cursorIndexOfType);
             _tmpType = __converters.toAccountType(_tmp);
+            final String _tmpCustomTypeName;
+            if (_cursor.isNull(_cursorIndexOfCustomTypeName)) {
+              _tmpCustomTypeName = null;
+            } else {
+              _tmpCustomTypeName = _cursor.getString(_cursorIndexOfCustomTypeName);
+            }
             final double _tmpInitialBalance;
             _tmpInitialBalance = _cursor.getDouble(_cursorIndexOfInitialBalance);
             final double _tmpCurrentBalance;
@@ -444,7 +461,7 @@ public final class AccountDao_Impl implements AccountDao {
             final String _tmp_3;
             _tmp_3 = _cursor.getString(_cursorIndexOfSyncStatus);
             _tmpSyncStatus = __converters.toSyncStatus(_tmp_3);
-            _item = new AccountEntity(_tmpId,_tmpName,_tmpType,_tmpInitialBalance,_tmpCurrentBalance,_tmpCurrency,_tmpColorHex,_tmpIconKey,_tmpIsActive,_tmpCreatedAt,_tmpModifiedAt,_tmpIsDeleted,_tmpSyncStatus);
+            _item = new AccountEntity(_tmpId,_tmpName,_tmpType,_tmpCustomTypeName,_tmpInitialBalance,_tmpCurrentBalance,_tmpCurrency,_tmpColorHex,_tmpIconKey,_tmpIsActive,_tmpCreatedAt,_tmpModifiedAt,_tmpIsDeleted,_tmpSyncStatus);
             _result.add(_item);
           }
           return _result;
@@ -473,6 +490,7 @@ public final class AccountDao_Impl implements AccountDao {
           final int _cursorIndexOfId = CursorUtil.getColumnIndexOrThrow(_cursor, "id");
           final int _cursorIndexOfName = CursorUtil.getColumnIndexOrThrow(_cursor, "name");
           final int _cursorIndexOfType = CursorUtil.getColumnIndexOrThrow(_cursor, "type");
+          final int _cursorIndexOfCustomTypeName = CursorUtil.getColumnIndexOrThrow(_cursor, "customTypeName");
           final int _cursorIndexOfInitialBalance = CursorUtil.getColumnIndexOrThrow(_cursor, "initialBalance");
           final int _cursorIndexOfCurrentBalance = CursorUtil.getColumnIndexOrThrow(_cursor, "currentBalance");
           final int _cursorIndexOfCurrency = CursorUtil.getColumnIndexOrThrow(_cursor, "currency");
@@ -494,6 +512,12 @@ public final class AccountDao_Impl implements AccountDao {
             final String _tmp;
             _tmp = _cursor.getString(_cursorIndexOfType);
             _tmpType = __converters.toAccountType(_tmp);
+            final String _tmpCustomTypeName;
+            if (_cursor.isNull(_cursorIndexOfCustomTypeName)) {
+              _tmpCustomTypeName = null;
+            } else {
+              _tmpCustomTypeName = _cursor.getString(_cursorIndexOfCustomTypeName);
+            }
             final double _tmpInitialBalance;
             _tmpInitialBalance = _cursor.getDouble(_cursorIndexOfInitialBalance);
             final double _tmpCurrentBalance;
@@ -520,7 +544,7 @@ public final class AccountDao_Impl implements AccountDao {
             final String _tmp_3;
             _tmp_3 = _cursor.getString(_cursorIndexOfSyncStatus);
             _tmpSyncStatus = __converters.toSyncStatus(_tmp_3);
-            _item = new AccountEntity(_tmpId,_tmpName,_tmpType,_tmpInitialBalance,_tmpCurrentBalance,_tmpCurrency,_tmpColorHex,_tmpIconKey,_tmpIsActive,_tmpCreatedAt,_tmpModifiedAt,_tmpIsDeleted,_tmpSyncStatus);
+            _item = new AccountEntity(_tmpId,_tmpName,_tmpType,_tmpCustomTypeName,_tmpInitialBalance,_tmpCurrentBalance,_tmpCurrency,_tmpColorHex,_tmpIconKey,_tmpIsActive,_tmpCreatedAt,_tmpModifiedAt,_tmpIsDeleted,_tmpSyncStatus);
             _result.add(_item);
           }
           return _result;
@@ -552,6 +576,7 @@ public final class AccountDao_Impl implements AccountDao {
           final int _cursorIndexOfId = CursorUtil.getColumnIndexOrThrow(_cursor, "id");
           final int _cursorIndexOfName = CursorUtil.getColumnIndexOrThrow(_cursor, "name");
           final int _cursorIndexOfType = CursorUtil.getColumnIndexOrThrow(_cursor, "type");
+          final int _cursorIndexOfCustomTypeName = CursorUtil.getColumnIndexOrThrow(_cursor, "customTypeName");
           final int _cursorIndexOfInitialBalance = CursorUtil.getColumnIndexOrThrow(_cursor, "initialBalance");
           final int _cursorIndexOfCurrentBalance = CursorUtil.getColumnIndexOrThrow(_cursor, "currentBalance");
           final int _cursorIndexOfCurrency = CursorUtil.getColumnIndexOrThrow(_cursor, "currency");
@@ -573,6 +598,12 @@ public final class AccountDao_Impl implements AccountDao {
             final String _tmp_1;
             _tmp_1 = _cursor.getString(_cursorIndexOfType);
             _tmpType = __converters.toAccountType(_tmp_1);
+            final String _tmpCustomTypeName;
+            if (_cursor.isNull(_cursorIndexOfCustomTypeName)) {
+              _tmpCustomTypeName = null;
+            } else {
+              _tmpCustomTypeName = _cursor.getString(_cursorIndexOfCustomTypeName);
+            }
             final double _tmpInitialBalance;
             _tmpInitialBalance = _cursor.getDouble(_cursorIndexOfInitialBalance);
             final double _tmpCurrentBalance;
@@ -599,7 +630,7 @@ public final class AccountDao_Impl implements AccountDao {
             final String _tmp_4;
             _tmp_4 = _cursor.getString(_cursorIndexOfSyncStatus);
             _tmpSyncStatus = __converters.toSyncStatus(_tmp_4);
-            _item = new AccountEntity(_tmpId,_tmpName,_tmpType,_tmpInitialBalance,_tmpCurrentBalance,_tmpCurrency,_tmpColorHex,_tmpIconKey,_tmpIsActive,_tmpCreatedAt,_tmpModifiedAt,_tmpIsDeleted,_tmpSyncStatus);
+            _item = new AccountEntity(_tmpId,_tmpName,_tmpType,_tmpCustomTypeName,_tmpInitialBalance,_tmpCurrentBalance,_tmpCurrency,_tmpColorHex,_tmpIconKey,_tmpIsActive,_tmpCreatedAt,_tmpModifiedAt,_tmpIsDeleted,_tmpSyncStatus);
             _result.add(_item);
           }
           return _result;
@@ -632,6 +663,7 @@ public final class AccountDao_Impl implements AccountDao {
           final int _cursorIndexOfId = CursorUtil.getColumnIndexOrThrow(_cursor, "id");
           final int _cursorIndexOfName = CursorUtil.getColumnIndexOrThrow(_cursor, "name");
           final int _cursorIndexOfType = CursorUtil.getColumnIndexOrThrow(_cursor, "type");
+          final int _cursorIndexOfCustomTypeName = CursorUtil.getColumnIndexOrThrow(_cursor, "customTypeName");
           final int _cursorIndexOfInitialBalance = CursorUtil.getColumnIndexOrThrow(_cursor, "initialBalance");
           final int _cursorIndexOfCurrentBalance = CursorUtil.getColumnIndexOrThrow(_cursor, "currentBalance");
           final int _cursorIndexOfCurrency = CursorUtil.getColumnIndexOrThrow(_cursor, "currency");
@@ -652,6 +684,12 @@ public final class AccountDao_Impl implements AccountDao {
             final String _tmp;
             _tmp = _cursor.getString(_cursorIndexOfType);
             _tmpType = __converters.toAccountType(_tmp);
+            final String _tmpCustomTypeName;
+            if (_cursor.isNull(_cursorIndexOfCustomTypeName)) {
+              _tmpCustomTypeName = null;
+            } else {
+              _tmpCustomTypeName = _cursor.getString(_cursorIndexOfCustomTypeName);
+            }
             final double _tmpInitialBalance;
             _tmpInitialBalance = _cursor.getDouble(_cursorIndexOfInitialBalance);
             final double _tmpCurrentBalance;
@@ -678,7 +716,7 @@ public final class AccountDao_Impl implements AccountDao {
             final String _tmp_3;
             _tmp_3 = _cursor.getString(_cursorIndexOfSyncStatus);
             _tmpSyncStatus = __converters.toSyncStatus(_tmp_3);
-            _result = new AccountEntity(_tmpId,_tmpName,_tmpType,_tmpInitialBalance,_tmpCurrentBalance,_tmpCurrency,_tmpColorHex,_tmpIconKey,_tmpIsActive,_tmpCreatedAt,_tmpModifiedAt,_tmpIsDeleted,_tmpSyncStatus);
+            _result = new AccountEntity(_tmpId,_tmpName,_tmpType,_tmpCustomTypeName,_tmpInitialBalance,_tmpCurrentBalance,_tmpCurrency,_tmpColorHex,_tmpIconKey,_tmpIsActive,_tmpCreatedAt,_tmpModifiedAt,_tmpIsDeleted,_tmpSyncStatus);
           } else {
             _result = null;
           }
@@ -934,6 +972,7 @@ public final class AccountDao_Impl implements AccountDao {
           final int _cursorIndexOfId = CursorUtil.getColumnIndexOrThrow(_cursor, "id");
           final int _cursorIndexOfName = CursorUtil.getColumnIndexOrThrow(_cursor, "name");
           final int _cursorIndexOfType = CursorUtil.getColumnIndexOrThrow(_cursor, "type");
+          final int _cursorIndexOfCustomTypeName = CursorUtil.getColumnIndexOrThrow(_cursor, "customTypeName");
           final int _cursorIndexOfInitialBalance = CursorUtil.getColumnIndexOrThrow(_cursor, "initialBalance");
           final int _cursorIndexOfCurrentBalance = CursorUtil.getColumnIndexOrThrow(_cursor, "currentBalance");
           final int _cursorIndexOfCurrency = CursorUtil.getColumnIndexOrThrow(_cursor, "currency");
@@ -955,6 +994,12 @@ public final class AccountDao_Impl implements AccountDao {
             final String _tmp;
             _tmp = _cursor.getString(_cursorIndexOfType);
             _tmpType = __converters.toAccountType(_tmp);
+            final String _tmpCustomTypeName;
+            if (_cursor.isNull(_cursorIndexOfCustomTypeName)) {
+              _tmpCustomTypeName = null;
+            } else {
+              _tmpCustomTypeName = _cursor.getString(_cursorIndexOfCustomTypeName);
+            }
             final double _tmpInitialBalance;
             _tmpInitialBalance = _cursor.getDouble(_cursorIndexOfInitialBalance);
             final double _tmpCurrentBalance;
@@ -981,7 +1026,7 @@ public final class AccountDao_Impl implements AccountDao {
             final String _tmp_3;
             _tmp_3 = _cursor.getString(_cursorIndexOfSyncStatus);
             _tmpSyncStatus = __converters.toSyncStatus(_tmp_3);
-            _item = new AccountEntity(_tmpId,_tmpName,_tmpType,_tmpInitialBalance,_tmpCurrentBalance,_tmpCurrency,_tmpColorHex,_tmpIconKey,_tmpIsActive,_tmpCreatedAt,_tmpModifiedAt,_tmpIsDeleted,_tmpSyncStatus);
+            _item = new AccountEntity(_tmpId,_tmpName,_tmpType,_tmpCustomTypeName,_tmpInitialBalance,_tmpCurrentBalance,_tmpCurrency,_tmpColorHex,_tmpIconKey,_tmpIsActive,_tmpCreatedAt,_tmpModifiedAt,_tmpIsDeleted,_tmpSyncStatus);
             _result.add(_item);
           }
           return _result;

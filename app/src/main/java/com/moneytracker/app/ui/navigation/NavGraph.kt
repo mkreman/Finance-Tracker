@@ -90,11 +90,32 @@ fun NavGraph(navController: NavHostController) {
                     type = NavType.StringType
                     nullable = true
                     defaultValue = null
+                },
+                navArgument("amount") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                },
+                navArgument("note") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                },
+                navArgument("payee") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
                 }
             )
         ) {
             AddTransactionScreen(
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = {
+                    if (!navController.popBackStack(Screen.Transactions.route, inclusive = false)) {
+                        navController.navigate(Screen.Transactions.route) {
+                            launchSingleTop = true
+                        }
+                    }
+                }
             )
         }
 
@@ -157,7 +178,13 @@ fun NavGraph(navController: NavHostController) {
             arguments = listOf(navArgument("transactionId") { type = NavType.StringType })
         ) {
             AddTransactionScreen(
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = {
+                    if (!navController.popBackStack()) {
+                        navController.navigate(Screen.Transactions.route) {
+                            launchSingleTop = true
+                        }
+                    }
+                }
             )
         }
 

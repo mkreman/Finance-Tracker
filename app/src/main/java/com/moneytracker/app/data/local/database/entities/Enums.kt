@@ -9,7 +9,8 @@ enum class AccountType {
     BANK,
     INVESTMENT,
     WALLET,
-    PEOPLE
+    PEOPLE,
+    CUSTOM
 }
 
 enum class TransactionType {

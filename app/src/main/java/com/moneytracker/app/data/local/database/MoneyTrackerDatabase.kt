@@ -5,6 +5,7 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
+import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.moneytracker.app.data.local.database.converters.Converters
 import com.moneytracker.app.data.local.database.dao.AccountDao
@@ -22,7 +23,7 @@ import java.util.UUID
         TransactionSplitEntity::class,
         BudgetEntity::class
     ],
-    version = 4,
+    version = 7,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -36,6 +37,30 @@ abstract class MoneyTrackerDatabase : RoomDatabase() {
     companion object {
         const val DATABASE_NAME = "money_tracker_db"
 
+        private val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                // Add recurring transaction fields
+                database.execSQL("ALTER TABLE transactions ADD COLUMN isRecurring INTEGER NOT NULL DEFAULT 0")
+                database.execSQL("ALTER TABLE transactions ADD COLUMN recurringInterval INTEGER")
+                database.execSQL("ALTER TABLE transactions ADD COLUMN recurringUnit TEXT")
+                database.execSQL("ALTER TABLE transactions ADD COLUMN recurringEndDate INTEGER")
+                database.execSQL("ALTER TABLE transactions ADD COLUMN parentRecurringId TEXT")
+            }
+        }
+
+        private val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                // Add custom account type name field
+                database.execSQL("ALTER TABLE accounts ADD COLUMN customTypeName TEXT")
+            }
+        }
+
+        private val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE transactions ADD COLUMN notifyForRecurringEntries INTEGER NOT NULL DEFAULT 1")
+            }
+        }
+
         fun buildDatabase(context: Context): MoneyTrackerDatabase {
             return Room.databaseBuilder(
                 context.applicationContext,
@@ -47,7 +72,24 @@ abstract class MoneyTrackerDatabase : RoomDatabase() {
                         super.onCreate(db)
                         seedDefaultData(db)
                     }
+                    override fun onOpen(db: SupportSQLiteDatabase) {
+                        super.onOpen(db)
+                        // Ensure default data exists after migrations or destructive resets
+                        try {
+                            val cursor = db.query("SELECT COUNT(*) FROM categories")
+                            cursor.use {
+                                if (it.moveToFirst()) {
+                                    val count = it.getInt(0)
+                                    if (count == 0) seedDefaultData(db)
+                                }
+                            }
+                        } catch (ignored: Exception) {
+                            // If categories table missing or other issue, attempt to seed anyway
+                            try { seedDefaultData(db) } catch (_: Exception) {}
+                        }
+                    }
                 })
+                .addMigrations(MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
                 .fallbackToDestructiveMigration()
                 .build()
         }
@@ -65,9 +107,9 @@ abstract class MoneyTrackerDatabase : RoomDatabase() {
                 val id = UUID.randomUUID().toString()
                 val icon = if (type == "CASH") "wallet" else "bank"
                 db.execSQL(
-                    """INSERT OR IGNORE INTO accounts
-                      (id, name, type, initialBalance, currentBalance, currency, colorHex, iconKey, isActive, createdAt, modifiedAt, isDeleted, syncStatus)
-                      VALUES ('$id', '$name', '$type', 0.0, 0.0, 'INR', '$color', '$icon', 1, $now, $now, 0, 'PENDING')"""
+                                        """INSERT OR IGNORE INTO accounts
+                                            (id, name, type, customTypeName, initialBalance, currentBalance, currency, colorHex, iconKey, isActive, createdAt, modifiedAt, isDeleted, syncStatus)
+                                            VALUES ('$id', '$name', '$type', NULL, 0.0, 0.0, 'INR', '$color', '$icon', 1, $now, $now, 0, 'PENDING')"""
                 )
             }
 

@@ -3,6 +3,7 @@ package com.moneytracker.app.ui.screens.accounts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -17,15 +18,16 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.moneytracker.app.domain.model.Account
+import com.moneytracker.app.data.local.database.entities.AccountType
 import com.moneytracker.app.ui.components.CategoryIcons
 import com.moneytracker.app.ui.components.LocalCurrencySymbol
 import com.moneytracker.app.ui.components.formatAmount
 import com.moneytracker.app.ui.components.parseHexColor
-import com.moneytracker.app.ui.theme.*
 
 @Composable
 fun AccountsScreen(
@@ -42,11 +44,11 @@ fun AccountsScreen(
     if (showDeleteDialog != null) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = null },
-            title = { Text("Delete Account", color = TextPrimary) },
+            title = { Text("Delete Account", color = MaterialTheme.colorScheme.onSurface) },
             text = {
                 Text(
                     "Are you sure you want to delete \"${showDeleteDialog!!.name}\"? All transactions associated with this account will also be deleted. This cannot be undone.",
-                    color = TextSecondary
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             },
             confirmButton = {
@@ -54,20 +56,20 @@ fun AccountsScreen(
                     viewModel.deleteAccount(showDeleteDialog!!.id)
                     showDeleteDialog = null
                 }) {
-                    Text("Delete", color = ExpenseRed)
+                    Text("Delete", color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteDialog = null }) {
-                    Text("Cancel", color = TextSecondary)
+                    Text("Cancel", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             },
-            containerColor = DarkSurface,
+            containerColor = MaterialTheme.colorScheme.surface,
             shape = RoundedCornerShape(16.dp)
         )
     }
 
-    Box(modifier = Modifier.fillMaxSize().background(DarkBackground)) {
+    Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -78,7 +80,7 @@ fun AccountsScreen(
             Text(
                 text = "Accounts",
                 style = MaterialTheme.typography.headlineMedium,
-                color = TextPrimary,
+                color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.padding(horizontal = 16.dp)
             )
 
@@ -90,14 +92,14 @@ fun AccountsScreen(
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp)
                     .clip(RoundedCornerShape(20.dp))
-                    .background(CardBackgroundElevated)
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
                     .padding(20.dp)
             ) {
                 Column {
                     Text(
                         text = "Overall",
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-                        color = TextSecondary
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     Row(
@@ -105,35 +107,35 @@ fun AccountsScreen(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Column {
-                            Text("Income so far", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                            Text("Income so far", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             Text(
                                 "$currency${formatAmount(state.totalIncome)}",
                                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                color = IncomeGreen
+                                color = MaterialTheme.colorScheme.tertiary
                             )
                         }
                         Column(horizontalAlignment = Alignment.End) {
-                            Text("Expense so far", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                            Text("Expense so far", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             Text(
                                 "$currency${formatAmount(state.totalExpense)}",
                                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                color = ExpenseRed
+                                color = MaterialTheme.colorScheme.error
                             )
                         }
                     }
                     Spacer(modifier = Modifier.height(12.dp))
-                    Divider(color = DividerColor, thickness = 1.dp)
+                    Divider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 1.dp)
                     Spacer(modifier = Modifier.height(12.dp))
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("Total Balance", style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
+                        Text("Total Balance", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Text(
                             if (state.totalBalance < 0) "-$currency${formatAmount(kotlin.math.abs(state.totalBalance))}" else "$currency${formatAmount(state.totalBalance)}",
                             style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
-                            color = if (state.totalBalance >= 0) IncomeGreen else ExpenseRed
+                            color = if (state.totalBalance >= 0) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error
                         )
                     }
                 }
@@ -141,11 +143,29 @@ fun AccountsScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Wallet Section
+            // Cash Section
             if (state.cashAccounts.isNotEmpty()) {
                 AccountSection(
-                    title = "Wallet",
+                    title = "Cash",
                     accounts = state.cashAccounts,
+                    sum = state.cashTotal,
+                    expanded = state.cashExpanded,
+                    onToggle = { viewModel.setSectionExpanded(AccountType.CASH, !state.cashExpanded) },
+                    onAccountClick = onAccountClick,
+                    onEditAccount = onEditAccount,
+                    onDeleteAccount = { showDeleteDialog = it },
+                    onDeactivateAccount = { viewModel.deactivateAccount(it.id) }
+                )
+            }
+
+            // Wallet Section
+            if (state.walletAccounts.isNotEmpty()) {
+                AccountSection(
+                    title = "Wallet",
+                    accounts = state.walletAccounts,
+                    sum = state.walletTotal,
+                    expanded = state.walletExpanded,
+                    onToggle = { viewModel.setSectionExpanded(AccountType.WALLET, !state.walletExpanded) },
                     onAccountClick = onAccountClick,
                     onEditAccount = onEditAccount,
                     onDeleteAccount = { showDeleteDialog = it },
@@ -158,6 +178,9 @@ fun AccountsScreen(
                 AccountSection(
                     title = "Bank Accounts",
                     accounts = state.bankAccounts,
+                    sum = state.bankTotal,
+                    expanded = state.bankExpanded,
+                    onToggle = { viewModel.setSectionExpanded(AccountType.BANK, !state.bankExpanded) },
                     onAccountClick = onAccountClick,
                     onEditAccount = onEditAccount,
                     onDeleteAccount = { showDeleteDialog = it },
@@ -170,6 +193,9 @@ fun AccountsScreen(
                 AccountSection(
                     title = "Investments",
                     accounts = state.investmentAccounts,
+                    sum = state.investmentTotal,
+                    expanded = state.investmentExpanded,
+                    onToggle = { viewModel.setSectionExpanded(AccountType.INVESTMENT, !state.investmentExpanded) },
                     onAccountClick = onAccountClick,
                     onEditAccount = onEditAccount,
                     onDeleteAccount = { showDeleteDialog = it },
@@ -182,11 +208,31 @@ fun AccountsScreen(
                 AccountSection(
                     title = "People",
                     accounts = state.peopleAccounts,
+                    sum = state.peopleTotal,
+                    expanded = state.peopleExpanded,
+                    onToggle = { viewModel.setSectionExpanded(AccountType.PEOPLE, !state.peopleExpanded) },
                     onAccountClick = onAccountClick,
                     onEditAccount = onEditAccount,
                     onDeleteAccount = { showDeleteDialog = it },
                     onDeactivateAccount = { viewModel.deactivateAccount(it.id) }
                 )
+            }
+
+            // Custom Accounts Sections (grouped by custom type name)
+            if (state.customSections.isNotEmpty()) {
+                state.customSections.forEach { section ->
+                    AccountSection(
+                        title = section.name,
+                        accounts = section.accounts,
+                        sum = section.total,
+                        expanded = section.expanded,
+                        onToggle = { viewModel.toggleCustomSection(section.name) },
+                        onAccountClick = onAccountClick,
+                        onEditAccount = onEditAccount,
+                        onDeleteAccount = { showDeleteDialog = it },
+                        onDeactivateAccount = { viewModel.deactivateAccount(it.id) }
+                    )
+                }
             }
 
             // Inactive Accounts Section
@@ -205,13 +251,13 @@ fun AccountsScreen(
                     Text(
                         text = "Inactive Accounts (${state.inactiveAccounts.size})",
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-                        color = TextTertiary,
+                        color = MaterialTheme.colorScheme.outline,
                         modifier = Modifier.weight(1f)
                     )
                     Icon(
                         imageVector = if (expanded) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
                         contentDescription = if (expanded) "Collapse" else "Expand",
-                        tint = TextTertiary
+                        tint = MaterialTheme.colorScheme.outline
                     )
                 }
 
@@ -240,8 +286,8 @@ fun AccountsScreen(
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(end = 16.dp, bottom = 96.dp),
-            containerColor = AccentOrange,
-            contentColor = TextPrimary
+            containerColor = MaterialTheme.colorScheme.primary,
+            contentColor = MaterialTheme.colorScheme.onPrimary
         ) {
             Icon(Icons.Filled.Add, contentDescription = "Add Account")
         }
@@ -252,30 +298,60 @@ fun AccountsScreen(
 private fun AccountSection(
     title: String,
     accounts: List<Account>,
+    sum: Double? = null,
+    expanded: Boolean = true,
+    onToggle: () -> Unit = {},
     onAccountClick: (String, String) -> Unit,
     onEditAccount: (String) -> Unit,
     onDeleteAccount: (Account) -> Unit,
     onDeactivateAccount: (Account) -> Unit
 ) {
-    Text(
-        text = title,
-        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-        color = TextSecondary,
-        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-    )
-
-    Column(
-        modifier = Modifier.padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+    val currency = LocalCurrencySymbol.current
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onToggle() }
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        accounts.forEach { account ->
-            AccountCard(
-                account = account,
-                onClick = { onAccountClick(account.id, account.name) },
-                onEdit = { onEditAccount(account.id) },
-                onDelete = { onDeleteAccount(account) },
-                onDeactivate = { onDeactivateAccount(account) }
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.weight(1f)
+        )
+
+        if (sum != null) {
+            val sumColor = if (sum < 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.tertiary
+            Text(
+                text = "$currency${formatAmount(sum)}",
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                color = sumColor,
+                modifier = Modifier.padding(end = 8.dp)
             )
+        }
+
+        Icon(
+            imageVector = if (expanded) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
+            contentDescription = if (expanded) "Collapse" else "Expand",
+            tint = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+
+    AnimatedVisibility(visible = expanded) {
+        Column(
+            modifier = Modifier.padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            accounts.forEach { account ->
+                AccountCard(
+                    account = account,
+                    onClick = { onAccountClick(account.id, account.name) },
+                    onEdit = { onEditAccount(account.id) },
+                    onDelete = { onDeleteAccount(account) },
+                    onDeactivate = { onDeactivateAccount(account) }
+                )
+            }
         }
     }
 
@@ -298,8 +374,13 @@ private fun AccountCard(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(CardBackground)
-            .clickable(onClick = onClick)
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .pointerInput(Unit) {
+                detectTapGestures(
+                    onTap = { onClick() },
+                    onLongPress = { showMenu = true }
+                )
+            }
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -324,39 +405,43 @@ private fun AccountCard(
             Text(
                 text = account.name,
                 style = MaterialTheme.typography.titleMedium,
-                color = TextPrimary
+                color = MaterialTheme.colorScheme.onSurface
             )
             Text(
-                text = account.type.name.lowercase().replaceFirstChar { it.uppercase() },
+                text = if (account.type == AccountType.CUSTOM && account.customTypeName != null) {
+                    account.customTypeName
+                } else {
+                    account.type.name.lowercase().replaceFirstChar { it.uppercase() }
+                },
                 style = MaterialTheme.typography.bodySmall,
-                color = TextSecondary
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
 
         Text(
             text = if (account.currentBalance < 0) "-$currency${formatAmount(kotlin.math.abs(account.currentBalance))}" else "$currency${formatAmount(account.currentBalance)}",
             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-            color = if (account.currentBalance >= 0) IncomeGreen else ExpenseRed
+            color = if (account.currentBalance >= 0) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error
         )
 
         Box {
             IconButton(onClick = { showMenu = true }, modifier = Modifier.size(32.dp)) {
-                Icon(Icons.Filled.MoreVert, "Options", tint = TextSecondary, modifier = Modifier.size(18.dp))
+                Icon(Icons.Filled.MoreVert, "Options", tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
             }
             DropdownMenu(
                 expanded = showMenu,
                 onDismissRequest = { showMenu = false }
             ) {
                 DropdownMenuItem(
-                    text = { Text("Edit", color = TextPrimary) },
+                    text = { Text("Edit", color = MaterialTheme.colorScheme.onSurface) },
                     onClick = { showMenu = false; onEdit() }
                 )
                 DropdownMenuItem(
-                    text = { Text("Deactivate", color = TextSecondary) },
+                    text = { Text("Deactivate", color = MaterialTheme.colorScheme.onSurfaceVariant) },
                     onClick = { showMenu = false; onDeactivate() }
                 )
                 DropdownMenuItem(
-                    text = { Text("Delete", color = ExpenseRed) },
+                    text = { Text("Delete", color = MaterialTheme.colorScheme.error) },
                     onClick = { showMenu = false; onDelete() }
                 )
             }
@@ -378,7 +463,7 @@ private fun InactiveAccountCard(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(CardBackground.copy(alpha = 0.5f))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -403,35 +488,39 @@ private fun InactiveAccountCard(
             Text(
                 text = account.name,
                 style = MaterialTheme.typography.titleMedium,
-                color = TextTertiary
+                color = MaterialTheme.colorScheme.outline
             )
             Text(
-                text = account.type.name.lowercase().replaceFirstChar { it.uppercase() },
+                text = if (account.type == AccountType.CUSTOM && account.customTypeName != null && account.customTypeName.isNotBlank()) {
+                    account.customTypeName
+                } else {
+                    account.type.name.lowercase().replaceFirstChar { it.uppercase() }
+                },
                 style = MaterialTheme.typography.bodySmall,
-                color = TextTertiary.copy(alpha = 0.6f)
+                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.6f)
             )
         }
 
         Text(
             text = if (account.currentBalance < 0) "-$currency${formatAmount(kotlin.math.abs(account.currentBalance))}" else "$currency${formatAmount(account.currentBalance)}",
             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-            color = TextTertiary
+            color = MaterialTheme.colorScheme.outline
         )
 
         Box {
             IconButton(onClick = { showMenu = true }, modifier = Modifier.size(32.dp)) {
-                Icon(Icons.Filled.MoreVert, "Options", tint = TextTertiary, modifier = Modifier.size(18.dp))
+                Icon(Icons.Filled.MoreVert, "Options", tint = MaterialTheme.colorScheme.outline, modifier = Modifier.size(18.dp))
             }
             DropdownMenu(
                 expanded = showMenu,
                 onDismissRequest = { showMenu = false }
             ) {
                 DropdownMenuItem(
-                    text = { Text("Activate", color = IncomeGreen) },
+                    text = { Text("Activate", color = MaterialTheme.colorScheme.tertiary) },
                     onClick = { showMenu = false; onActivate() }
                 )
                 DropdownMenuItem(
-                    text = { Text("Delete", color = ExpenseRed) },
+                    text = { Text("Delete", color = MaterialTheme.colorScheme.error) },
                     onClick = { showMenu = false; onDelete() }
                 )
             }

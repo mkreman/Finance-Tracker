@@ -17,7 +17,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.moneytracker.app.domain.model.TransactionListItem
 import com.moneytracker.app.ui.components.TransactionDateHeader
 import com.moneytracker.app.ui.components.TransactionItem
-import com.moneytracker.app.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -29,16 +28,22 @@ fun BudgetTransactionsScreen(
     val transactions by viewModel.transactions.collectAsState()
 
     Column(
-        modifier = Modifier.fillMaxSize().background(DarkBackground)
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
     ) {
         TopAppBar(
-            title = { Text("${viewModel.categoryName} Budget", color = TextPrimary) },
+            title = { Text("${viewModel.categoryName} Budget", color = MaterialTheme.colorScheme.onSurface) },
             navigationIcon = {
                 IconButton(onClick = onNavigateBack) {
-                    Icon(Icons.Filled.ArrowBack, "Back", tint = TextPrimary)
+                    Icon(Icons.Filled.ArrowBack, "Back", tint = MaterialTheme.colorScheme.onSurface)
                 }
             },
-            colors = TopAppBarDefaults.topAppBarColors(containerColor = DarkBackground)
+            colors = TopAppBarDefaults.topAppBarColors(
+                containerColor = MaterialTheme.colorScheme.background,
+                titleContentColor = MaterialTheme.colorScheme.onSurface,
+                navigationIconContentColor = MaterialTheme.colorScheme.onSurface
+            )
         )
 
         if (transactions.isEmpty()) {
@@ -46,7 +51,11 @@ fun BudgetTransactionsScreen(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
-                Text("No expenses this month", style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
+                Text(
+                    "No expenses this month",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         } else {
             LazyColumn(

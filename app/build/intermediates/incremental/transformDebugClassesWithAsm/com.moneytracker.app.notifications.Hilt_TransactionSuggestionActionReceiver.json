@@ -1,0 +1,1 @@
+{"className":"com.moneytracker.app.notifications.Hilt_TransactionSuggestionActionReceiver","classAnnotations":["dagger.hilt.android.internal.OnReceiveBytecodeInjectionMarker"],"interfaces":[],"superClasses":["android.content.BroadcastReceiver","java.lang.Object"]}

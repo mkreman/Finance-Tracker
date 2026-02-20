@@ -23,7 +23,6 @@ import com.moneytracker.app.ui.components.LocalCurrencySymbol
 import com.moneytracker.app.ui.components.TransactionDateHeader
 import com.moneytracker.app.ui.components.TransactionItem
 import com.moneytracker.app.ui.components.formatAmount
-import com.moneytracker.app.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -34,25 +33,26 @@ fun CategoryTransactionsScreen(
 ) {
     val transactions by viewModel.transactions.collectAsState()
     val summary by viewModel.summary.collectAsState()
+    val percentage by viewModel.percentage.collectAsState()
     val currency = LocalCurrencySymbol.current
 
     val typeColor = when (viewModel.type.uppercase()) {
-        "INCOME" -> IncomeGreen
-        "TRANSFER" -> TransferBlue
-        else -> ExpenseRed
+        "INCOME" -> MaterialTheme.colorScheme.tertiary
+        "TRANSFER" -> MaterialTheme.colorScheme.secondary
+        else -> MaterialTheme.colorScheme.error
     }
 
     Column(
-        modifier = Modifier.fillMaxSize().background(DarkBackground)
+        modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
     ) {
         TopAppBar(
-            title = { Text("${viewModel.categoryName} (${viewModel.type.lowercase().replaceFirstChar { it.uppercase() }})", color = TextPrimary) },
+            title = { Text("${viewModel.categoryName} (${viewModel.type.lowercase().replaceFirstChar { it.uppercase() }})", color = MaterialTheme.colorScheme.onSurface) },
             navigationIcon = {
                 IconButton(onClick = onNavigateBack) {
-                    Icon(Icons.Filled.ArrowBack, "Back", tint = TextPrimary)
+                    Icon(Icons.Filled.ArrowBack, "Back", tint = MaterialTheme.colorScheme.onSurface)
                 }
             },
-            colors = TopAppBarDefaults.topAppBarColors(containerColor = DarkBackground)
+            colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background)
         )
 
         if (transactions.isEmpty()) {
@@ -60,7 +60,7 @@ fun CategoryTransactionsScreen(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
-                Text("No transactions", style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
+                Text("No transactions", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         } else {
             LazyColumn(
@@ -76,7 +76,8 @@ fun CategoryTransactionsScreen(
                         averageAmount = summary.averageAmount,
                         currency = currency,
                         typeColor = typeColor,
-                        typeName = viewModel.type.lowercase().replaceFirstChar { it.uppercase() }
+                        typeName = viewModel.type.lowercase().replaceFirstChar { it.uppercase() },
+                        percentage = percentage
                     )
                 }
 
@@ -114,14 +115,15 @@ private fun CategorySummaryCard(
     averageAmount: Double,
     currency: String,
     typeColor: androidx.compose.ui.graphics.Color,
-    typeName: String
+    typeName: String,
+    percentage: Float = 0f
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = DarkSurface)
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Column(
             modifier = Modifier.padding(16.dp)
@@ -130,20 +132,31 @@ private fun CategorySummaryCard(
             Text(
                 text = "Total $typeName",
                 style = MaterialTheme.typography.bodyMedium,
-                color = TextSecondary
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = "$currency${formatAmount(totalAmount)}",
-                style = MaterialTheme.typography.headlineMedium.copy(
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 28.sp
-                ),
-                color = typeColor
-            )
+            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                Text(
+                    text = "$currency${formatAmount(totalAmount)}",
+                    style = MaterialTheme.typography.headlineMedium.copy(
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 28.sp
+                    ),
+                    color = typeColor
+                )
 
-            Spacer(modifier = Modifier.height(16.dp))
-            Divider(color = DividerColor, thickness = 0.5.dp)
+                Text(
+                    text = "${String.format("%.1f", percentage)}%",
+                    style = MaterialTheme.typography.headlineMedium.copy(
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 28.sp
+                    ),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+            Divider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.5.dp)
             Spacer(modifier = Modifier.height(12.dp))
 
             // Stats row
@@ -184,13 +197,13 @@ private fun SummaryStatItem(
         Text(
             text = value,
             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-            color = TextPrimary
+            color = MaterialTheme.colorScheme.onSurface
         )
         Spacer(modifier = Modifier.height(2.dp))
         Text(
             text = label,
             style = MaterialTheme.typography.bodySmall,
-            color = TextSecondary
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }

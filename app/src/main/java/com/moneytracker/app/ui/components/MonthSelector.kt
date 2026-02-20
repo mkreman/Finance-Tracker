@@ -17,7 +17,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.moneytracker.app.ui.theme.*
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -34,7 +33,7 @@ fun MonthSelector(
     Row(
         modifier = modifier
             .clip(RoundedCornerShape(24.dp))
-            .background(CardBackground)
+            .background(MaterialTheme.colorScheme.surfaceVariant)
             .padding(horizontal = 8.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center
@@ -43,14 +42,14 @@ fun MonthSelector(
             Icon(
                 imageVector = Icons.Filled.ChevronLeft,
                 contentDescription = "Previous Month",
-                tint = TextPrimary
+                tint = MaterialTheme.colorScheme.onSurface
             )
         }
 
         Text(
             text = monthText,
             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-            color = TextPrimary,
+            color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.padding(horizontal = 16.dp)
         )
 
@@ -58,7 +57,7 @@ fun MonthSelector(
             Icon(
                 imageVector = Icons.Filled.ChevronRight,
                 contentDescription = "Next Month",
-                tint = TextPrimary
+                tint = MaterialTheme.colorScheme.onSurface
             )
         }
     }

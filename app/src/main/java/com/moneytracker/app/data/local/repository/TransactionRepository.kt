@@ -106,31 +106,33 @@ class TransactionRepository @Inject constructor(
     suspend fun getAllTransactionsRaw() =
         transactionDao.getAllTransactionsOnce()
 
+    suspend fun getAllTransactionsRawIncludingDeleted() =
+        transactionDao.getAllTransactionsIncludingDeletedOnce()
+
     suspend fun saveTransaction(
         transaction: TransactionEntity,
         splits: List<TransactionSplitEntity>
     ) {
         database.withTransaction {
-            transactionDao.saveFullTransaction(transaction, splits)
-
-            // Verify transaction was saved correctly
-            val saved = transactionDao.getTransactionByIdInternal(transaction.id)
-            if (saved == null) {
-                throw IllegalStateException("Failed to save transaction")
+            // Insert transaction and splits directly (avoid DAO default methods
+            // to ensure proper coroutine context propagation within withTransaction)
+            transactionDao.insertTransaction(transaction)
+            if (splits.isNotEmpty()) {
+                transactionDao.insertSplits(splits)
             }
 
-            // Update account balance using the verified saved transaction
-            when (saved.transaction.type) {
+            // Update account balance
+            when (transaction.type) {
                 TransactionType.EXPENSE -> {
-                    accountDao.updateBalance(saved.transaction.accountId, -saved.transaction.totalAmount)
+                    accountDao.updateBalance(transaction.accountId, -transaction.totalAmount)
                 }
                 TransactionType.INCOME -> {
-                    accountDao.updateBalance(saved.transaction.accountId, saved.transaction.totalAmount)
+                    accountDao.updateBalance(transaction.accountId, transaction.totalAmount)
                 }
                 TransactionType.TRANSFER -> {
-                    accountDao.updateBalance(saved.transaction.accountId, -saved.transaction.totalAmount)
-                    saved.transaction.toAccountId?.let { toId ->
-                        accountDao.updateBalance(toId, saved.transaction.totalAmount)
+                    accountDao.updateBalance(transaction.accountId, -transaction.totalAmount)
+                    transaction.toAccountId?.let { toId ->
+                        accountDao.updateBalance(toId, transaction.totalAmount)
                     }
                 }
             }
@@ -183,7 +185,13 @@ class TransactionRepository @Inject constructor(
                     newTransaction.toAccountId?.let { accountDao.updateBalance(it, newTransaction.totalAmount) }
                 }
             }
-            transactionDao.updateFullTransaction(newTransaction, newSplits)
+            // Update transaction and splits directly (avoid DAO default methods
+            // to ensure proper coroutine context propagation within withTransaction)
+            transactionDao.insertTransaction(newTransaction)
+            transactionDao.deleteSplitsByTransactionId(newTransaction.id)
+            if (newSplits.isNotEmpty()) {
+                transactionDao.insertSplits(newSplits)
+            }
         }
     }
 
@@ -218,7 +226,11 @@ class TransactionRepository @Inject constructor(
                     .sumOf { it.transaction.totalAmount }
                 add(TransactionListItem.Header(dateLabel, transactions.first().transaction.date, dayExpense, dayIncome, dayTransfer))
                 transactions.forEach { txnWithSplits ->
-                    add(TransactionListItem.Entry(txnWithSplits.toDomain()))
+                    runCatching {
+                        txnWithSplits.toDomain()
+                    }.onSuccess { transaction ->
+                        add(TransactionListItem.Entry(transaction))
+                    }
                 }
             }
         }
@@ -236,6 +248,12 @@ class TransactionRepository @Inject constructor(
             date = transaction.date,
             totalAmount = transaction.totalAmount,
             type = transaction.type,
+            isRecurring = transaction.isRecurring,
+            recurringInterval = transaction.recurringInterval,
+            recurringUnit = transaction.recurringUnit,
+            recurringEndDate = transaction.recurringEndDate,
+            parentRecurringId = transaction.parentRecurringId,
+            notifyForRecurringEntries = transaction.notifyForRecurringEntries,
             toAccountId = transaction.toAccountId,
             toAccountName = toAccount?.name,
             splits = splits.map { split ->
@@ -265,5 +283,71 @@ class TransactionRepository @Inject constructor(
     suspend fun clearAllTransactions() {
         transactionDao.clearAllTransactions()
         transactionDao.clearAllSplits()
+    }
+
+    suspend fun stopRecurringSeries(parentRecurringId: String) {
+        database.withTransaction {
+            val parent = transactionDao.getTransactionByIdInternal(parentRecurringId)?.transaction ?: return@withTransaction
+            if (!parent.isRecurring) return@withTransaction
+
+            transactionDao.insertTransaction(
+                parent.copy(
+                    isRecurring = false,
+                    recurringInterval = null,
+                    recurringUnit = null,
+                    recurringEndDate = null,
+                    notifyForRecurringEntries = false,
+                    modifiedAt = System.currentTimeMillis(),
+                    syncStatus = SyncStatus.DIRTY
+                )
+            )
+        }
+    }
+
+    suspend fun updateRecurringSeriesFromOccurrence(
+        parentRecurringId: String,
+        sourceTransaction: TransactionEntity,
+        sourceSplits: List<TransactionSplitEntity>,
+        recurringInterval: Int?,
+        recurringUnit: RecurringUnit?,
+        recurringEndDate: Long?,
+        notifyForRecurringEntries: Boolean
+    ) {
+        database.withTransaction {
+            val parentWithSplits = transactionDao.getTransactionByIdInternal(parentRecurringId) ?: return@withTransaction
+            val parent = parentWithSplits.transaction
+            if (!parent.isRecurring) return@withTransaction
+
+            val now = System.currentTimeMillis()
+            val updatedParent = parent.copy(
+                accountId = sourceTransaction.accountId,
+                payee = sourceTransaction.payee,
+                note = sourceTransaction.note,
+                totalAmount = sourceTransaction.totalAmount,
+                type = sourceTransaction.type,
+                toAccountId = sourceTransaction.toAccountId,
+                modifiedAt = now,
+                syncStatus = SyncStatus.DIRTY,
+                isRecurring = true,
+                recurringInterval = recurringInterval,
+                recurringUnit = recurringUnit,
+                recurringEndDate = recurringEndDate,
+                notifyForRecurringEntries = notifyForRecurringEntries,
+                parentRecurringId = null
+            )
+
+            val updatedParentSplits = if (updatedParent.type == TransactionType.TRANSFER) {
+                emptyList()
+            } else {
+                sourceSplits.map { split ->
+                    split.copy(
+                        id = java.util.UUID.randomUUID().toString(),
+                        transactionId = parentRecurringId
+                    )
+                }
+            }
+
+            updateTransaction(parent, updatedParent, updatedParentSplits)
+        }
     }
 }

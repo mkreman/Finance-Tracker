@@ -46,12 +46,12 @@ public final class MoneyTrackerDatabase_Impl extends MoneyTrackerDatabase {
   @Override
   @NonNull
   protected SupportSQLiteOpenHelper createOpenHelper(@NonNull final DatabaseConfiguration config) {
-    final SupportSQLiteOpenHelper.Callback _openCallback = new RoomOpenHelper(config, new RoomOpenHelper.Delegate(4) {
+    final SupportSQLiteOpenHelper.Callback _openCallback = new RoomOpenHelper(config, new RoomOpenHelper.Delegate(7) {
       @Override
       public void createAllTables(@NonNull final SupportSQLiteDatabase db) {
-        db.execSQL("CREATE TABLE IF NOT EXISTS `accounts` (`id` TEXT NOT NULL, `name` TEXT NOT NULL, `type` TEXT NOT NULL, `initialBalance` REAL NOT NULL, `currentBalance` REAL NOT NULL, `currency` TEXT NOT NULL, `colorHex` TEXT NOT NULL, `iconKey` TEXT NOT NULL, `isActive` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL, `modifiedAt` INTEGER NOT NULL, `isDeleted` INTEGER NOT NULL, `syncStatus` TEXT NOT NULL, PRIMARY KEY(`id`))");
+        db.execSQL("CREATE TABLE IF NOT EXISTS `accounts` (`id` TEXT NOT NULL, `name` TEXT NOT NULL, `type` TEXT NOT NULL, `customTypeName` TEXT, `initialBalance` REAL NOT NULL, `currentBalance` REAL NOT NULL, `currency` TEXT NOT NULL, `colorHex` TEXT NOT NULL, `iconKey` TEXT NOT NULL, `isActive` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL, `modifiedAt` INTEGER NOT NULL, `isDeleted` INTEGER NOT NULL, `syncStatus` TEXT NOT NULL, PRIMARY KEY(`id`))");
         db.execSQL("CREATE TABLE IF NOT EXISTS `categories` (`id` TEXT NOT NULL, `name` TEXT NOT NULL, `iconKey` TEXT NOT NULL, `type` TEXT NOT NULL, `budgetLimit` REAL, `colorHex` TEXT NOT NULL, `sortOrder` INTEGER NOT NULL, `isDeleted` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL, `modifiedAt` INTEGER NOT NULL, PRIMARY KEY(`id`))");
-        db.execSQL("CREATE TABLE IF NOT EXISTS `transactions` (`id` TEXT NOT NULL, `accountId` TEXT NOT NULL, `payee` TEXT NOT NULL, `note` TEXT, `date` INTEGER NOT NULL, `totalAmount` REAL NOT NULL, `type` TEXT NOT NULL, `toAccountId` TEXT, `createdAt` INTEGER NOT NULL, `modifiedAt` INTEGER NOT NULL, `isDeleted` INTEGER NOT NULL, `syncStatus` TEXT NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`accountId`) REFERENCES `accounts`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )");
+        db.execSQL("CREATE TABLE IF NOT EXISTS `transactions` (`id` TEXT NOT NULL, `accountId` TEXT NOT NULL, `payee` TEXT NOT NULL, `note` TEXT, `date` INTEGER NOT NULL, `totalAmount` REAL NOT NULL, `type` TEXT NOT NULL, `toAccountId` TEXT, `createdAt` INTEGER NOT NULL, `modifiedAt` INTEGER NOT NULL, `isDeleted` INTEGER NOT NULL, `syncStatus` TEXT NOT NULL, `isRecurring` INTEGER NOT NULL, `recurringInterval` INTEGER, `recurringUnit` TEXT, `recurringEndDate` INTEGER, `parentRecurringId` TEXT, `notifyForRecurringEntries` INTEGER NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`accountId`) REFERENCES `accounts`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )");
         db.execSQL("CREATE INDEX IF NOT EXISTS `index_transactions_accountId` ON `transactions` (`accountId`)");
         db.execSQL("CREATE INDEX IF NOT EXISTS `index_transactions_date` ON `transactions` (`date`)");
         db.execSQL("CREATE INDEX IF NOT EXISTS `index_transactions_type` ON `transactions` (`type`)");
@@ -62,7 +62,7 @@ public final class MoneyTrackerDatabase_Impl extends MoneyTrackerDatabase {
         db.execSQL("CREATE TABLE IF NOT EXISTS `budgets` (`id` TEXT NOT NULL, `categoryId` TEXT NOT NULL, `limitAmount` REAL NOT NULL, `month` INTEGER NOT NULL, `year` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL, `modifiedAt` INTEGER NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`categoryId`) REFERENCES `categories`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )");
         db.execSQL("CREATE INDEX IF NOT EXISTS `index_budgets_categoryId` ON `budgets` (`categoryId`)");
         db.execSQL("CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)");
-        db.execSQL("INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '48c4ff2ac4a6b0caef663f2f1135557f')");
+        db.execSQL("INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'ccb9fcc4415f248111839fd30ceb1b24')");
       }
 
       @Override
@@ -116,10 +116,11 @@ public final class MoneyTrackerDatabase_Impl extends MoneyTrackerDatabase {
       @NonNull
       public RoomOpenHelper.ValidationResult onValidateSchema(
           @NonNull final SupportSQLiteDatabase db) {
-        final HashMap<String, TableInfo.Column> _columnsAccounts = new HashMap<String, TableInfo.Column>(13);
+        final HashMap<String, TableInfo.Column> _columnsAccounts = new HashMap<String, TableInfo.Column>(14);
         _columnsAccounts.put("id", new TableInfo.Column("id", "TEXT", true, 1, null, TableInfo.CREATED_FROM_ENTITY));
         _columnsAccounts.put("name", new TableInfo.Column("name", "TEXT", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
         _columnsAccounts.put("type", new TableInfo.Column("type", "TEXT", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
+        _columnsAccounts.put("customTypeName", new TableInfo.Column("customTypeName", "TEXT", false, 0, null, TableInfo.CREATED_FROM_ENTITY));
         _columnsAccounts.put("initialBalance", new TableInfo.Column("initialBalance", "REAL", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
         _columnsAccounts.put("currentBalance", new TableInfo.Column("currentBalance", "REAL", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
         _columnsAccounts.put("currency", new TableInfo.Column("currency", "TEXT", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
@@ -159,7 +160,7 @@ public final class MoneyTrackerDatabase_Impl extends MoneyTrackerDatabase {
                   + " Expected:\n" + _infoCategories + "\n"
                   + " Found:\n" + _existingCategories);
         }
-        final HashMap<String, TableInfo.Column> _columnsTransactions = new HashMap<String, TableInfo.Column>(12);
+        final HashMap<String, TableInfo.Column> _columnsTransactions = new HashMap<String, TableInfo.Column>(18);
         _columnsTransactions.put("id", new TableInfo.Column("id", "TEXT", true, 1, null, TableInfo.CREATED_FROM_ENTITY));
         _columnsTransactions.put("accountId", new TableInfo.Column("accountId", "TEXT", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
         _columnsTransactions.put("payee", new TableInfo.Column("payee", "TEXT", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
@@ -172,6 +173,12 @@ public final class MoneyTrackerDatabase_Impl extends MoneyTrackerDatabase {
         _columnsTransactions.put("modifiedAt", new TableInfo.Column("modifiedAt", "INTEGER", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
         _columnsTransactions.put("isDeleted", new TableInfo.Column("isDeleted", "INTEGER", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
         _columnsTransactions.put("syncStatus", new TableInfo.Column("syncStatus", "TEXT", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
+        _columnsTransactions.put("isRecurring", new TableInfo.Column("isRecurring", "INTEGER", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
+        _columnsTransactions.put("recurringInterval", new TableInfo.Column("recurringInterval", "INTEGER", false, 0, null, TableInfo.CREATED_FROM_ENTITY));
+        _columnsTransactions.put("recurringUnit", new TableInfo.Column("recurringUnit", "TEXT", false, 0, null, TableInfo.CREATED_FROM_ENTITY));
+        _columnsTransactions.put("recurringEndDate", new TableInfo.Column("recurringEndDate", "INTEGER", false, 0, null, TableInfo.CREATED_FROM_ENTITY));
+        _columnsTransactions.put("parentRecurringId", new TableInfo.Column("parentRecurringId", "TEXT", false, 0, null, TableInfo.CREATED_FROM_ENTITY));
+        _columnsTransactions.put("notifyForRecurringEntries", new TableInfo.Column("notifyForRecurringEntries", "INTEGER", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
         final HashSet<TableInfo.ForeignKey> _foreignKeysTransactions = new HashSet<TableInfo.ForeignKey>(1);
         _foreignKeysTransactions.add(new TableInfo.ForeignKey("accounts", "CASCADE", "NO ACTION", Arrays.asList("accountId"), Arrays.asList("id")));
         final HashSet<TableInfo.Index> _indicesTransactions = new HashSet<TableInfo.Index>(4);
@@ -226,7 +233,7 @@ public final class MoneyTrackerDatabase_Impl extends MoneyTrackerDatabase {
         }
         return new RoomOpenHelper.ValidationResult(true, null);
       }
-    }, "48c4ff2ac4a6b0caef663f2f1135557f", "68388c0c277993765b4d4c71bc386c7d");
+    }, "ccb9fcc4415f248111839fd30ceb1b24", "7c685a78e76c912f296dc71aeb9d028b");
     final SupportSQLiteOpenHelper.Configuration _sqliteConfig = SupportSQLiteOpenHelper.Configuration.builder(config.context).name(config.name).callback(_openCallback).build();
     final SupportSQLiteOpenHelper _helper = config.sqliteOpenHelperFactory.create(_sqliteConfig);
     return _helper;

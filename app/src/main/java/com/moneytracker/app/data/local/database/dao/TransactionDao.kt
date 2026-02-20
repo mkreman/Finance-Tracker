@@ -26,7 +26,11 @@ interface TransactionDao {
 
     /**
      * Atomic save: inserts parent transaction + all splits in one DB transaction.
+     * NOTE: Call individual methods (insertTransaction + insertSplits) directly from
+     * a database.withTransaction block in the repository instead of using this method,
+     * to ensure proper coroutine context propagation.
      */
+    @androidx.room.Transaction
     suspend fun saveFullTransaction(
         transaction: TransactionEntity,
         splits: List<TransactionSplitEntity>
@@ -39,7 +43,10 @@ interface TransactionDao {
 
     /**
      * Atomic update: replaces splits for an existing transaction.
+     * NOTE: Call individual methods directly from a database.withTransaction block
+     * in the repository instead of using this method.
      */
+    @androidx.room.Transaction
     suspend fun updateFullTransaction(
         transaction: TransactionEntity,
         splits: List<TransactionSplitEntity>
@@ -116,11 +123,12 @@ interface TransactionDao {
     fun getTransactionsByAccountIncludingTransfers(accountId: String): Flow<List<TransactionWithSplits>>
 
     @androidx.room.Transaction
-    @Query("SELECT * FROM transactions WHERE id = :id")
+    @Query("SELECT * FROM transactions WHERE id = :id AND isDeleted = 0")
     suspend fun getTransactionById(id: String): TransactionWithSplits?
 
-    // Non-transactional version for use within database.withTransaction blocks
-    @Query("SELECT * FROM transactions WHERE id = :id")
+    // For use within database.withTransaction blocks
+    @androidx.room.Transaction
+    @Query("SELECT * FROM transactions WHERE id = :id AND isDeleted = 0")
     suspend fun getTransactionByIdInternal(id: String): TransactionWithSplits?
 
     // ---- Aggregation Queries ----
@@ -212,6 +220,10 @@ interface TransactionDao {
     @androidx.room.Transaction
     @Query("SELECT * FROM transactions WHERE isDeleted = 0 ORDER BY date DESC")
     suspend fun getAllTransactionsOnce(): List<TransactionWithSplits>
+
+    @androidx.room.Transaction
+    @Query("SELECT * FROM transactions ORDER BY date DESC")
+    suspend fun getAllTransactionsIncludingDeletedOnce(): List<TransactionWithSplits>
 
     @Query("SELECT * FROM transactions WHERE syncStatus != 'SYNCED' AND isDeleted = 0")
     suspend fun getUnsyncedTransactions(): List<TransactionEntity>

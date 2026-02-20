@@ -33,7 +33,7 @@ fun BudgetProgressBar(
         label = "budget_progress"
     )
 
-    val barColor = if (budget.isOverBudget) ExpenseRed else IncomeGreen
+    val barColor = if (budget.isOverBudget) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.tertiary
     val categoryColor = parseHexColor(budget.categoryColor)
     val currency = LocalCurrencySymbol.current
 
@@ -43,7 +43,7 @@ fun BudgetProgressBar(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(CardBackground)
+            .background(MaterialTheme.colorScheme.surfaceVariant)
             .clickable(onClick = onClick)
             .padding(16.dp)
     ) {
@@ -73,12 +73,12 @@ fun BudgetProgressBar(
                 Text(
                     text = budget.categoryName,
                     style = MaterialTheme.typography.titleMedium,
-                    color = TextPrimary
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
                     text = "Limit: $currency${formatAmount(budget.limitAmount)}",
                     style = MaterialTheme.typography.bodySmall,
-                    color = TextSecondary
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
@@ -86,37 +86,37 @@ fun BudgetProgressBar(
                 Text(
                     text = "$currency${formatAmount(budget.spentAmount)}",
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-                    color = ExpenseRed
+                    color = MaterialTheme.colorScheme.error
                 )
                 if (budget.isOverBudget) {
                     Text(
                         text = "Limit exceeded",
                         style = MaterialTheme.typography.bodySmall,
-                        color = ExpenseRed
+                        color = MaterialTheme.colorScheme.error
                     )
                 } else {
                     Text(
                         text = "$currency${formatAmount(budget.remaining)} left",
                         style = MaterialTheme.typography.bodySmall,
-                        color = TextSecondary
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
 
             Box {
                 IconButton(onClick = { showMenu = true }, modifier = Modifier.size(32.dp)) {
-                    Icon(Icons.Filled.MoreVert, "Options", tint = TextSecondary, modifier = Modifier.size(18.dp))
+                    Icon(Icons.Filled.MoreVert, "Options", tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
                 }
                 DropdownMenu(
                     expanded = showMenu,
                     onDismissRequest = { showMenu = false }
                 ) {
                     DropdownMenuItem(
-                        text = { Text("Edit", color = TextPrimary) },
+                        text = { Text("Edit", color = MaterialTheme.colorScheme.onSurface) },
                         onClick = { showMenu = false; onEdit() }
                     )
                     DropdownMenuItem(
-                        text = { Text("Delete", color = ExpenseRed) },
+                        text = { Text("Delete", color = MaterialTheme.colorScheme.error) },
                         onClick = { showMenu = false; onDelete() }
                     )
                 }
@@ -131,7 +131,7 @@ fun BudgetProgressBar(
                 .fillMaxWidth()
                 .height(8.dp)
                 .clip(RoundedCornerShape(4.dp))
-                .background(DarkSurfaceVariant)
+                .background(MaterialTheme.colorScheme.surfaceVariant)
         ) {
             Box(
                 modifier = Modifier

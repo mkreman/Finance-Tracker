@@ -243,6 +243,53 @@ public final class BudgetDao_Impl implements BudgetDao {
   }
 
   @Override
+  public Object getAllBudgets(final Continuation<? super List<BudgetEntity>> $completion) {
+    final String _sql = "SELECT * FROM budgets ORDER BY year DESC, month DESC";
+    final RoomSQLiteQuery _statement = RoomSQLiteQuery.acquire(_sql, 0);
+    final CancellationSignal _cancellationSignal = DBUtil.createCancellationSignal();
+    return CoroutinesRoom.execute(__db, false, _cancellationSignal, new Callable<List<BudgetEntity>>() {
+      @Override
+      @NonNull
+      public List<BudgetEntity> call() throws Exception {
+        final Cursor _cursor = DBUtil.query(__db, _statement, false, null);
+        try {
+          final int _cursorIndexOfId = CursorUtil.getColumnIndexOrThrow(_cursor, "id");
+          final int _cursorIndexOfCategoryId = CursorUtil.getColumnIndexOrThrow(_cursor, "categoryId");
+          final int _cursorIndexOfLimitAmount = CursorUtil.getColumnIndexOrThrow(_cursor, "limitAmount");
+          final int _cursorIndexOfMonth = CursorUtil.getColumnIndexOrThrow(_cursor, "month");
+          final int _cursorIndexOfYear = CursorUtil.getColumnIndexOrThrow(_cursor, "year");
+          final int _cursorIndexOfCreatedAt = CursorUtil.getColumnIndexOrThrow(_cursor, "createdAt");
+          final int _cursorIndexOfModifiedAt = CursorUtil.getColumnIndexOrThrow(_cursor, "modifiedAt");
+          final List<BudgetEntity> _result = new ArrayList<BudgetEntity>(_cursor.getCount());
+          while (_cursor.moveToNext()) {
+            final BudgetEntity _item;
+            final String _tmpId;
+            _tmpId = _cursor.getString(_cursorIndexOfId);
+            final String _tmpCategoryId;
+            _tmpCategoryId = _cursor.getString(_cursorIndexOfCategoryId);
+            final double _tmpLimitAmount;
+            _tmpLimitAmount = _cursor.getDouble(_cursorIndexOfLimitAmount);
+            final int _tmpMonth;
+            _tmpMonth = _cursor.getInt(_cursorIndexOfMonth);
+            final int _tmpYear;
+            _tmpYear = _cursor.getInt(_cursorIndexOfYear);
+            final long _tmpCreatedAt;
+            _tmpCreatedAt = _cursor.getLong(_cursorIndexOfCreatedAt);
+            final long _tmpModifiedAt;
+            _tmpModifiedAt = _cursor.getLong(_cursorIndexOfModifiedAt);
+            _item = new BudgetEntity(_tmpId,_tmpCategoryId,_tmpLimitAmount,_tmpMonth,_tmpYear,_tmpCreatedAt,_tmpModifiedAt);
+            _result.add(_item);
+          }
+          return _result;
+        } finally {
+          _cursor.close();
+          _statement.release();
+        }
+      }
+    }, $completion);
+  }
+
+  @Override
   public Flow<List<BudgetWithSpending>> getBudgetsWithSpending(final int month, final int year,
       final long startDate, final long endDate) {
     final String _sql = "\n"

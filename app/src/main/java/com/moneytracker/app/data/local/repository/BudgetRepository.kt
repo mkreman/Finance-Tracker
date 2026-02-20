@@ -62,4 +62,8 @@ class BudgetRepository @Inject constructor(
     suspend fun clearAllBudgets() {
         budgetDao.clearAllBudgets()
     }
+
+    suspend fun getAllBudgets(): List<BudgetEntity> {
+        return budgetDao.getAllBudgets()
+    }
 }

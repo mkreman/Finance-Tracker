@@ -5,6 +5,7 @@ import com.moneytracker.app.data.local.UserPreferences;
 import com.moneytracker.app.data.local.repository.AccountRepository;
 import com.moneytracker.app.data.local.repository.CategoryRepository;
 import com.moneytracker.app.data.local.repository.TransactionRepository;
+import com.moneytracker.app.data.recurring.RecurringTransactionManager;
 import dagger.internal.DaggerGenerated;
 import dagger.internal.Factory;
 import dagger.internal.QualifierMetadata;
@@ -34,6 +35,8 @@ public final class AddTransactionViewModel_Factory implements Factory<AddTransac
 
   private final Provider<UserPreferences> userPreferencesProvider;
 
+  private final Provider<RecurringTransactionManager> recurringTransactionManagerProvider;
+
   private final Provider<SavedStateHandle> savedStateHandleProvider;
 
   public AddTransactionViewModel_Factory(
@@ -41,17 +44,19 @@ public final class AddTransactionViewModel_Factory implements Factory<AddTransac
       Provider<AccountRepository> accountRepositoryProvider,
       Provider<CategoryRepository> categoryRepositoryProvider,
       Provider<UserPreferences> userPreferencesProvider,
+      Provider<RecurringTransactionManager> recurringTransactionManagerProvider,
       Provider<SavedStateHandle> savedStateHandleProvider) {
     this.transactionRepositoryProvider = transactionRepositoryProvider;
     this.accountRepositoryProvider = accountRepositoryProvider;
     this.categoryRepositoryProvider = categoryRepositoryProvider;
     this.userPreferencesProvider = userPreferencesProvider;
+    this.recurringTransactionManagerProvider = recurringTransactionManagerProvider;
     this.savedStateHandleProvider = savedStateHandleProvider;
   }
 
   @Override
   public AddTransactionViewModel get() {
-    return newInstance(transactionRepositoryProvider.get(), accountRepositoryProvider.get(), categoryRepositoryProvider.get(), userPreferencesProvider.get(), savedStateHandleProvider.get());
+    return newInstance(transactionRepositoryProvider.get(), accountRepositoryProvider.get(), categoryRepositoryProvider.get(), userPreferencesProvider.get(), recurringTransactionManagerProvider.get(), savedStateHandleProvider.get());
   }
 
   public static AddTransactionViewModel_Factory create(
@@ -59,13 +64,15 @@ public final class AddTransactionViewModel_Factory implements Factory<AddTransac
       Provider<AccountRepository> accountRepositoryProvider,
       Provider<CategoryRepository> categoryRepositoryProvider,
       Provider<UserPreferences> userPreferencesProvider,
+      Provider<RecurringTransactionManager> recurringTransactionManagerProvider,
       Provider<SavedStateHandle> savedStateHandleProvider) {
-    return new AddTransactionViewModel_Factory(transactionRepositoryProvider, accountRepositoryProvider, categoryRepositoryProvider, userPreferencesProvider, savedStateHandleProvider);
+    return new AddTransactionViewModel_Factory(transactionRepositoryProvider, accountRepositoryProvider, categoryRepositoryProvider, userPreferencesProvider, recurringTransactionManagerProvider, savedStateHandleProvider);
   }
 
   public static AddTransactionViewModel newInstance(TransactionRepository transactionRepository,
       AccountRepository accountRepository, CategoryRepository categoryRepository,
-      UserPreferences userPreferences, SavedStateHandle savedStateHandle) {
-    return new AddTransactionViewModel(transactionRepository, accountRepository, categoryRepository, userPreferences, savedStateHandle);
+      UserPreferences userPreferences, RecurringTransactionManager recurringTransactionManager,
+      SavedStateHandle savedStateHandle) {
+    return new AddTransactionViewModel(transactionRepository, accountRepository, categoryRepository, userPreferences, recurringTransactionManager, savedStateHandle);
   }
 }

@@ -32,6 +32,11 @@ data class SettingsState(
     val defaultAccountId: String? = null,
     val currencyCode: String = "INR",
     val firstDayOfWeek: Int = java.util.Calendar.MONDAY
+    ,
+    val biometricEnabled: Boolean = false,
+    val passcodeEnabled: Boolean = false,
+    val defaultNotifyForRecurringEntries: Boolean = true,
+    val themeMode: Int = 0 // 0=system,1=light,2=dark
 )
 
 @HiltViewModel
@@ -45,6 +50,7 @@ class SettingsViewModel @Inject constructor(
 
     private val _state = MutableStateFlow(SettingsState())
     val state: StateFlow<SettingsState> = _state.asStateFlow()
+    private var currentPasscode: String? = null
 
     init {
         loadSettingsData()
@@ -70,6 +76,66 @@ class SettingsViewModel @Inject constructor(
             userPreferences.firstDayOfWeek.collect { day ->
                 _state.update { it.copy(firstDayOfWeek = day) }
             }
+        }
+        viewModelScope.launch {
+            userPreferences.biometricEnabled.collect { enabled ->
+                _state.update { it.copy(biometricEnabled = enabled) }
+            }
+        }
+        viewModelScope.launch {
+            userPreferences.passcodeEnabled.collect { enabled ->
+                _state.update { it.copy(passcodeEnabled = enabled) }
+            }
+        }
+        viewModelScope.launch {
+            userPreferences.passcode.collect { passcode ->
+                currentPasscode = passcode
+            }
+        }
+        viewModelScope.launch {
+            userPreferences.themeMode.collect { mode ->
+                _state.update { it.copy(themeMode = mode) }
+            }
+        }
+        viewModelScope.launch {
+            userPreferences.defaultNotifyForRecurringEntries.collect { enabled ->
+                _state.update { it.copy(defaultNotifyForRecurringEntries = enabled) }
+            }
+        }
+    }
+
+    fun setBiometricEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferences.setBiometricEnabled(enabled)
+        }
+    }
+
+    fun setPasscode(pass: String?) {
+        viewModelScope.launch {
+            userPreferences.setPasscode(pass)
+        }
+    }
+
+    fun setPasscodeEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferences.setPasscodeEnabled(enabled)
+        }
+    }
+
+    fun verifyCurrentPasscode(input: String): Boolean {
+        val storedPasscode = currentPasscode
+        return !storedPasscode.isNullOrBlank() && input == storedPasscode
+    }
+
+    fun setThemeMode(mode: Int) {
+        viewModelScope.launch {
+            userPreferences.setThemeMode(mode)
+        }
+    }
+
+    fun setDefaultNotifyForRecurringEntries(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferences.setDefaultNotifyForRecurringEntries(enabled)
         }
     }
 
@@ -99,18 +165,9 @@ class SettingsViewModel @Inject constructor(
                 val accountMap = accounts.associateBy { it.id }
 
                 // Get all budgets
+                val allBudgets = budgetRepository.getAllBudgets()
                 val allCategories = categoryRepository.getAllCategories().firstOrNull() ?: emptyList()
                 val categoryMap = allCategories.associateBy { it.id }
-                val budgets = mutableListOf<Triple<String, String, Double>>() // categoryId, categoryName, limitAmount
-                
-                // Get budgets for current month/year
-                val cal = Calendar.getInstance()
-                val currentMonth = cal.get(Calendar.MONTH) + 1
-                val currentYear = cal.get(Calendar.YEAR)
-                
-                // We need to get budgets directly from the database
-                // Since BudgetRepository only has one method, we'll construct a simple list
-                // For now, we'll export budgets that exist in the current month
                 
                 // Build category name cache
                 val categoryNames = mutableMapOf<String, String>()
@@ -143,8 +200,11 @@ class SettingsViewModel @Inject constructor(
                         writer.newLine()
                         writer.write("CATEGORY\tLIMIT_AMOUNT\tMONTH\tYEAR")
                         writer.newLine()
-                        // Note: This will be populated during import, but for now we export empty
-                        // We'll need to track budgets in the repository
+                        allBudgets.forEach { budget ->
+                            val categoryName = categoryMap[budget.categoryId]?.name ?: "Unknown"
+                            writer.write("${categoryName}\t${budget.limitAmount.toLong()}\t${budget.month}\t${budget.year}")
+                            writer.newLine()
+                        }
                         writer.newLine()
 
                         // ===== TRANSACTIONS SECTION =====
@@ -186,7 +246,10 @@ class SettingsViewModel @Inject constructor(
                         }
                     }
                 }
-                _state.update { it.copy(exportMessage = "Exported ${accounts.size} accounts and ${transactions.size} transactions") }
+                val msg = buildString {
+                    append("Exported ${accounts.size} accounts, ${allBudgets.size} budgets, and ${transactions.size} transactions")
+                }
+                _state.update { it.copy(exportMessage = msg) }
             } catch (e: Exception) {
                 _state.update { it.copy(exportMessage = "Export failed: ${e.message}") }
             }
@@ -203,7 +266,10 @@ class SettingsViewModel @Inject constructor(
                 transactionRepository.clearAllTransactions()
                 budgetRepository.clearAllBudgets()
                 accountRepository.clearAllAccounts()
-                _state.update { it.copy(importMessage = "All data has been cleared") }
+                // Re-seed default data
+                accountRepository.seedDefaultAccounts()
+                categoryRepository.seedDefaultCategories()
+                _state.update { it.copy(importMessage = "All data has been cleared and defaults restored") }
             } catch (e: Exception) {
                 _state.update { it.copy(importMessage = "Reset failed: ${e.message}") }
             }

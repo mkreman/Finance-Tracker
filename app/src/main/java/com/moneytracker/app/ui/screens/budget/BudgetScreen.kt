@@ -19,7 +19,6 @@ import com.moneytracker.app.ui.components.BudgetProgressBar
 import com.moneytracker.app.ui.components.LocalCurrencySymbol
 import com.moneytracker.app.ui.components.MonthSelector
 import com.moneytracker.app.ui.components.formatAmount
-import com.moneytracker.app.ui.theme.*
 
 @Composable
 fun BudgetScreen(
@@ -37,27 +36,27 @@ fun BudgetScreen(
     if (showDeleteDialog != null) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = null },
-            title = { Text("Delete Budget", color = TextPrimary) },
-            text = { Text("Are you sure you want to delete this budget?", color = TextSecondary) },
+            title = { Text("Delete Budget", color = MaterialTheme.colorScheme.onSurface) },
+            text = { Text("Are you sure you want to delete this budget?", color = MaterialTheme.colorScheme.onSurfaceVariant) },
             confirmButton = {
                 TextButton(onClick = {
                     viewModel.deleteBudget(showDeleteDialog!!)
                     showDeleteDialog = null
                 }) {
-                    Text("Delete", color = ExpenseRed)
+                    Text("Delete", color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteDialog = null }) {
-                    Text("Cancel", color = TextSecondary)
+                    Text("Cancel", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             },
-            containerColor = DarkSurface,
+            containerColor = MaterialTheme.colorScheme.surface,
             shape = RoundedCornerShape(16.dp)
         )
     }
 
-    Box(modifier = Modifier.fillMaxSize().background(DarkBackground)) {
+    Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -68,7 +67,7 @@ fun BudgetScreen(
             Text(
                 text = "Budget",
                 style = MaterialTheme.typography.headlineMedium,
-                color = TextPrimary,
+                color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.padding(horizontal = 16.dp)
             )
 
@@ -95,7 +94,7 @@ fun BudgetScreen(
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp)
                         .clip(RoundedCornerShape(20.dp))
-                        .background(CardBackgroundElevated)
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
                         .padding(20.dp)
                 ) {
                     Row(
@@ -103,35 +102,35 @@ fun BudgetScreen(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Column {
-                            Text("Total Budget", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                            Text("Total Budget", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             Text(
                                 "$currency${formatAmount(state.totalBudget)}",
                                 style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                                color = TextPrimary
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                         }
                         Column(horizontalAlignment = Alignment.End) {
-                            Text("Spent", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                            Text("Spent", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             Text(
                                 "$currency${formatAmount(state.totalSpent)}",
                                 style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                                color = ExpenseRed
+                                color = MaterialTheme.colorScheme.error
                             )
                         }
                     }
                     Spacer(modifier = Modifier.height(12.dp))
-                    Divider(color = DividerColor, thickness = 1.dp)
+                    Divider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 1.dp)
                     Spacer(modifier = Modifier.height(12.dp))
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("Total Remaining", style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
+                        Text("Total Remaining", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Text(
                             if (state.totalBudget - state.totalSpent < 0) "-$currency${formatAmount(kotlin.math.abs(state.totalBudget - state.totalSpent))}" else "$currency${formatAmount(state.totalBudget - state.totalSpent)}",
                             style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                            color = if (state.totalSpent > state.totalBudget) ExpenseRed else IncomeGreen
+                            color = if (state.totalSpent > state.totalBudget) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.tertiary
                         )
                     }
                 }
@@ -163,13 +162,13 @@ fun BudgetScreen(
                         Text(
                             "No budgets set",
                             style = MaterialTheme.typography.bodyLarge,
-                            color = TextSecondary
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
                             "Tap + to add a budget",
                             style = MaterialTheme.typography.bodySmall,
-                            color = TextTertiary
+                            color = MaterialTheme.colorScheme.outline
                         )
                     }
                 }
@@ -184,8 +183,8 @@ fun BudgetScreen(
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(end = 16.dp, bottom = 96.dp),
-            containerColor = AccentOrange,
-            contentColor = TextPrimary
+            containerColor = MaterialTheme.colorScheme.primary,
+            contentColor = MaterialTheme.colorScheme.onPrimary
         ) {
             Icon(Icons.Filled.Add, contentDescription = "Add Budget")
         }

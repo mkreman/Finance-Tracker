@@ -2,9 +2,11 @@ package com.moneytracker.app.ui.screens.transactions
 
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -24,6 +26,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -41,7 +44,6 @@ import com.moneytracker.app.ui.components.CategoryIcons
 import com.moneytracker.app.ui.components.LocalCurrencySymbol
 import com.moneytracker.app.ui.components.formatAmount
 import com.moneytracker.app.ui.components.parseHexColor
-import com.moneytracker.app.ui.theme.*
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -55,7 +57,6 @@ fun AddTransactionScreen(
     val context = LocalContext.current
     val focusRequester = remember { FocusRequester() }
     val keyboardController = LocalSoftwareKeyboardController.current
-
     // Auto-focus amount field and show keyboard when screen opens
     LaunchedEffect(Unit) {
         kotlinx.coroutines.delay(300)
@@ -66,20 +67,35 @@ fun AddTransactionScreen(
     // One-shot navigation event — avoids crash on re-entry
     LaunchedEffect(Unit) {
         viewModel.navigateBack.collect {
-            onNavigateBack()
+            android.util.Log.d("AddTxnScreen", "navigateBack event received")
+            try {
+                keyboardController?.hide()
+                onNavigateBack()
+                android.util.Log.d("AddTxnScreen", "onNavigateBack() completed successfully")
+            } catch (e: Exception) {
+                android.util.Log.e("AddTxnScreen", "Navigation failed", e)
+            }
         }
     }
 
     val typeColor = when (state.type) {
-        TransactionType.EXPENSE -> ExpenseRed
-        TransactionType.INCOME -> IncomeGreen
-        TransactionType.TRANSFER -> TransferBlue
+        TransactionType.EXPENSE -> MaterialTheme.colorScheme.error
+        TransactionType.INCOME -> MaterialTheme.colorScheme.tertiary
+        TransactionType.TRANSFER -> MaterialTheme.colorScheme.secondary
+    }
+
+    // Show error messages
+    LaunchedEffect(state.errorMessage) {
+        state.errorMessage?.let { error ->
+            Toast.makeText(context, error, Toast.LENGTH_LONG).show()
+            viewModel.clearError()
+        }
     }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(DarkBackground)
+            .background(MaterialTheme.colorScheme.background)
     ) {
         // ── Top Header Area (colored by type) ──
         Box(
@@ -102,19 +118,37 @@ fun AddTransactionScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Filled.ArrowBack, "Back", tint = TextPrimary)
+                        Icon(Icons.Filled.ArrowBack, "Back", tint = MaterialTheme.colorScheme.onSurface)
                     }
                     Text(
                         if (state.isEditMode) "Edit Transaction" else "Add Transaction",
                         style = MaterialTheme.typography.titleMedium,
-                        color = TextPrimary
+                        color = MaterialTheme.colorScheme.onSurface
                     )
-                    if (state.isEditMode) {
-                        IconButton(onClick = viewModel::deleteTransaction) {
-                            Icon(Icons.Filled.Delete, "Delete", tint = ExpenseRed)
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        if (state.isEditMode) {
+                            IconButton(onClick = viewModel::deleteTransaction) {
+                                Icon(Icons.Filled.Delete, "Delete", tint = MaterialTheme.colorScheme.error)
+                            }
                         }
-                    } else {
-                        Spacer(modifier = Modifier.size(48.dp))
+                        IconButton(
+                            onClick = viewModel::saveTransaction,
+                            enabled = state.isValid && !state.isSaving
+                        ) {
+                            if (state.isSaving) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(20.dp),
+                                    color = typeColor,
+                                    strokeWidth = 2.dp
+                                )
+                            } else {
+                                Icon(
+                                    Icons.Filled.Check,
+                                    contentDescription = if (state.isEditMode) "Update" else "Save",
+                                    tint = typeColor
+                                )
+                            }
+                        }
                     }
                 }
 
@@ -124,16 +158,16 @@ fun AddTransactionScreen(
                         .padding(horizontal = 16.dp)
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(12.dp))
-                        .background(DarkBackground.copy(alpha = 0.5f))
+                        .background(MaterialTheme.colorScheme.background.copy(alpha = 0.5f))
                         .padding(3.dp),
                     horizontalArrangement = Arrangement.spacedBy(3.dp)
                 ) {
                     TransactionType.values().forEach { type ->
                         val isSelected = type == state.type
                         val (label, color) = when (type) {
-                            TransactionType.EXPENSE -> "Expense" to ExpenseRed
-                            TransactionType.INCOME -> "Income" to IncomeGreen
-                            TransactionType.TRANSFER -> "Transfer" to TransferBlue
+                            TransactionType.EXPENSE -> "Expense" to MaterialTheme.colorScheme.error
+                            TransactionType.INCOME -> "Income" to MaterialTheme.colorScheme.tertiary
+                            TransactionType.TRANSFER -> "Transfer" to MaterialTheme.colorScheme.secondary
                         }
                         Box(
                             modifier = Modifier
@@ -146,7 +180,7 @@ fun AddTransactionScreen(
                         ) {
                             Text(
                                 text = label,
-                                color = if (isSelected) Color.White else TextSecondary,
+                                color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
                                 style = MaterialTheme.typography.labelLarge.copy(
                                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
                                 )
@@ -162,7 +196,7 @@ fun AddTransactionScreen(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text("Amount", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                    Text("Amount", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(modifier = Modifier.height(4.dp))
 
                     Row(
@@ -181,7 +215,7 @@ fun AddTransactionScreen(
                             textStyle = TextStyle(
                                 fontSize = 40.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = TextPrimary,
+                                color = MaterialTheme.colorScheme.onSurface,
                                 textAlign = TextAlign.Center
                             ),
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
@@ -197,7 +231,7 @@ fun AddTransactionScreen(
                                         style = TextStyle(
                                             fontSize = 40.sp,
                                             fontWeight = FontWeight.Bold,
-                                            color = TextTertiary
+                                            color = MaterialTheme.colorScheme.outline
                                         )
                                     )
                                 }
@@ -227,27 +261,40 @@ fun AddTransactionScreen(
                     onToggleSplit = viewModel::toggleSplitMode,
                     onAddSplit = viewModel::addSplit,
                     onRemoveSplit = viewModel::removeSplit,
-                    onAddCategory = viewModel::addCategory
+                    onAddCategory = viewModel::addCategory,
+                    onDeleteCategory = viewModel::deleteCategory
                 )
                 Spacer(modifier = Modifier.height(16.dp))
             }
 
             // Account selector
-            AccountDropdown(
-                label = if (state.type == TransactionType.TRANSFER) "From Account" else "Account",
-                accounts = state.accounts,
-                selectedId = state.selectedAccountId,
-                onSelected = viewModel::onAccountSelected
-            )
-
-            // Transfer: To Account
             if (state.type == TransactionType.TRANSFER) {
-                Spacer(modifier = Modifier.height(12.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    AccountDropdown(
+                        label = "From Account",
+                        accounts = state.accounts,
+                        selectedId = state.selectedAccountId,
+                        onSelected = viewModel::onAccountSelected,
+                        modifier = Modifier.weight(1f)
+                    )
+
+                    AccountDropdown(
+                        label = "To Account",
+                        accounts = state.accounts.filter { it.id != state.selectedAccountId },
+                        selectedId = state.toAccountId,
+                        onSelected = viewModel::onToAccountSelected,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            } else {
                 AccountDropdown(
-                    label = "To Account",
-                    accounts = state.accounts.filter { it.id != state.selectedAccountId },
-                    selectedId = state.toAccountId,
-                    onSelected = viewModel::onToAccountSelected
+                    label = "Account",
+                    accounts = state.accounts,
+                    selectedId = state.selectedAccountId,
+                    onSelected = viewModel::onAccountSelected
                 )
             }
 
@@ -271,43 +318,179 @@ fun AddTransactionScreen(
                 colors = textFieldColors(),
                 shape = RoundedCornerShape(12.dp),
                 leadingIcon = {
-                    Icon(Icons.Filled.Notes, null, tint = TextSecondary, modifier = Modifier.size(20.dp))
+                    Icon(Icons.Filled.Notes, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
                 }
             )
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
-            // Save Button
-            Button(
-                onClick = viewModel::saveTransaction,
+            // Recurring Section
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(54.dp),
-                enabled = state.isValid && !state.isSaving,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = typeColor,
-                    contentColor = Color.White,
-                    disabledContainerColor = typeColor.copy(alpha = 0.35f)
-                ),
-                shape = RoundedCornerShape(16.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .padding(16.dp)
             ) {
-                if (state.isSaving) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(24.dp),
-                        color = Color.White,
-                        strokeWidth = 2.dp
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Filled.Repeat, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            "Recurring Transaction",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = state.isRecurring,
+                        onCheckedChange = viewModel::onRecurringToggle,
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = MaterialTheme.colorScheme.primary,
+                            checkedTrackColor = MaterialTheme.colorScheme.primaryContainer
+                        )
                     )
-                } else {
-                    Icon(Icons.Filled.Check, null, modifier = Modifier.size(20.dp))
-                    Spacer(modifier = Modifier.width(8.dp))
+                }
+
+                if (state.isRecurring) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    
                     Text(
-                        if (state.isEditMode) "Update" else "Save",
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold)
+                        "Repeat every",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        OutlinedTextField(
+                            value = state.recurringInterval,
+                            onValueChange = viewModel::onRecurringIntervalChange,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            modifier = Modifier.width(80.dp),
+                            singleLine = true,
+                            colors = textFieldColors(),
+                            shape = RoundedCornerShape(10.dp)
+                        )
+                        
+                        com.moneytracker.app.data.local.database.entities.RecurringUnit.values().forEach { unit ->
+                            val isSelected = unit == state.recurringUnit
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.2f) else MaterialTheme.colorScheme.surface)
+                                    .clickable { viewModel.onRecurringUnitChange(unit) }
+                                    .padding(horizontal = 8.dp, vertical = 12.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = unit.name.lowercase().replaceFirstChar { it.uppercase() },
+                                    color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                                    style = MaterialTheme.typography.labelSmall
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(MaterialTheme.colorScheme.surface)
+                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                Icons.Filled.Notifications,
+                                null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                "Notify for recurring entries",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                        Switch(
+                            checked = state.notifyForRecurringEntries,
+                            onCheckedChange = viewModel::onNotifyForRecurringEntriesChange,
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = MaterialTheme.colorScheme.primary,
+                                checkedTrackColor = MaterialTheme.colorScheme.primaryContainer
+                            )
+                        )
+                    }
+                    
+                    Spacer(modifier = Modifier.height(12.dp))
+                    
+                    // Optional end date
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .clickable {
+                                val calendar = Calendar.getInstance()
+                                state.recurringEndDate?.let { calendar.timeInMillis = it }
+                                DatePickerDialog(
+                                    context,
+                                    { _, year, month, day ->
+                                        val endCalendar = Calendar.getInstance().apply {
+                                            set(year, month, day, 23, 59, 59)
+                                        }
+                                        viewModel.onRecurringEndDateChange(endCalendar.timeInMillis)
+                                    },
+                                    calendar.get(Calendar.YEAR),
+                                    calendar.get(Calendar.MONTH),
+                                    calendar.get(Calendar.DAY_OF_MONTH)
+                                ).show()
+                            }
+                            .background(MaterialTheme.colorScheme.surface)
+                            .padding(12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Filled.EventRepeat, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                if (state.recurringEndDate != null) {
+                                    "Ends: ${SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(state.recurringEndDate)}"
+                                } else {
+                                    "No end date (tap to set)"
+                                },
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                        if (state.recurringEndDate != null) {
+                            IconButton(
+                                onClick = { viewModel.onRecurringEndDateChange(null) },
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Icon(Icons.Filled.Close, "Clear", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(18.dp))
+                            }
+                        }
+                    }
                 }
             }
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(16.dp))
         }
     }
 }
@@ -323,13 +506,14 @@ private fun CategorySplitSection(
     onToggleSplit: () -> Unit,
     onAddSplit: () -> Unit,
     onRemoveSplit: (Int) -> Unit,
-    onAddCategory: (String, String) -> Unit = { _, _ -> }
+    onAddCategory: (String, String) -> Unit = { _, _ -> },
+    onDeleteCategory: (String) -> Unit = {}
 ) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(CardBackground)
+            .background(MaterialTheme.colorScheme.surfaceVariant)
             .padding(16.dp)
     ) {
         Row(
@@ -340,12 +524,12 @@ private fun CategorySplitSection(
             Text(
                 if (state.isSplitMode) "Split Categories" else "Category",
                 style = MaterialTheme.typography.titleSmall,
-                color = TextSecondary
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             TextButton(onClick = onToggleSplit, contentPadding = PaddingValues(0.dp)) {
                 Text(
                     if (state.isSplitMode) "Single" else "Split",
-                    color = AccentOrange,
+                    color = MaterialTheme.colorScheme.primary,
                     style = MaterialTheme.typography.labelMedium
                 )
             }
@@ -374,19 +558,19 @@ private fun CategorySplitSection(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text("Remaining:", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                Text("Remaining:", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text(
                     "${LocalCurrencySymbol.current}${String.format("%.2f", remaining)}",
                     style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
-                    color = if (kotlin.math.abs(remaining) < 0.01) IncomeGreen else ExpenseRed
+                    color = if (kotlin.math.abs(remaining) < 0.01) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error
                 )
             }
 
             Spacer(modifier = Modifier.height(4.dp))
             TextButton(onClick = onAddSplit, modifier = Modifier.fillMaxWidth()) {
-                Icon(Icons.Filled.Add, null, tint = AccentOrange, modifier = Modifier.size(16.dp))
+                Icon(Icons.Filled.Add, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
                 Spacer(modifier = Modifier.width(4.dp))
-                Text("Add Split", color = AccentOrange, style = MaterialTheme.typography.labelMedium)
+                Text("Add Split", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelMedium)
             }
         } else {
             // Single/multi category — icon grid with multi-select
@@ -394,7 +578,8 @@ private fun CategorySplitSection(
                 categories = state.categories,
                 selectedIds = state.selectedCategoryIds,
                 onCategoryToggled = onCategoryToggled,
-                onAddCategory = onAddCategory
+                onAddCategory = onAddCategory,
+                onDeleteCategory = onDeleteCategory
             )
         }
     }
@@ -405,10 +590,12 @@ private fun CategoryGrid(
     categories: List<Category>,
     selectedIds: Set<String>,
     onCategoryToggled: (String, String) -> Unit,
-    onAddCategory: (String, String) -> Unit = { _, _ -> }
+    onAddCategory: (String, String) -> Unit = { _, _ -> },
+    onDeleteCategory: (String) -> Unit = {}
 ) {
     val focusManager = LocalFocusManager.current
     var showAddCategoryDialog by remember { mutableStateOf(false) }
+    var pendingDeleteCategory by remember { mutableStateOf<Category?>(null) }
 
     // Filter out "Other" categories and add "Add New" at the end
     val displayCategories = categories.filter { !it.name.equals("Other", ignoreCase = true) }
@@ -440,9 +627,17 @@ private fun CategoryGrid(
                                 if (isSelected) Modifier.border(1.5.dp, catColor, RoundedCornerShape(12.dp))
                                 else Modifier
                             )
-                            .clickable {
-                                focusManager.clearFocus()
-                                onCategoryToggled(category.id, category.name)
+                            .pointerInput(category.id) {
+                                detectTapGestures(
+                                    onTap = {
+                                        focusManager.clearFocus()
+                                        onCategoryToggled(category.id, category.name)
+                                    },
+                                    onLongPress = {
+                                        focusManager.clearFocus()
+                                        pendingDeleteCategory = category
+                                    }
+                                )
                             }
                             .padding(vertical = 10.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
@@ -465,7 +660,7 @@ private fun CategoryGrid(
                         Text(
                             category.name,
                             style = MaterialTheme.typography.labelSmall,
-                            color = if (isSelected) TextPrimary else TextSecondary,
+                            color = if (isSelected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                             textAlign = TextAlign.Center
@@ -516,6 +711,36 @@ private fun CategoryGrid(
             }
         )
     }
+
+    pendingDeleteCategory?.let { category ->
+        AlertDialog(
+            onDismissRequest = { pendingDeleteCategory = null },
+            title = { Text("Delete Category", color = MaterialTheme.colorScheme.onSurface) },
+            text = {
+                Text(
+                    text = "Delete '${category.name}' category?",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onDeleteCategory(category.id)
+                        pendingDeleteCategory = null
+                    }
+                ) {
+                    Text("Delete", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingDeleteCategory = null }) {
+                    Text("Cancel", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            },
+            containerColor = MaterialTheme.colorScheme.surface,
+            shape = RoundedCornerShape(16.dp)
+        )
+    }
 }
 
 @Composable
@@ -534,13 +759,13 @@ private fun AddNewCategoryButton(
             modifier = Modifier
                 .size(40.dp)
                 .clip(CircleShape)
-                .background(AccentOrange.copy(alpha = 0.12f)),
+                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)),
             contentAlignment = Alignment.Center
         ) {
             Icon(
                 imageVector = Icons.Filled.Add,
                 contentDescription = "Add Category",
-                tint = AccentOrange,
+                tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(20.dp)
             )
         }
@@ -548,7 +773,7 @@ private fun AddNewCategoryButton(
         Text(
             "Add New",
             style = MaterialTheme.typography.labelSmall,
-            color = AccentOrange,
+            color = MaterialTheme.colorScheme.primary,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             textAlign = TextAlign.Center
@@ -574,7 +799,7 @@ private fun AddCategoryDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Add New Category", color = TextPrimary) },
+        title = { Text("Add New Category", color = MaterialTheme.colorScheme.onSurface) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedTextField(
@@ -584,18 +809,18 @@ private fun AddCategoryDialog(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = TextPrimary,
-                        unfocusedTextColor = TextPrimary,
-                        cursorColor = AccentOrange,
-                        focusedBorderColor = AccentOrange,
-                        unfocusedBorderColor = DividerColor,
-                        focusedLabelColor = AccentOrange,
-                        unfocusedLabelColor = TextSecondary
+                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        cursorColor = MaterialTheme.colorScheme.primary,
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                        focusedLabelColor = MaterialTheme.colorScheme.primary,
+                        unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
                     ),
                     shape = RoundedCornerShape(12.dp)
                 )
 
-                Text("Select Icon", style = MaterialTheme.typography.titleSmall, color = TextSecondary)
+                Text("Select Icon", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
 
                 // Icon grid — 5 per row
                 val iconRows = availableIcons.chunked(5)
@@ -612,13 +837,13 @@ private fun AddCategoryDialog(
                                         .size(44.dp)
                                         .clip(RoundedCornerShape(10.dp))
                                         .background(
-                                            if (isSelected) AccentOrange.copy(alpha = 0.2f)
-                                            else CardBackground
+                                            if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
+                                            else MaterialTheme.colorScheme.surfaceVariant
                                         )
                                         .then(
                                             if (isSelected) Modifier.border(
                                                 1.5.dp,
-                                                AccentOrange,
+                                                MaterialTheme.colorScheme.primary,
                                                 RoundedCornerShape(10.dp)
                                             )
                                             else Modifier
@@ -629,7 +854,7 @@ private fun AddCategoryDialog(
                                     Icon(
                                         imageVector = CategoryIcons.getIcon(iconKey),
                                         contentDescription = iconKey,
-                                        tint = if (isSelected) AccentOrange else TextSecondary,
+                                        tint = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                                         modifier = Modifier.size(22.dp)
                                     )
                                 }
@@ -647,15 +872,15 @@ private fun AddCategoryDialog(
                 onClick = { if (name.isNotBlank()) onSave(name.trim(), selectedIcon) },
                 enabled = name.isNotBlank()
             ) {
-                Text("Save", color = if (name.isNotBlank()) AccentOrange else TextTertiary)
+                Text("Save", color = if (name.isNotBlank()) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline)
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel", color = TextSecondary)
+                Text("Cancel", color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         },
-        containerColor = DarkSurface,
+        containerColor = MaterialTheme.colorScheme.surface,
         shape = RoundedCornerShape(16.dp)
     )
 }
@@ -673,6 +898,7 @@ private fun SplitRow(
     onRemove: () -> Unit
 ) {
     var showCategoryPicker by remember { mutableStateOf(false) }
+    val context = LocalContext.current
 
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -683,13 +909,13 @@ private fun SplitRow(
             modifier = Modifier
                 .weight(1f)
                 .clip(RoundedCornerShape(10.dp))
-                .background(DarkSurfaceVariant)
+                .background(MaterialTheme.colorScheme.surfaceVariant)
                 .clickable { showCategoryPicker = true }
                 .padding(12.dp)
         ) {
             Text(
                 text = split.categoryName.ifEmpty { "Select Category" },
-                color = if (split.categoryId != null) TextPrimary else TextTertiary,
+                color = if (split.categoryId != null) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.outline,
                 style = MaterialTheme.typography.bodyMedium
             )
         }
@@ -709,7 +935,7 @@ private fun SplitRow(
 
         if (showRemove) {
             IconButton(onClick = onRemove, modifier = Modifier.size(32.dp)) {
-                Icon(Icons.Filled.Close, "Remove", tint = ExpenseRed, modifier = Modifier.size(18.dp))
+                Icon(Icons.Filled.Close, "Remove", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(18.dp))
             }
         }
     }
@@ -717,17 +943,23 @@ private fun SplitRow(
     if (showCategoryPicker) {
         AlertDialog(
             onDismissRequest = { showCategoryPicker = false },
-            title = { Text("Select Category", color = TextPrimary) },
+            title = { Text("Select Category", color = MaterialTheme.colorScheme.onSurface) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     categories.forEach { category ->
+                        var showCategoryMenu by remember { mutableStateOf(false) }
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(8.dp))
-                                .clickable {
-                                    onCategorySelected(category.id, category.name)
-                                    showCategoryPicker = false
+                                .pointerInput(Unit) {
+                                    detectTapGestures(
+                                        onTap = {
+                                            onCategorySelected(category.id, category.name)
+                                            showCategoryPicker = false
+                                        },
+                                        onLongPress = { showCategoryMenu = true }
+                                    )
                                 }
                                 .padding(12.dp),
                             verticalAlignment = Alignment.CenterVertically
@@ -739,13 +971,40 @@ private fun SplitRow(
                                 modifier = Modifier.size(24.dp)
                             )
                             Spacer(modifier = Modifier.width(12.dp))
-                            Text(category.name, color = TextPrimary)
+                            Text(category.name, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
+                            
+                            Box {
+                                IconButton(onClick = { showCategoryMenu = true }, modifier = Modifier.size(32.dp)) {
+                                    Icon(Icons.Filled.MoreVert, "Options", tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
+                                }
+                                DropdownMenu(
+                                    expanded = showCategoryMenu,
+                                    onDismissRequest = { showCategoryMenu = false }
+                                ) {
+                                    DropdownMenuItem(
+                                        text = { Text("Edit", color = MaterialTheme.colorScheme.onSurface) },
+                                        onClick = { 
+                                            showCategoryMenu = false
+                                            // TODO: Add edit category navigation
+                                            Toast.makeText(context, "Edit category feature coming soon", Toast.LENGTH_SHORT).show()
+                                        }
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("Delete", color = MaterialTheme.colorScheme.error) },
+                                        onClick = { 
+                                            showCategoryMenu = false
+                                            // TODO: Add delete category confirmation
+                                            Toast.makeText(context, "Delete category feature coming soon", Toast.LENGTH_SHORT).show()
+                                        }
+                                    )
+                                }
+                            }
                         }
                     }
                 }
             },
             confirmButton = {},
-            containerColor = DarkSurface,
+            containerColor = MaterialTheme.colorScheme.surface,
             shape = RoundedCornerShape(16.dp)
         )
     }
@@ -759,7 +1018,8 @@ private fun AccountDropdown(
     label: String,
     accounts: List<com.moneytracker.app.domain.model.Account>,
     selectedId: String?,
-    onSelected: (String) -> Unit
+    onSelected: (String) -> Unit,
+    modifier: Modifier = Modifier
 ) {
     var expanded by remember { mutableStateOf(false) }
     val selectedAccount = accounts.find { it.id == selectedId }
@@ -784,7 +1044,7 @@ private fun AccountDropdown(
                     )
                 }
             },
-            modifier = Modifier
+            modifier = modifier
                 .fillMaxWidth()
                 .menuAnchor(),
             colors = textFieldColors(),
@@ -794,11 +1054,11 @@ private fun AccountDropdown(
         ExposedDropdownMenu(
             expanded = expanded,
             onDismissRequest = { expanded = false },
-            modifier = Modifier.background(DarkSurface)
+            modifier = Modifier.background(MaterialTheme.colorScheme.surface)
         ) {
             accounts.forEach { account ->
                 DropdownMenuItem(
-                    text = { Text(account.name, color = TextPrimary) },
+                    text = { Text(account.name, color = MaterialTheme.colorScheme.onSurface) },
                     onClick = {
                         onSelected(account.id)
                         expanded = false
@@ -854,11 +1114,11 @@ private fun DateTimeSelector(
                 .height(52.dp),
             shape = RoundedCornerShape(12.dp),
             border = ButtonDefaults.outlinedButtonBorder,
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = TextPrimary)
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface)
         ) {
-            Icon(Icons.Filled.CalendarMonth, null, tint = AccentOrange, modifier = Modifier.size(18.dp))
+            Icon(Icons.Filled.CalendarMonth, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
             Spacer(modifier = Modifier.width(8.dp))
-            Text(dateFmt.format(Date(date)), color = TextPrimary, style = MaterialTheme.typography.bodyMedium)
+            Text(dateFmt.format(Date(date)), color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.bodyMedium)
         }
 
         // Time button
@@ -883,11 +1143,11 @@ private fun DateTimeSelector(
                 .height(52.dp),
             shape = RoundedCornerShape(12.dp),
             border = ButtonDefaults.outlinedButtonBorder,
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = TextPrimary)
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface)
         ) {
-            Icon(Icons.Filled.AccessTime, null, tint = AccentOrange, modifier = Modifier.size(18.dp))
+            Icon(Icons.Filled.AccessTime, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
             Spacer(modifier = Modifier.width(6.dp))
-            Text(timeFmt.format(Date(date)), color = TextPrimary, style = MaterialTheme.typography.bodyMedium)
+            Text(timeFmt.format(Date(date)), color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.bodyMedium)
         }
     }
 }
@@ -896,13 +1156,13 @@ private fun DateTimeSelector(
 
 @Composable
 private fun textFieldColors() = OutlinedTextFieldDefaults.colors(
-    focusedTextColor = TextPrimary,
-    unfocusedTextColor = TextPrimary,
-    cursorColor = AccentOrange,
-    focusedBorderColor = AccentOrange,
-    unfocusedBorderColor = DividerColor,
-    focusedLabelColor = AccentOrange,
-    unfocusedLabelColor = TextSecondary,
+    focusedTextColor = MaterialTheme.colorScheme.onSurface,
+    unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+    cursorColor = MaterialTheme.colorScheme.primary,
+    focusedBorderColor = MaterialTheme.colorScheme.primary,
+    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+    focusedLabelColor = MaterialTheme.colorScheme.primary,
+    unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
     focusedContainerColor = Color.Transparent,
     unfocusedContainerColor = Color.Transparent
 )

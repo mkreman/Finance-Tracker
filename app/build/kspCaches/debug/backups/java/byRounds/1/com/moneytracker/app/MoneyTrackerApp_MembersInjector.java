@@ -1,6 +1,7 @@
 package com.moneytracker.app;
 
 import androidx.hilt.work.HiltWorkerFactory;
+import com.moneytracker.app.data.recurring.RecurringTransactionManager;
 import com.moneytracker.app.data.sync.SyncManager;
 import dagger.MembersInjector;
 import dagger.internal.DaggerGenerated;
@@ -26,22 +27,27 @@ public final class MoneyTrackerApp_MembersInjector implements MembersInjector<Mo
 
   private final Provider<SyncManager> syncManagerProvider;
 
+  private final Provider<RecurringTransactionManager> recurringTransactionManagerProvider;
+
   public MoneyTrackerApp_MembersInjector(Provider<HiltWorkerFactory> workerFactoryProvider,
-      Provider<SyncManager> syncManagerProvider) {
+      Provider<SyncManager> syncManagerProvider,
+      Provider<RecurringTransactionManager> recurringTransactionManagerProvider) {
     this.workerFactoryProvider = workerFactoryProvider;
     this.syncManagerProvider = syncManagerProvider;
+    this.recurringTransactionManagerProvider = recurringTransactionManagerProvider;
   }
 
   public static MembersInjector<MoneyTrackerApp> create(
-      Provider<HiltWorkerFactory> workerFactoryProvider,
-      Provider<SyncManager> syncManagerProvider) {
-    return new MoneyTrackerApp_MembersInjector(workerFactoryProvider, syncManagerProvider);
+      Provider<HiltWorkerFactory> workerFactoryProvider, Provider<SyncManager> syncManagerProvider,
+      Provider<RecurringTransactionManager> recurringTransactionManagerProvider) {
+    return new MoneyTrackerApp_MembersInjector(workerFactoryProvider, syncManagerProvider, recurringTransactionManagerProvider);
   }
 
   @Override
   public void injectMembers(MoneyTrackerApp instance) {
     injectWorkerFactory(instance, workerFactoryProvider.get());
     injectSyncManager(instance, syncManagerProvider.get());
+    injectRecurringTransactionManager(instance, recurringTransactionManagerProvider.get());
   }
 
   @InjectedFieldSignature("com.moneytracker.app.MoneyTrackerApp.workerFactory")
@@ -53,5 +59,11 @@ public final class MoneyTrackerApp_MembersInjector implements MembersInjector<Mo
   @InjectedFieldSignature("com.moneytracker.app.MoneyTrackerApp.syncManager")
   public static void injectSyncManager(MoneyTrackerApp instance, SyncManager syncManager) {
     instance.syncManager = syncManager;
+  }
+
+  @InjectedFieldSignature("com.moneytracker.app.MoneyTrackerApp.recurringTransactionManager")
+  public static void injectRecurringTransactionManager(MoneyTrackerApp instance,
+      RecurringTransactionManager recurringTransactionManager) {
+    instance.recurringTransactionManager = recurringTransactionManager;
   }
 }

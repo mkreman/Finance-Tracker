@@ -1,6 +1,6 @@
 -- Merging decision tree log ---
 provider#androidx.startup.InitializationProvider
-INJECTED from /mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:30:9-39:20
+INJECTED from /mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:31:9-40:20
 MERGED from [androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:29:9-37:20
 MERGED from [androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:29:9-37:20
 MERGED from [androidx.emoji2:emoji2:1.3.0] /home/nama616/.gradle/caches/transforms-3/b724606b85cc4228f65df8d08255b5b3/transformed/emoji2-1.3.0/AndroidManifest.xml:24:9-32:20
@@ -12,19 +12,19 @@ MERGED from [androidx.profileinstaller:profileinstaller:1.3.0] /home/nama616/.gr
 MERGED from [androidx.startup:startup-runtime:1.1.1] /home/nama616/.gradle/caches/transforms-3/af6c89f0b3ee419722137449ce2525c3/transformed/startup-runtime-1.1.1/AndroidManifest.xml:26:9-30:34
 MERGED from [androidx.startup:startup-runtime:1.1.1] /home/nama616/.gradle/caches/transforms-3/af6c89f0b3ee419722137449ce2525c3/transformed/startup-runtime-1.1.1/AndroidManifest.xml:26:9-30:34
 	tools:node
-		ADDED from /mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:34:13-31
+		ADDED from /mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:35:13-31
 	android:authorities
 		INJECTED from /mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml
-		ADDED from /mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:32:13-68
+		ADDED from /mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:33:13-68
 	android:exported
-		ADDED from /mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:33:13-37
+		ADDED from /mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:34:13-37
 	android:name
-		ADDED from /mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:31:13-67
+		ADDED from /mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:32:13-67
 manifest
-ADDED from /mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:2:1-53:12
-INJECTED from /mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:2:1-53:12
-INJECTED from /mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:2:1-53:12
-INJECTED from /mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:2:1-53:12
+ADDED from /mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:2:1-59:12
+INJECTED from /mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:2:1-59:12
+INJECTED from /mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:2:1-59:12
+INJECTED from /mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:2:1-59:12
 MERGED from [androidx.glance:glance:1.0.0] /home/nama616/.gradle/caches/transforms-3/43b56b27b1cdb6f57a6504b7132c9870/transformed/glance-1.0.0/AndroidManifest.xml:2:1-7:12
 MERGED from [androidx.glance:glance-material3:1.0.0] /home/nama616/.gradle/caches/transforms-3/64c3c62e1c41caa32b034095bd736600/transformed/glance-material3-1.0.0/AndroidManifest.xml:2:1-7:12
 MERGED from [androidx.glance:glance-appwidget:1.0.0] /home/nama616/.gradle/caches/transforms-3/710c5950a31db90bd15911806851b5e1/transformed/glance-appwidget-1.0.0/AndroidManifest.xml:17:1-56:12
@@ -141,9 +141,13 @@ MERGED from [androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/tran
 MERGED from [androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:25:5-81
 	android:name
 		ADDED from /mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:8:22-78
+uses-permission#android.permission.POST_NOTIFICATIONS
+ADDED from /mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:9:5-77
+	android:name
+		ADDED from /mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:9:22-74
 application
-ADDED from /mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:10:5-52:19
-INJECTED from /mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:10:5-52:19
+ADDED from /mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:11:5-58:19
+INJECTED from /mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:11:5-58:19
 MERGED from [androidx.glance:glance-appwidget:1.0.0] /home/nama616/.gradle/caches/transforms-3/710c5950a31db90bd15911806851b5e1/transformed/glance-appwidget-1.0.0/AndroidManifest.xml:22:5-54:19
 MERGED from [androidx.glance:glance-appwidget:1.0.0] /home/nama616/.gradle/caches/transforms-3/710c5950a31db90bd15911806851b5e1/transformed/glance-appwidget-1.0.0/AndroidManifest.xml:22:5-54:19
 MERGED from [androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:28:5-143:19
@@ -173,66 +177,74 @@ MERGED from [androidx.startup:startup-runtime:1.1.1] /home/nama616/.gradle/cache
 	android:appComponentFactory
 		ADDED from [androidx.core:core:1.12.0] /home/nama616/.gradle/caches/transforms-3/e1b2ee99c9859ef10a1634cbf44c3814/transformed/core-1.12.0/AndroidManifest.xml:28:18-86
 	android:supportsRtl
-		ADDED from /mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:16:9-35
+		ADDED from /mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:17:9-35
 	android:label
-		ADDED from /mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:14:9-41
+		ADDED from /mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:15:9-41
 	android:roundIcon
-		ADDED from /mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:15:9-54
+		ADDED from /mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:16:9-54
 	tools:targetApi
-		ADDED from /mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:18:9-29
+		ADDED from /mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:19:9-29
 	android:icon
-		ADDED from /mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:13:9-43
+		ADDED from /mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:14:9-43
 	android:allowBackup
-		ADDED from /mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:12:9-35
+		ADDED from /mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:13:9-35
 	android:theme
-		ADDED from /mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:17:9-50
+		ADDED from /mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:18:9-50
 	android:name
-		ADDED from /mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:11:9-40
+		ADDED from /mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:12:9-40
 activity#com.moneytracker.app.MainActivity
-ADDED from /mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:20:9-28:20
+ADDED from /mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:21:9-29:20
 	android:exported
-		ADDED from /mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:22:13-36
+		ADDED from /mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:23:13-36
 	android:theme
-		ADDED from /mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:23:13-54
+		ADDED from /mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:24:13-54
 	android:name
-		ADDED from /mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:21:13-41
+		ADDED from /mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:22:13-41
 intent-filter#action:name:android.intent.action.MAIN+category:name:android.intent.category.LAUNCHER
-ADDED from /mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:24:13-27:29
+ADDED from /mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:25:13-28:29
 action#android.intent.action.MAIN
-ADDED from /mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:25:17-69
+ADDED from /mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:26:17-69
 	android:name
-		ADDED from /mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:25:25-66
+		ADDED from /mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:26:25-66
 category#android.intent.category.LAUNCHER
-ADDED from /mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:26:17-77
+ADDED from /mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:27:17-77
 	android:name
-		ADDED from /mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:26:27-74
+		ADDED from /mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:27:27-74
 receiver#com.moneytracker.app.widget.MoneyTrackerWidgetReceiver
-ADDED from /mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:41:9-50:20
+ADDED from /mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:42:9-51:20
 	android:exported
-		ADDED from /mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:43:13-36
+		ADDED from /mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:44:13-36
 	android:name
-		ADDED from /mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:42:13-62
+		ADDED from /mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:43:13-62
 intent-filter#action:name:android.appwidget.action.APPWIDGET_UPDATE
-ADDED from /mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:44:13-46:29
+ADDED from /mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:45:13-47:29
 action#android.appwidget.action.APPWIDGET_UPDATE
-ADDED from /mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:45:17-84
+ADDED from /mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:46:17-84
 	android:name
-		ADDED from /mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:45:25-81
+		ADDED from /mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:46:25-81
 meta-data#android.appwidget.provider
-ADDED from /mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:47:13-49:58
+ADDED from /mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:48:13-50:58
 	android:resource
-		ADDED from /mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:49:17-55
+		ADDED from /mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:50:17-55
 	android:name
-		ADDED from /mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:48:17-58
+		ADDED from /mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:49:17-58
+receiver#com.moneytracker.app.notifications.TransactionSuggestionActionReceiver
+ADDED from /mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:53:9-56:40
+	android:enabled
+		ADDED from /mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:55:13-35
+	android:exported
+		ADDED from /mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:56:13-37
+	android:name
+		ADDED from /mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:54:13-78
 meta-data#androidx.work.WorkManagerInitializer
-ADDED from /mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:35:13-38:39
+ADDED from /mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:36:13-39:39
 REJECTED from [androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:34:13-36:52
 	tools:node
-		ADDED from /mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:38:17-36
+		ADDED from /mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:39:17-36
 	android:value
-		ADDED from /mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:37:17-49
+		ADDED from /mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:38:17-49
 	android:name
-		ADDED from /mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:36:17-68
+		ADDED from /mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:37:17-68
 uses-sdk
 INJECTED from /mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml reason: use-sdk injection requested
 INJECTED from /mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml

@@ -16,7 +16,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.moneytracker.app.data.local.database.entities.TransactionType
 import com.moneytracker.app.domain.model.Transaction
-import com.moneytracker.app.ui.theme.*
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -28,16 +27,16 @@ fun TransactionItem(
 ) {
     val currency = LocalCurrencySymbol.current
     val primarySplit = transaction.splits.firstOrNull()
-    val categoryColor = primarySplit?.categoryColor?.let { parseHexColor(it) } ?: TextSecondary
+    val categoryColor = primarySplit?.categoryColor?.let { parseHexColor(it) } ?: MaterialTheme.colorScheme.onSurfaceVariant
     val displayAmount = when (transaction.type) {
         TransactionType.EXPENSE -> "-$currency${formatAmount(transaction.totalAmount)}"
         TransactionType.INCOME -> "+$currency${formatAmount(transaction.totalAmount)}"
         TransactionType.TRANSFER -> "$currency${formatAmount(transaction.totalAmount)}"
     }
     val amountColor = when (transaction.type) {
-        TransactionType.EXPENSE -> ExpenseRed
-        TransactionType.INCOME -> IncomeGreen
-        TransactionType.TRANSFER -> TransferBlue
+        TransactionType.EXPENSE -> MaterialTheme.colorScheme.error
+        TransactionType.INCOME -> MaterialTheme.colorScheme.tertiary
+        TransactionType.TRANSFER -> MaterialTheme.colorScheme.secondary
     }
 
     val categoryName = if (transaction.type == TransactionType.TRANSFER) {
@@ -71,7 +70,7 @@ fun TransactionItem(
                 .clip(RoundedCornerShape(12.dp))
                 .background(
                     if (transaction.type == TransactionType.TRANSFER)
-                        TransferBlue.copy(alpha = 0.15f)
+                        MaterialTheme.colorScheme.secondary.copy(alpha = 0.15f)
                     else categoryColor.copy(alpha = 0.15f)
                 ),
             contentAlignment = Alignment.Center
@@ -82,7 +81,7 @@ fun TransactionItem(
                     else primarySplit?.categoryIcon ?: "more_horiz"
                 ),
                 contentDescription = null,
-                tint = if (transaction.type == TransactionType.TRANSFER) TransferBlue else categoryColor,
+                tint = if (transaction.type == TransactionType.TRANSFER) MaterialTheme.colorScheme.secondary else categoryColor,
                 modifier = Modifier.size(22.dp)
             )
         }
@@ -94,20 +93,20 @@ fun TransactionItem(
             Text(
                 text = categoryName,
                 style = MaterialTheme.typography.titleMedium,
-                color = TextPrimary
+                color = MaterialTheme.colorScheme.onSurface
             )
             Row {
                 Text(
                     text = accountDisplay,
                     style = MaterialTheme.typography.bodySmall,
-                    color = TextSecondary
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 if (transaction.note?.isNotBlank() == true) {
-                    Text(" • ", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                    Text(" • ", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text(
                         text = transaction.note,
                         style = MaterialTheme.typography.bodySmall,
-                        color = TextSecondary,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1
                     )
                 }
@@ -121,11 +120,22 @@ fun TransactionItem(
                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
                 color = amountColor
             )
-            Text(
-                text = timeString,
-                style = MaterialTheme.typography.labelSmall,
-                color = TextSecondary
-            )
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.End) {
+                Text(
+                    text = timeString,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                if (transaction.isRecurring || transaction.parentRecurringId != null) {
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Icon(
+                        imageVector = CategoryIcons.getIcon("autorenew"),
+                        contentDescription = "Recurring",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(14.dp)
+                    )
+                }
+            }
         }
     }
 }
@@ -150,28 +160,28 @@ fun TransactionDateHeader(
         Text(
             text = dateLabel,
             style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
-            color = TextSecondary
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             if (dayIncome > 0) {
                 Text(
                     text = "+$currency${formatAmount(dayIncome)}",
                     style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
-                    color = IncomeGreen
+                    color = MaterialTheme.colorScheme.tertiary
                 )
             }
             if (dayExpense > 0) {
                 Text(
                     text = "-$currency${formatAmount(dayExpense)}",
                     style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
-                    color = ExpenseRed
+                    color = MaterialTheme.colorScheme.error
                 )
             }
             if (dayTransfer > 0) {
                 Text(
                     text = "⇄$currency${formatAmount(dayTransfer)}",
                     style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
-                    color = TransferBlue
+                    color = MaterialTheme.colorScheme.secondary
                 )
             }
         }

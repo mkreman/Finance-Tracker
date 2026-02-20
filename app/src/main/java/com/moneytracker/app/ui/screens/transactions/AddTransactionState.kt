@@ -1,6 +1,7 @@
 package com.moneytracker.app.ui.screens.transactions
 
 import com.moneytracker.app.data.local.database.entities.TransactionType
+import com.moneytracker.app.data.local.database.entities.RecurringUnit
 import com.moneytracker.app.domain.model.Account
 import com.moneytracker.app.domain.model.Category
 
@@ -18,9 +19,15 @@ data class AddTransactionState(
     val categories: List<Category> = emptyList(),
     val isEditMode: Boolean = false,
     val editTransactionId: String? = null,
+    val parentRecurringId: String? = null,
     val isSaving: Boolean = false,
     val errorMessage: String? = null,
-    val isSaved: Boolean = false
+    val isSaved: Boolean = false,
+    val isRecurring: Boolean = false,
+    val recurringInterval: String = "1",
+    val recurringUnit: RecurringUnit = RecurringUnit.MONTH,
+    val recurringEndDate: Long? = null,
+    val notifyForRecurringEntries: Boolean = true
 ) {
     val totalAmount: Double
         get() = amount.toDoubleOrNull() ?: 0.0
@@ -42,7 +49,8 @@ data class AddTransactionState(
                 return splits.all { it.categoryId != null && (it.amount.toDoubleOrNull() ?: 0.0) > 0 }
                         && kotlin.math.abs(remaining) < 0.01
             }
-            return selectedCategoryIds.isNotEmpty()
+            return selectedCategoryIds.isNotEmpty() &&
+                    splits.any { it.categoryId != null && (it.amount.toDoubleOrNull() ?: 0.0) > 0 }
         }
 }
 

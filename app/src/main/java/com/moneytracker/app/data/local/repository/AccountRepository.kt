@@ -9,6 +9,7 @@ import com.moneytracker.app.domain.model.Account
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -57,6 +58,7 @@ class AccountRepository @Inject constructor(
                 id = account.id,
                 name = account.name,
                 type = account.type,
+                customTypeName = account.customTypeName,
                 initialBalance = account.initialBalance,
                 currentBalance = account.currentBalance,
                 currency = account.currency,
@@ -79,6 +81,7 @@ class AccountRepository @Inject constructor(
             existing.copy(
                 name = account.name,
                 type = account.type,
+                customTypeName = account.customTypeName,
                 initialBalance = account.initialBalance,
                 currentBalance = existing.currentBalance + balanceDiff,
                 colorHex = account.colorHex,
@@ -127,10 +130,44 @@ class AccountRepository @Inject constructor(
         accountDao.clearAllAccounts()
     }
 
+    suspend fun seedDefaultAccounts() {
+        val defaultAccounts = listOf(
+            Account(
+                id = UUID.randomUUID().toString(),
+                name = "Wallet",
+                type = AccountType.CASH,
+                initialBalance = 0.0,
+                currentBalance = 0.0,
+                colorHex = "#FF9800",
+                iconKey = "wallet"
+            ),
+            Account(
+                id = UUID.randomUUID().toString(),
+                name = "Bank HDFC",
+                type = AccountType.BANK,
+                initialBalance = 0.0,
+                currentBalance = 0.0,
+                colorHex = "#2196F3",
+                iconKey = "bank"
+            ),
+            Account(
+                id = UUID.randomUUID().toString(),
+                name = "Bank SBI",
+                type = AccountType.BANK,
+                initialBalance = 0.0,
+                currentBalance = 0.0,
+                colorHex = "#4CAF50",
+                iconKey = "bank"
+            )
+        )
+        defaultAccounts.forEach { saveAccount(it) }
+    }
+
     private fun AccountEntity.toDomain() = Account(
         id = id,
         name = name,
         type = type,
+        customTypeName = customTypeName,
         initialBalance = initialBalance,
         currentBalance = currentBalance,
         currency = currency,

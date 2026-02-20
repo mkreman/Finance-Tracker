@@ -4,6 +4,8 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -19,6 +21,20 @@ class UserPreferences @Inject constructor(
         val DEFAULT_ACCOUNT_ID = stringPreferencesKey("default_account_id")
         val CURRENCY_CODE = stringPreferencesKey("currency_code")
         val FIRST_DAY_OF_WEEK = intPreferencesKey("first_day_of_week")
+        val BIOMETRIC_ENABLED = booleanPreferencesKey("biometric_enabled")
+        val PASSCODE = stringPreferencesKey("passcode")
+        val PASSCODE_ENABLED = booleanPreferencesKey("passcode_enabled")
+        val PASSCODE_LOCKOUT_END_TIME = longPreferencesKey("passcode_lockout_end_time")
+        val PASSCODE_LOCKOUT_LEVEL = intPreferencesKey("passcode_lockout_level")
+        val THEME_MODE = intPreferencesKey("theme_mode") // 0=system,1=light,2=dark
+        val EXPANDED_CASH = booleanPreferencesKey("expanded_cash")
+        val EXPANDED_WALLET = booleanPreferencesKey("expanded_wallet")
+        val EXPANDED_BANK = booleanPreferencesKey("expanded_bank")
+        val EXPANDED_INVESTMENT = booleanPreferencesKey("expanded_investment")
+        val EXPANDED_PEOPLE = booleanPreferencesKey("expanded_people")
+        val EXPANDED_CUSTOM = booleanPreferencesKey("expanded_custom")
+        val NOTIFICATION_PROMPTED = booleanPreferencesKey("notification_prompted")
+        val DEFAULT_NOTIFY_FOR_RECURRING_ENTRIES = booleanPreferencesKey("default_notify_for_recurring_entries")
 
         /**
          * Supported currencies with their symbols.
@@ -67,6 +83,72 @@ class UserPreferences @Inject constructor(
         it[FIRST_DAY_OF_WEEK] ?: Calendar.MONDAY
     }
 
+    val biometricEnabled: Flow<Boolean> = dataStore.data.map {
+        it[BIOMETRIC_ENABLED] ?: false
+    }
+
+    val passcode: Flow<String?> = dataStore.data.map {
+        it[PASSCODE]
+    }
+
+    val passcodeEnabled: Flow<Boolean> = dataStore.data.map {
+        it[PASSCODE_ENABLED] ?: false
+    }
+
+    val passcodeLockoutEndTime: Flow<Long> = dataStore.data.map {
+        it[PASSCODE_LOCKOUT_END_TIME] ?: 0L
+    }
+
+    val passcodeLockoutLevel: Flow<Int> = dataStore.data.map {
+        it[PASSCODE_LOCKOUT_LEVEL] ?: 0
+    }
+
+    val themeMode: Flow<Int> = dataStore.data.map {
+        it[THEME_MODE] ?: 0
+    }
+
+    val expandedCash: Flow<Boolean> = dataStore.data.map {
+        it[EXPANDED_CASH] ?: true
+    }
+
+    val expandedWallet: Flow<Boolean> = dataStore.data.map {
+        it[EXPANDED_WALLET] ?: true
+    }
+
+    val expandedBank: Flow<Boolean> = dataStore.data.map {
+        it[EXPANDED_BANK] ?: true
+    }
+
+    val expandedInvestment: Flow<Boolean> = dataStore.data.map {
+        it[EXPANDED_INVESTMENT] ?: true
+    }
+
+    val expandedPeople: Flow<Boolean> = dataStore.data.map {
+        it[EXPANDED_PEOPLE] ?: true
+    }
+
+    val expandedCustom: Flow<Boolean> = dataStore.data.map {
+        it[EXPANDED_CUSTOM] ?: true
+    }
+
+    val notificationPrompted: Flow<Boolean> = dataStore.data.map {
+        it[NOTIFICATION_PROMPTED] ?: false
+    }
+
+    val defaultNotifyForRecurringEntries: Flow<Boolean> = dataStore.data.map {
+        it[DEFAULT_NOTIFY_FOR_RECURRING_ENTRIES] ?: true
+    }
+
+    /**
+     * Return a Flow<Boolean> for a custom type's expanded state.
+     * Key is namespaced by the custom type name to persist per-custom-type state.
+     */
+    fun expandedForCustom(name: String): Flow<Boolean> =
+        dataStore.data.map { prefs ->
+            val key = booleanPreferencesKey("expanded_custom_" + name)
+            prefs[key] ?: true
+        }
+
     suspend fun setDefaultAccountId(accountId: String?) {
         dataStore.edit { prefs ->
             if (accountId != null) {
@@ -86,6 +168,92 @@ class UserPreferences @Inject constructor(
     suspend fun setFirstDayOfWeek(day: Int) {
         dataStore.edit { prefs ->
             prefs[FIRST_DAY_OF_WEEK] = day
+        }
+    }
+
+    suspend fun setBiometricEnabled(enabled: Boolean) {
+        dataStore.edit { prefs ->
+            prefs[BIOMETRIC_ENABLED] = enabled
+        }
+    }
+
+    suspend fun setPasscode(passcodeValue: String?) {
+        dataStore.edit { prefs ->
+            if (passcodeValue != null) prefs[PASSCODE] = passcodeValue else prefs.remove(PASSCODE)
+        }
+    }
+
+    suspend fun setPasscodeEnabled(enabled: Boolean) {
+        dataStore.edit { prefs ->
+            prefs[PASSCODE_ENABLED] = enabled
+            if (!enabled) {
+                prefs.remove(PASSCODE)
+                prefs[PASSCODE_LOCKOUT_END_TIME] = 0L
+                prefs[PASSCODE_LOCKOUT_LEVEL] = 0
+            }
+        }
+    }
+
+    suspend fun setPasscodeLockout(endTimeMillis: Long, level: Int) {
+        dataStore.edit { prefs ->
+            prefs[PASSCODE_LOCKOUT_END_TIME] = endTimeMillis
+            prefs[PASSCODE_LOCKOUT_LEVEL] = level
+        }
+    }
+
+    suspend fun clearPasscodeLockout() {
+        dataStore.edit { prefs ->
+            prefs[PASSCODE_LOCKOUT_END_TIME] = 0L
+            prefs[PASSCODE_LOCKOUT_LEVEL] = 0
+        }
+    }
+
+    suspend fun setThemeMode(mode: Int) {
+        dataStore.edit { prefs ->
+            prefs[THEME_MODE] = mode
+        }
+    }
+
+    suspend fun setExpandedCash(expanded: Boolean) {
+        dataStore.edit { prefs -> prefs[EXPANDED_CASH] = expanded }
+    }
+
+    suspend fun setExpandedWallet(expanded: Boolean) {
+        dataStore.edit { prefs -> prefs[EXPANDED_WALLET] = expanded }
+    }
+
+    suspend fun setExpandedBank(expanded: Boolean) {
+        dataStore.edit { prefs -> prefs[EXPANDED_BANK] = expanded }
+    }
+
+    suspend fun setExpandedInvestment(expanded: Boolean) {
+        dataStore.edit { prefs -> prefs[EXPANDED_INVESTMENT] = expanded }
+    }
+
+    suspend fun setExpandedPeople(expanded: Boolean) {
+        dataStore.edit { prefs -> prefs[EXPANDED_PEOPLE] = expanded }
+    }
+
+    suspend fun setExpandedCustom(expanded: Boolean) {
+        dataStore.edit { prefs -> prefs[EXPANDED_CUSTOM] = expanded }
+    }
+
+    suspend fun setExpandedForCustom(name: String, expanded: Boolean) {
+        dataStore.edit { prefs ->
+            val key = booleanPreferencesKey("expanded_custom_" + name)
+            prefs[key] = expanded
+        }
+    }
+
+    suspend fun setNotificationPrompted(prompted: Boolean) {
+        dataStore.edit { prefs ->
+            prefs[NOTIFICATION_PROMPTED] = prompted
+        }
+    }
+
+    suspend fun setDefaultNotifyForRecurringEntries(enabled: Boolean) {
+        dataStore.edit { prefs ->
+            prefs[DEFAULT_NOTIFY_FOR_RECURRING_ENTRIES] = enabled
         }
     }
 }

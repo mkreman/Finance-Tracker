@@ -28,6 +28,7 @@ object CategoryIcons {
         "work" to Icons.Filled.Work,
         "laptop" to Icons.Filled.Laptop,
         "trending_up" to Icons.Filled.TrendingUp,
+        "trending_down" to Icons.Filled.TrendingDown,
         "card_giftcard" to Icons.Filled.CardGiftcard,
         // Account
         "wallet" to Icons.Filled.AccountBalanceWallet,
@@ -59,6 +60,7 @@ object CategoryIcons {
         "arrow_right" to Icons.Filled.ChevronRight,
         "filter" to Icons.Filled.FilterList,
         "search" to Icons.Filled.Search,
+        "autorenew" to Icons.Filled.Autorenew,
     )
 
     @Composable

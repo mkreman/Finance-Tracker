@@ -26,7 +26,6 @@ import com.moneytracker.app.domain.model.Category
 import com.moneytracker.app.ui.components.CategoryIcons
 import com.moneytracker.app.ui.components.LocalCurrencySymbol
 import com.moneytracker.app.ui.components.parseHexColor
-import com.moneytracker.app.ui.theme.*
 import dagger.hilt.android.lifecycle.HiltViewModel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
@@ -150,16 +149,16 @@ fun AddBudgetScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(DarkBackground)
+            .background(MaterialTheme.colorScheme.background)
     ) {
         TopAppBar(
-            title = { Text(if (state.isEditMode) "Edit Budget" else "Add Budget", color = TextPrimary) },
+            title = { Text(if (state.isEditMode) "Edit Budget" else "Add Budget", color = MaterialTheme.colorScheme.onSurface) },
             navigationIcon = {
                 IconButton(onClick = onNavigateBack) {
-                    Icon(Icons.Filled.ArrowBack, "Back", tint = TextPrimary)
+                    Icon(Icons.Filled.ArrowBack, "Back", tint = MaterialTheme.colorScheme.onSurface)
                 }
             },
-            colors = TopAppBarDefaults.topAppBarColors(containerColor = DarkBackground)
+            colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background)
         )
 
         Column(
@@ -170,18 +169,18 @@ fun AddBudgetScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             // Category Selector
-            Text("Category", style = MaterialTheme.typography.titleMedium, color = TextPrimary)
+            Text("Category", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(12.dp))
-                    .background(CardBackground)
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
                     .then(if (!state.isEditMode) Modifier.clickable { showCategoryPicker = true } else Modifier)
                     .padding(16.dp)
             ) {
                 Text(
                     text = state.selectedCategoryName.ifEmpty { "Select Category" },
-                    color = if (state.selectedCategoryId != null) TextPrimary else TextTertiary,
+                    color = if (state.selectedCategoryId != null) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.outline,
                     style = MaterialTheme.typography.bodyLarge
                 )
             }
@@ -195,13 +194,13 @@ fun AddBudgetScreen(
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedTextColor = TextPrimary,
-                    unfocusedTextColor = TextPrimary,
-                    cursorColor = AccentOrange,
-                    focusedBorderColor = AccentOrange,
-                    unfocusedBorderColor = DividerColor,
-                    focusedLabelColor = AccentOrange,
-                    unfocusedLabelColor = TextSecondary
+                    focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                    unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                    cursorColor = MaterialTheme.colorScheme.primary,
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                    focusedLabelColor = MaterialTheme.colorScheme.primary,
+                    unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
                 ),
                 shape = RoundedCornerShape(12.dp)
             )
@@ -217,9 +216,9 @@ fun AddBudgetScreen(
                         && (state.limitAmount.toDoubleOrNull() ?: 0.0) > 0
                         && !state.isSaving,
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = AccentOrange,
-                    contentColor = Color.White,
-                    disabledContainerColor = AccentOrange.copy(alpha = 0.4f)
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                    disabledContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
                 ),
                 shape = RoundedCornerShape(16.dp)
             ) {
@@ -235,7 +234,7 @@ fun AddBudgetScreen(
     if (showCategoryPicker) {
         AlertDialog(
             onDismissRequest = { showCategoryPicker = false },
-            title = { Text("Select Category", color = TextPrimary) },
+            title = { Text("Select Category", color = MaterialTheme.colorScheme.onSurface) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     state.categories.forEach { category ->
@@ -257,13 +256,13 @@ fun AddBudgetScreen(
                                 modifier = Modifier.size(24.dp)
                             )
                             Spacer(modifier = Modifier.width(12.dp))
-                            Text(category.name, color = TextPrimary)
+                            Text(category.name, color = MaterialTheme.colorScheme.onSurface)
                         }
                     }
                 }
             },
             confirmButton = {},
-            containerColor = DarkSurface,
+            containerColor = MaterialTheme.colorScheme.surface,
             shape = RoundedCornerShape(16.dp)
         )
     }

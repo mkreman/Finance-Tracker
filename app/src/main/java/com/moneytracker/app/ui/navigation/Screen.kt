@@ -1,5 +1,6 @@
 package com.moneytracker.app.ui.navigation
 
+import android.net.Uri
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
@@ -47,11 +48,21 @@ sealed class Screen(
     )
 
     object AddTransaction : Screen(
-        route = "add_transaction?type={type}",
+        route = "add_transaction?type={type}&amount={amount}&note={note}&payee={payee}",
         title = "Add Transaction"
     ) {
-        fun createRoute(type: String? = null): String {
-            return if (type != null) "add_transaction?type=$type" else "add_transaction"
+        fun createRoute(
+            type: String? = null,
+            amount: String? = null,
+            note: String? = null,
+            payee: String? = null
+        ): String {
+            val parts = mutableListOf<String>()
+            if (type != null) parts.add("type=${Uri.encode(type)}")
+            if (amount != null) parts.add("amount=${Uri.encode(amount)}")
+            if (note != null) parts.add("note=${Uri.encode(note)}")
+            if (payee != null) parts.add("payee=${Uri.encode(payee)}")
+            return if (parts.isEmpty()) "add_transaction" else "add_transaction?${parts.joinToString("&")}" 
         }
     }
 

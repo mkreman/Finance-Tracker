@@ -8,6 +8,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -22,6 +23,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -32,7 +34,6 @@ import com.moneytracker.app.domain.model.Account
 import com.moneytracker.app.ui.components.CategoryIcons
 import com.moneytracker.app.ui.components.LocalCurrencySymbol
 import com.moneytracker.app.ui.components.parseHexColor
-import com.moneytracker.app.ui.theme.*
 import dagger.hilt.android.lifecycle.HiltViewModel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
@@ -49,6 +50,7 @@ import javax.inject.Inject
 data class AddAccountState(
     val name: String = "",
     val type: AccountType = AccountType.BANK,
+    val customTypeName: String = "",
     val initialBalance: String = "0",
     val colorHex: String = "#2196F3",
     val iconKey: String = "bank",
@@ -82,6 +84,7 @@ class AddAccountViewModel @Inject constructor(
                 it.copy(
                     name = account.name,
                     type = account.type,
+                    customTypeName = account.customTypeName ?: "",
                     initialBalance = account.initialBalance.toLong().toString(),
                     colorHex = account.colorHex,
                     iconKey = account.iconKey,
@@ -100,6 +103,10 @@ class AddAccountViewModel @Inject constructor(
         _state.update { it.copy(type = type) }
     }
 
+    fun onCustomTypeNameChange(name: String) {
+        _state.update { it.copy(customTypeName = name) }
+    }
+
     fun onBalanceChange(balance: String) {
         _state.update { it.copy(initialBalance = balance) }
     }
@@ -115,6 +122,7 @@ class AddAccountViewModel @Inject constructor(
     fun save() {
         val current = _state.value
         if (current.name.isBlank()) return
+        if (current.type == AccountType.CUSTOM && current.customTypeName.isBlank()) return
 
         viewModelScope.launch {
             _state.update { it.copy(isSaving = true) }
@@ -126,6 +134,7 @@ class AddAccountViewModel @Inject constructor(
                         id = current.editAccountId,
                         name = current.name,
                         type = current.type,
+                        customTypeName = if (current.type == AccountType.CUSTOM) current.customTypeName else null,
                         initialBalance = balance,
                         currentBalance = balance,
                         colorHex = current.colorHex,
@@ -138,6 +147,7 @@ class AddAccountViewModel @Inject constructor(
                         id = UUID.randomUUID().toString(),
                         name = current.name,
                         type = current.type,
+                        customTypeName = if (current.type == AccountType.CUSTOM) current.customTypeName else null,
                         initialBalance = balance,
                         currentBalance = balance,
                         colorHex = current.colorHex,
@@ -158,6 +168,7 @@ fun AddAccountScreen(
 ) {
     val state by viewModel.state.collectAsState()
     val focusRequester = remember { FocusRequester() }
+    val focusManager = LocalFocusManager.current
 
     LaunchedEffect(state.isSaved) {
         if (state.isSaved) onNavigateBack()
@@ -169,33 +180,33 @@ fun AddAccountScreen(
 
     val colors = listOf("#FF5722", "#2196F3", "#4CAF50", "#FF9800", "#9C27B0", "#E91E63", "#607D8B", "#795548")
     val textFieldColors = OutlinedTextFieldDefaults.colors(
-        focusedTextColor = TextPrimary,
-        unfocusedTextColor = TextPrimary,
-        cursorColor = AccentOrange,
-        focusedBorderColor = AccentOrange,
-        unfocusedBorderColor = DividerColor,
-        focusedLabelColor = AccentOrange,
-        unfocusedLabelColor = TextSecondary
+        focusedTextColor = MaterialTheme.colorScheme.onSurface,
+        unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+        cursorColor = MaterialTheme.colorScheme.primary,
+        focusedBorderColor = MaterialTheme.colorScheme.primary,
+        unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+        focusedLabelColor = MaterialTheme.colorScheme.primary,
+        unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
     )
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(DarkBackground)
+            .background(MaterialTheme.colorScheme.background)
     ) {
         TopAppBar(
             title = {
                 Text(
                     if (state.isEditMode) "Edit Account" else "Add Account",
-                    color = TextPrimary
+                    color = MaterialTheme.colorScheme.onSurface
                 )
             },
             navigationIcon = {
                 IconButton(onClick = onNavigateBack) {
-                    Icon(Icons.Filled.ArrowBack, "Back", tint = TextPrimary)
+                    Icon(Icons.Filled.ArrowBack, "Back", tint = MaterialTheme.colorScheme.onSurface)
                 }
             },
-            colors = TopAppBarDefaults.topAppBarColors(containerColor = DarkBackground)
+            colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background)
         )
 
         Column(
@@ -218,29 +229,98 @@ fun AddAccountScreen(
             )
 
             // Account Type
-            Text("Account Type", style = MaterialTheme.typography.titleMedium, color = TextPrimary)
+            Text("Account Type", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
+            
+            // Single-line horizontal list of account types (exclude CASH)
+            val accountTypes = AccountType.values().filterNot { it == AccountType.CASH }
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                AccountType.values().forEach { type ->
+                accountTypes.forEach { type ->
                     val isSelected = type == state.type
-                    Box(
+                    Column(
                         modifier = Modifier
-                            .weight(1f)
+                            .width(96.dp)
                             .clip(RoundedCornerShape(12.dp))
-                            .background(if (isSelected) AccentOrange.copy(alpha = 0.2f) else CardBackground)
-                            .clickable { viewModel.onTypeChange(type) }
+                            .background(
+                                if (isSelected) MaterialTheme.colorScheme.primaryContainer
+                                else MaterialTheme.colorScheme.surfaceVariant
+                            )
+                            .then(
+                                if (isSelected) {
+                                    Modifier.border(
+                                        width = 1.dp,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        shape = RoundedCornerShape(12.dp)
+                                    )
+                                } else {
+                                    Modifier
+                                }
+                            )
+                            .clickable {
+                                focusManager.clearFocus()
+                                viewModel.onTypeChange(type)
+                            }
                             .padding(12.dp),
-                        contentAlignment = Alignment.Center
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
+                        Icon(
+                            imageVector = CategoryIcons.getIcon(
+                                when (type) {
+                                    AccountType.WALLET -> "wallet"
+                                    AccountType.BANK -> "bank"
+                                    AccountType.INVESTMENT -> "trending_up"
+                                    AccountType.PEOPLE -> "person"
+                                    AccountType.CUSTOM -> "add"
+                                    else -> "bank"
+                                }
+                            ),
+                            contentDescription = type.name,
+                            tint = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(28.dp)
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
                         Text(
-                            text = type.name,
-                            color = if (isSelected) AccentOrange else TextSecondary,
-                            style = MaterialTheme.typography.labelMedium
+                            text = type.name.lowercase().replaceFirstChar { it.uppercase() },
+                            color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
+                            ),
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
                         )
                     }
                 }
+            }
+
+            TextButton(
+                onClick = {
+                    focusManager.clearFocus()
+                    viewModel.onTypeChange(AccountType.CUSTOM)
+                },
+                contentPadding = PaddingValues(horizontal = 0.dp)
+            ) {
+                Text(
+                    text = "+ Add custom account type",
+                    color = MaterialTheme.colorScheme.primary,
+                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium)
+                )
+            }
+
+            // Custom Type Name Field (shown only when CUSTOM is selected)
+            if (state.type == AccountType.CUSTOM) {
+                OutlinedTextField(
+                    value = state.customTypeName,
+                    onValueChange = viewModel::onCustomTypeNameChange,
+                    label = { Text("Custom Type Name") },
+                    placeholder = { Text("e.g., Savings, Credit Card") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    colors = textFieldColors,
+                    shape = RoundedCornerShape(12.dp)
+                )
             }
 
             OutlinedTextField(
@@ -255,7 +335,7 @@ fun AddAccountScreen(
             )
 
             // Icon Picker
-            Text("Icon", style = MaterialTheme.typography.titleMedium, color = TextPrimary)
+            Text("Icon", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
             LazyVerticalGrid(
                 columns = GridCells.Fixed(5),
                 modifier = Modifier
@@ -271,18 +351,21 @@ fun AddAccountScreen(
                         modifier = Modifier
                             .size(52.dp)
                             .clip(RoundedCornerShape(12.dp))
-                            .background(if (isSelected) selectedColor.copy(alpha = 0.2f) else CardBackground)
+                            .background(if (isSelected) selectedColor.copy(alpha = 0.2f) else MaterialTheme.colorScheme.surfaceVariant)
                             .then(
                                 if (isSelected) Modifier.border(2.dp, selectedColor, RoundedCornerShape(12.dp))
                                 else Modifier
                             )
-                            .clickable { viewModel.onIconChange(iconKey) },
+                            .clickable {
+                                focusManager.clearFocus()
+                                viewModel.onIconChange(iconKey)
+                            },
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = CategoryIcons.getIcon(iconKey),
                             contentDescription = iconKey,
-                            tint = if (isSelected) selectedColor else TextSecondary,
+                            tint = if (isSelected) selectedColor else MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(24.dp)
                         )
                     }
@@ -290,7 +373,7 @@ fun AddAccountScreen(
             }
 
             // Color Picker
-            Text("Color", style = MaterialTheme.typography.titleMedium, color = TextPrimary)
+            Text("Color", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -303,7 +386,10 @@ fun AddAccountScreen(
                             .size(40.dp)
                             .clip(RoundedCornerShape(10.dp))
                             .background(color)
-                            .clickable { viewModel.onColorChange(hex) },
+                            .clickable {
+                                focusManager.clearFocus()
+                                viewModel.onColorChange(hex)
+                            },
                         contentAlignment = Alignment.Center
                     ) {
                         if (isSelected) {
@@ -327,9 +413,9 @@ fun AddAccountScreen(
                     .height(52.dp),
                 enabled = state.name.isNotBlank() && !state.isSaving,
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = AccentOrange,
-                    contentColor = Color.White,
-                    disabledContainerColor = AccentOrange.copy(alpha = 0.4f)
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                    disabledContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
                 ),
                 shape = RoundedCornerShape(16.dp)
             ) {
