@@ -1,0 +1,114 @@
+package com.moneytracker.app.ui.navigation
+
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
+import androidx.compose.ui.graphics.vector.ImageVector
+
+sealed class Screen(
+    val route: String,
+    val title: String,
+    val selectedIcon: ImageVector? = null,
+    val unselectedIcon: ImageVector? = null
+) {
+    object Dashboard : Screen(
+        route = "dashboard",
+        title = "Dashboard",
+        selectedIcon = Icons.Filled.Dashboard,
+        unselectedIcon = Icons.Outlined.Dashboard
+    )
+
+    object Transactions : Screen(
+        route = "transactions",
+        title = "Transactions",
+        selectedIcon = Icons.Filled.Receipt,
+        unselectedIcon = Icons.Outlined.Receipt
+    )
+
+    object Accounts : Screen(
+        route = "accounts",
+        title = "Accounts",
+        selectedIcon = Icons.Filled.AccountBalance,
+        unselectedIcon = Icons.Outlined.AccountBalance
+    )
+
+    object Budget : Screen(
+        route = "budget",
+        title = "Budget",
+        selectedIcon = Icons.Filled.PieChart,
+        unselectedIcon = Icons.Outlined.PieChart
+    )
+
+    object Settings : Screen(
+        route = "settings",
+        title = "Settings",
+        selectedIcon = Icons.Filled.Settings,
+        unselectedIcon = Icons.Outlined.Settings
+    )
+
+    object AddTransaction : Screen(
+        route = "add_transaction?type={type}",
+        title = "Add Transaction"
+    ) {
+        fun createRoute(type: String? = null): String {
+            return if (type != null) "add_transaction?type=$type" else "add_transaction"
+        }
+    }
+
+    object AddAccount : Screen(
+        route = "add_account",
+        title = "Add Account"
+    )
+
+    object AddBudget : Screen(
+        route = "add_budget",
+        title = "Add Budget"
+    )
+
+    object EditBudget : Screen(
+        route = "edit_budget/{budgetId}/{categoryId}/{categoryName}/{limitAmount}",
+        title = "Edit Budget"
+    ) {
+        fun createRoute(budgetId: String, categoryId: String, categoryName: String, limitAmount: Double) =
+            "edit_budget/$budgetId/$categoryId/$categoryName/$limitAmount"
+    }
+
+    object EditAccount : Screen(
+        route = "edit_account/{accountId}",
+        title = "Edit Account"
+    ) {
+        fun createRoute(accountId: String) = "edit_account/$accountId"
+    }
+
+    object AccountTransactions : Screen(
+        route = "account_transactions/{accountId}/{accountName}",
+        title = "Account Transactions"
+    ) {
+        fun createRoute(accountId: String, accountName: String) = "account_transactions/$accountId/$accountName"
+    }
+
+    object EditTransaction : Screen(
+        route = "edit_transaction/{transactionId}",
+        title = "Edit Transaction"
+    ) {
+        fun createRoute(transactionId: String) = "edit_transaction/$transactionId"
+    }
+
+    object CategoryTransactions : Screen(
+        route = "category_transactions/{categoryId}/{categoryName}/{type}",
+        title = "Category Transactions"
+    ) {
+        fun createRoute(categoryId: String, categoryName: String, type: String) = "category_transactions/$categoryId/$categoryName/$type"
+    }
+
+    object BudgetTransactions : Screen(
+        route = "budget_transactions/{categoryId}/{categoryName}",
+        title = "Budget Transactions"
+    ) {
+        fun createRoute(categoryId: String, categoryName: String) = "budget_transactions/$categoryId/$categoryName"
+    }
+
+    companion object {
+        val bottomNavItems = listOf(Dashboard, Transactions, Accounts, Budget, Settings)
+    }
+}

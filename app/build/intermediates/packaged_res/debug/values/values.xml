@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="ic_launcher_background">#1E1E1E</color>
+    <string name="app_name">Finance Tracker</string>
+    <string name="widget_description">Quick access to add expenses, income and transfers</string>
+    <style name="Theme.MoneyTracker" parent="android:Theme.Material.NoActionBar">
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowBackground">#FF1E1E1E</item>
+    </style>
+</resources>

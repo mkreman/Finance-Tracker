@@ -1,0 +1,440 @@
+1<?xml version="1.0" encoding="utf-8"?>
+2<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+3    package="com.moneytracker.app"
+4    android:versionCode="7"
+5    android:versionName="0.5.2" >
+6
+7    <uses-sdk
+8        android:minSdkVersion="26"
+9        android:targetSdkVersion="34" />
+10
+11    <uses-permission android:name="android.permission.INTERNET" />
+11-->/mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:5:5-67
+11-->/mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:5:22-64
+12    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+12-->/mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:6:5-79
+12-->/mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:6:22-76
+13    <uses-permission android:name="android.permission.USE_BIOMETRIC" />
+13-->/mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:7:5-72
+13-->/mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:7:22-69
+14    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+14-->/mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:8:5-81
+14-->/mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:8:22-78
+15    <!-- suppress DeprecatedClassUsageInspection -->
+16    <uses-permission android:name="android.permission.USE_FINGERPRINT" />
+16-->[androidx.biometric:biometric:1.1.0] /home/nama616/.gradle/caches/transforms-3/68e9a1f8ea139143627e69952c6a8422/transformed/biometric-1.1.0/AndroidManifest.xml:27:5-74
+16-->[androidx.biometric:biometric:1.1.0] /home/nama616/.gradle/caches/transforms-3/68e9a1f8ea139143627e69952c6a8422/transformed/biometric-1.1.0/AndroidManifest.xml:27:22-71
+17    <uses-permission android:name="android.permission.WAKE_LOCK" />
+17-->[androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:23:5-68
+17-->[androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:23:22-65
+18    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+18-->[androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:26:5-77
+18-->[androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:26:22-74
+19
+20    <permission
+20-->[androidx.core:core:1.12.0] /home/nama616/.gradle/caches/transforms-3/e1b2ee99c9859ef10a1634cbf44c3814/transformed/core-1.12.0/AndroidManifest.xml:22:5-24:47
+21        android:name="com.moneytracker.app.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
+21-->[androidx.core:core:1.12.0] /home/nama616/.gradle/caches/transforms-3/e1b2ee99c9859ef10a1634cbf44c3814/transformed/core-1.12.0/AndroidManifest.xml:23:9-81
+22        android:protectionLevel="signature" />
+22-->[androidx.core:core:1.12.0] /home/nama616/.gradle/caches/transforms-3/e1b2ee99c9859ef10a1634cbf44c3814/transformed/core-1.12.0/AndroidManifest.xml:24:9-44
+23
+24    <uses-permission android:name="com.moneytracker.app.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" />
+24-->[androidx.core:core:1.12.0] /home/nama616/.gradle/caches/transforms-3/e1b2ee99c9859ef10a1634cbf44c3814/transformed/core-1.12.0/AndroidManifest.xml:26:5-97
+24-->[androidx.core:core:1.12.0] /home/nama616/.gradle/caches/transforms-3/e1b2ee99c9859ef10a1634cbf44c3814/transformed/core-1.12.0/AndroidManifest.xml:26:22-94
+25
+26    <application
+26-->/mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:10:5-52:19
+27        android:name="com.moneytracker.app.MoneyTrackerApp"
+27-->/mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:11:9-40
+28        android:allowBackup="true"
+28-->/mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:12:9-35
+29        android:appComponentFactory="androidx.core.app.CoreComponentFactory"
+29-->[androidx.core:core:1.12.0] /home/nama616/.gradle/caches/transforms-3/e1b2ee99c9859ef10a1634cbf44c3814/transformed/core-1.12.0/AndroidManifest.xml:28:18-86
+30        android:debuggable="true"
+31        android:extractNativeLibs="false"
+32        android:icon="@mipmap/ic_launcher"
+32-->/mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:13:9-43
+33        android:label="@string/app_name"
+33-->/mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:14:9-41
+34        android:roundIcon="@mipmap/ic_launcher_round"
+34-->/mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:15:9-54
+35        android:supportsRtl="true"
+35-->/mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:16:9-35
+36        android:theme="@style/Theme.MoneyTracker" >
+36-->/mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:17:9-50
+37        <activity
+37-->/mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:20:9-28:20
+38            android:name="com.moneytracker.app.MainActivity"
+38-->/mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:21:13-41
+39            android:exported="true"
+39-->/mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:22:13-36
+40            android:theme="@style/Theme.MoneyTracker" >
+40-->/mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:23:13-54
+41            <intent-filter>
+41-->/mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:24:13-27:29
+42                <action android:name="android.intent.action.MAIN" />
+42-->/mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:25:17-69
+42-->/mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:25:25-66
+43
+44                <category android:name="android.intent.category.LAUNCHER" />
+44-->/mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:26:17-77
+44-->/mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:26:27-74
+45            </intent-filter>
+46        </activity>
+47
+48        <provider
+49            android:name="androidx.startup.InitializationProvider"
+49-->/mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:31:13-67
+50            android:authorities="com.moneytracker.app.androidx-startup"
+50-->/mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:32:13-68
+51            android:exported="false" >
+51-->/mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:33:13-37
+52            <meta-data
+52-->[androidx.emoji2:emoji2:1.3.0] /home/nama616/.gradle/caches/transforms-3/b724606b85cc4228f65df8d08255b5b3/transformed/emoji2-1.3.0/AndroidManifest.xml:29:13-31:52
+53                android:name="androidx.emoji2.text.EmojiCompatInitializer"
+53-->[androidx.emoji2:emoji2:1.3.0] /home/nama616/.gradle/caches/transforms-3/b724606b85cc4228f65df8d08255b5b3/transformed/emoji2-1.3.0/AndroidManifest.xml:30:17-75
+54                android:value="androidx.startup" />
+54-->[androidx.emoji2:emoji2:1.3.0] /home/nama616/.gradle/caches/transforms-3/b724606b85cc4228f65df8d08255b5b3/transformed/emoji2-1.3.0/AndroidManifest.xml:31:17-49
+55            <meta-data
+55-->[androidx.lifecycle:lifecycle-process:2.7.0] /home/nama616/.gradle/caches/transforms-3/fe4b9b4dd215a4f324c26eb10f2060ba/transformed/lifecycle-process-2.7.0/AndroidManifest.xml:29:13-31:52
+56                android:name="androidx.lifecycle.ProcessLifecycleInitializer"
+56-->[androidx.lifecycle:lifecycle-process:2.7.0] /home/nama616/.gradle/caches/transforms-3/fe4b9b4dd215a4f324c26eb10f2060ba/transformed/lifecycle-process-2.7.0/AndroidManifest.xml:30:17-78
+57                android:value="androidx.startup" />
+57-->[androidx.lifecycle:lifecycle-process:2.7.0] /home/nama616/.gradle/caches/transforms-3/fe4b9b4dd215a4f324c26eb10f2060ba/transformed/lifecycle-process-2.7.0/AndroidManifest.xml:31:17-49
+58            <meta-data
+58-->[androidx.profileinstaller:profileinstaller:1.3.0] /home/nama616/.gradle/caches/transforms-3/f4c9496896eb9ef814506acf9c23f953/transformed/profileinstaller-1.3.0/AndroidManifest.xml:29:13-31:52
+59                android:name="androidx.profileinstaller.ProfileInstallerInitializer"
+59-->[androidx.profileinstaller:profileinstaller:1.3.0] /home/nama616/.gradle/caches/transforms-3/f4c9496896eb9ef814506acf9c23f953/transformed/profileinstaller-1.3.0/AndroidManifest.xml:30:17-85
+60                android:value="androidx.startup" />
+60-->[androidx.profileinstaller:profileinstaller:1.3.0] /home/nama616/.gradle/caches/transforms-3/f4c9496896eb9ef814506acf9c23f953/transformed/profileinstaller-1.3.0/AndroidManifest.xml:31:17-49
+61        </provider>
+62
+63        <receiver
+63-->/mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:41:9-50:20
+64            android:name="com.moneytracker.app.widget.MoneyTrackerWidgetReceiver"
+64-->/mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:42:13-62
+65            android:exported="true" >
+65-->/mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:43:13-36
+66            <intent-filter>
+66-->/mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:44:13-46:29
+67                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+67-->/mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:45:17-84
+67-->/mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:45:25-81
+68            </intent-filter>
+69
+70            <meta-data
+70-->/mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:47:13-49:58
+71                android:name="android.appwidget.provider"
+71-->/mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:48:17-58
+72                android:resource="@xml/appwidget_info" />
+72-->/mnt/c/Users/NaMa616/Documents/Finance_Tracker/app/src/main/AndroidManifest.xml:49:17-55
+73        </receiver>
+74
+75        <activity
+75-->[androidx.glance:glance-appwidget:1.0.0] /home/nama616/.gradle/caches/transforms-3/710c5950a31db90bd15911806851b5e1/transformed/glance-appwidget-1.0.0/AndroidManifest.xml:23:9-27:40
+76            android:name="androidx.glance.appwidget.action.ActionTrampolineActivity"
+76-->[androidx.glance:glance-appwidget:1.0.0] /home/nama616/.gradle/caches/transforms-3/710c5950a31db90bd15911806851b5e1/transformed/glance-appwidget-1.0.0/AndroidManifest.xml:24:13-85
+77            android:enabled="true"
+77-->[androidx.glance:glance-appwidget:1.0.0] /home/nama616/.gradle/caches/transforms-3/710c5950a31db90bd15911806851b5e1/transformed/glance-appwidget-1.0.0/AndroidManifest.xml:25:13-35
+78            android:excludeFromRecents="true"
+78-->[androidx.glance:glance-appwidget:1.0.0] /home/nama616/.gradle/caches/transforms-3/710c5950a31db90bd15911806851b5e1/transformed/glance-appwidget-1.0.0/AndroidManifest.xml:26:13-46
+79            android:exported="false" />
+79-->[androidx.glance:glance-appwidget:1.0.0] /home/nama616/.gradle/caches/transforms-3/710c5950a31db90bd15911806851b5e1/transformed/glance-appwidget-1.0.0/AndroidManifest.xml:27:13-37
+80        <activity
+80-->[androidx.glance:glance-appwidget:1.0.0] /home/nama616/.gradle/caches/transforms-3/710c5950a31db90bd15911806851b5e1/transformed/glance-appwidget-1.0.0/AndroidManifest.xml:28:9-35:81
+81            android:name="androidx.glance.appwidget.action.InvisibleActionTrampolineActivity"
+81-->[androidx.glance:glance-appwidget:1.0.0] /home/nama616/.gradle/caches/transforms-3/710c5950a31db90bd15911806851b5e1/transformed/glance-appwidget-1.0.0/AndroidManifest.xml:29:13-94
+82            android:enabled="true"
+82-->[androidx.glance:glance-appwidget:1.0.0] /home/nama616/.gradle/caches/transforms-3/710c5950a31db90bd15911806851b5e1/transformed/glance-appwidget-1.0.0/AndroidManifest.xml:30:13-35
+83            android:exported="false"
+83-->[androidx.glance:glance-appwidget:1.0.0] /home/nama616/.gradle/caches/transforms-3/710c5950a31db90bd15911806851b5e1/transformed/glance-appwidget-1.0.0/AndroidManifest.xml:31:13-37
+84            android:launchMode="singleInstance"
+84-->[androidx.glance:glance-appwidget:1.0.0] /home/nama616/.gradle/caches/transforms-3/710c5950a31db90bd15911806851b5e1/transformed/glance-appwidget-1.0.0/AndroidManifest.xml:32:13-48
+85            android:noHistory="true"
+85-->[androidx.glance:glance-appwidget:1.0.0] /home/nama616/.gradle/caches/transforms-3/710c5950a31db90bd15911806851b5e1/transformed/glance-appwidget-1.0.0/AndroidManifest.xml:33:13-37
+86            android:taskAffinity="androidx.glance.appwidget.ListAdapterCallbackTrampoline"
+86-->[androidx.glance:glance-appwidget:1.0.0] /home/nama616/.gradle/caches/transforms-3/710c5950a31db90bd15911806851b5e1/transformed/glance-appwidget-1.0.0/AndroidManifest.xml:34:13-91
+87            android:theme="@style/Widget.Glance.AppWidget.CallbackTrampoline" />
+87-->[androidx.glance:glance-appwidget:1.0.0] /home/nama616/.gradle/caches/transforms-3/710c5950a31db90bd15911806851b5e1/transformed/glance-appwidget-1.0.0/AndroidManifest.xml:35:13-78
+88
+89        <receiver
+89-->[androidx.glance:glance-appwidget:1.0.0] /home/nama616/.gradle/caches/transforms-3/710c5950a31db90bd15911806851b5e1/transformed/glance-appwidget-1.0.0/AndroidManifest.xml:37:9-40:40
+90            android:name="androidx.glance.appwidget.action.ActionCallbackBroadcastReceiver"
+90-->[androidx.glance:glance-appwidget:1.0.0] /home/nama616/.gradle/caches/transforms-3/710c5950a31db90bd15911806851b5e1/transformed/glance-appwidget-1.0.0/AndroidManifest.xml:38:13-92
+91            android:enabled="true"
+91-->[androidx.glance:glance-appwidget:1.0.0] /home/nama616/.gradle/caches/transforms-3/710c5950a31db90bd15911806851b5e1/transformed/glance-appwidget-1.0.0/AndroidManifest.xml:39:13-35
+92            android:exported="false" />
+92-->[androidx.glance:glance-appwidget:1.0.0] /home/nama616/.gradle/caches/transforms-3/710c5950a31db90bd15911806851b5e1/transformed/glance-appwidget-1.0.0/AndroidManifest.xml:40:13-37
+93        <receiver
+93-->[androidx.glance:glance-appwidget:1.0.0] /home/nama616/.gradle/caches/transforms-3/710c5950a31db90bd15911806851b5e1/transformed/glance-appwidget-1.0.0/AndroidManifest.xml:41:9-48:20
+94            android:name="androidx.glance.appwidget.MyPackageReplacedReceiver"
+94-->[androidx.glance:glance-appwidget:1.0.0] /home/nama616/.gradle/caches/transforms-3/710c5950a31db90bd15911806851b5e1/transformed/glance-appwidget-1.0.0/AndroidManifest.xml:42:13-79
+95            android:enabled="true"
+95-->[androidx.glance:glance-appwidget:1.0.0] /home/nama616/.gradle/caches/transforms-3/710c5950a31db90bd15911806851b5e1/transformed/glance-appwidget-1.0.0/AndroidManifest.xml:43:13-35
+96            android:exported="false" >
+96-->[androidx.glance:glance-appwidget:1.0.0] /home/nama616/.gradle/caches/transforms-3/710c5950a31db90bd15911806851b5e1/transformed/glance-appwidget-1.0.0/AndroidManifest.xml:44:13-37
+97            <intent-filter>
+97-->[androidx.glance:glance-appwidget:1.0.0] /home/nama616/.gradle/caches/transforms-3/710c5950a31db90bd15911806851b5e1/transformed/glance-appwidget-1.0.0/AndroidManifest.xml:45:13-47:29
+98                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+98-->[androidx.glance:glance-appwidget:1.0.0] /home/nama616/.gradle/caches/transforms-3/710c5950a31db90bd15911806851b5e1/transformed/glance-appwidget-1.0.0/AndroidManifest.xml:46:17-84
+98-->[androidx.glance:glance-appwidget:1.0.0] /home/nama616/.gradle/caches/transforms-3/710c5950a31db90bd15911806851b5e1/transformed/glance-appwidget-1.0.0/AndroidManifest.xml:46:25-81
+99            </intent-filter>
+100        </receiver>
+101
+102        <service
+102-->[androidx.glance:glance-appwidget:1.0.0] /home/nama616/.gradle/caches/transforms-3/710c5950a31db90bd15911806851b5e1/transformed/glance-appwidget-1.0.0/AndroidManifest.xml:50:9-53:72
+103            android:name="androidx.glance.appwidget.GlanceRemoteViewsService"
+103-->[androidx.glance:glance-appwidget:1.0.0] /home/nama616/.gradle/caches/transforms-3/710c5950a31db90bd15911806851b5e1/transformed/glance-appwidget-1.0.0/AndroidManifest.xml:51:13-78
+104            android:exported="true"
+104-->[androidx.glance:glance-appwidget:1.0.0] /home/nama616/.gradle/caches/transforms-3/710c5950a31db90bd15911806851b5e1/transformed/glance-appwidget-1.0.0/AndroidManifest.xml:52:13-36
+105            android:permission="android.permission.BIND_REMOTEVIEWS" />
+105-->[androidx.glance:glance-appwidget:1.0.0] /home/nama616/.gradle/caches/transforms-3/710c5950a31db90bd15911806851b5e1/transformed/glance-appwidget-1.0.0/AndroidManifest.xml:53:13-69
+106        <service
+106-->[androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:39:9-45:35
+107            android:name="androidx.work.impl.background.systemalarm.SystemAlarmService"
+107-->[androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:40:13-88
+108            android:directBootAware="false"
+108-->[androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:41:13-44
+109            android:enabled="@bool/enable_system_alarm_service_default"
+109-->[androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:42:13-72
+110            android:exported="false" />
+110-->[androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:43:13-37
+111        <service
+111-->[androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:46:9-52:35
+112            android:name="androidx.work.impl.background.systemjob.SystemJobService"
+112-->[androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:47:13-84
+113            android:directBootAware="false"
+113-->[androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:48:13-44
+114            android:enabled="@bool/enable_system_job_service_default"
+114-->[androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:49:13-70
+115            android:exported="true"
+115-->[androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:50:13-36
+116            android:permission="android.permission.BIND_JOB_SERVICE" />
+116-->[androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:51:13-69
+117        <service
+117-->[androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:53:9-59:35
+118            android:name="androidx.work.impl.foreground.SystemForegroundService"
+118-->[androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:54:13-81
+119            android:directBootAware="false"
+119-->[androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:55:13-44
+120            android:enabled="@bool/enable_system_foreground_service_default"
+120-->[androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:56:13-77
+121            android:exported="false" />
+121-->[androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:57:13-37
+122
+123        <receiver
+123-->[androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:61:9-66:35
+124            android:name="androidx.work.impl.utils.ForceStopRunnable$BroadcastReceiver"
+124-->[androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:62:13-88
+125            android:directBootAware="false"
+125-->[androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:63:13-44
+126            android:enabled="true"
+126-->[androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:64:13-35
+127            android:exported="false" />
+127-->[androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:65:13-37
+128        <receiver
+128-->[androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:67:9-77:20
+129            android:name="androidx.work.impl.background.systemalarm.ConstraintProxy$BatteryChargingProxy"
+129-->[androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:68:13-106
+130            android:directBootAware="false"
+130-->[androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:69:13-44
+131            android:enabled="false"
+131-->[androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:70:13-36
+132            android:exported="false" >
+132-->[androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:71:13-37
+133            <intent-filter>
+133-->[androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:73:13-76:29
+134                <action android:name="android.intent.action.ACTION_POWER_CONNECTED" />
+134-->[androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:74:17-87
+134-->[androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:74:25-84
+135                <action android:name="android.intent.action.ACTION_POWER_DISCONNECTED" />
+135-->[androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:75:17-90
+135-->[androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:75:25-87
+136            </intent-filter>
+137        </receiver>
+138        <receiver
+138-->[androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:78:9-88:20
+139            android:name="androidx.work.impl.background.systemalarm.ConstraintProxy$BatteryNotLowProxy"
+139-->[androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:79:13-104
+140            android:directBootAware="false"
+140-->[androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:80:13-44
+141            android:enabled="false"
+141-->[androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:81:13-36
+142            android:exported="false" >
+142-->[androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:82:13-37
+143            <intent-filter>
+143-->[androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:84:13-87:29
+144                <action android:name="android.intent.action.BATTERY_OKAY" />
+144-->[androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:85:17-77
+144-->[androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:85:25-74
+145                <action android:name="android.intent.action.BATTERY_LOW" />
+145-->[androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:86:17-76
+145-->[androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:86:25-73
+146            </intent-filter>
+147        </receiver>
+148        <receiver
+148-->[androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:89:9-99:20
+149            android:name="androidx.work.impl.background.systemalarm.ConstraintProxy$StorageNotLowProxy"
+149-->[androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:90:13-104
+150            android:directBootAware="false"
+150-->[androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:91:13-44
+151            android:enabled="false"
+151-->[androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:92:13-36
+152            android:exported="false" >
+152-->[androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:93:13-37
+153            <intent-filter>
+153-->[androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:95:13-98:29
+154                <action android:name="android.intent.action.DEVICE_STORAGE_LOW" />
+154-->[androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:96:17-83
+154-->[androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:96:25-80
+155                <action android:name="android.intent.action.DEVICE_STORAGE_OK" />
+155-->[androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:97:17-82
+155-->[androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:97:25-79
+156            </intent-filter>
+157        </receiver>
+158        <receiver
+158-->[androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:100:9-109:20
+159            android:name="androidx.work.impl.background.systemalarm.ConstraintProxy$NetworkStateProxy"
+159-->[androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:101:13-103
+160            android:directBootAware="false"
+160-->[androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:102:13-44
+161            android:enabled="false"
+161-->[androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:103:13-36
+162            android:exported="false" >
+162-->[androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:104:13-37
+163            <intent-filter>
+163-->[androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:106:13-108:29
+164                <action android:name="android.net.conn.CONNECTIVITY_CHANGE" />
+164-->[androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:107:17-79
+164-->[androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:107:25-76
+165            </intent-filter>
+166        </receiver>
+167        <receiver
+167-->[androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:110:9-121:20
+168            android:name="androidx.work.impl.background.systemalarm.RescheduleReceiver"
+168-->[androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:111:13-88
+169            android:directBootAware="false"
+169-->[androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:112:13-44
+170            android:enabled="false"
+170-->[androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:113:13-36
+171            android:exported="false" >
+171-->[androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:114:13-37
+172            <intent-filter>
+172-->[androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:116:13-120:29
+173                <action android:name="android.intent.action.BOOT_COMPLETED" />
+173-->[androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:117:17-79
+173-->[androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:117:25-76
+174                <action android:name="android.intent.action.TIME_SET" />
+174-->[androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:118:17-73
+174-->[androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:118:25-70
+175                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+175-->[androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:119:17-81
+175-->[androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:119:25-78
+176            </intent-filter>
+177        </receiver>
+178        <receiver
+178-->[androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:122:9-131:20
+179            android:name="androidx.work.impl.background.systemalarm.ConstraintProxyUpdateReceiver"
+179-->[androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:123:13-99
+180            android:directBootAware="false"
+180-->[androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:124:13-44
+181            android:enabled="@bool/enable_system_alarm_service_default"
+181-->[androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:125:13-72
+182            android:exported="false" >
+182-->[androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:126:13-37
+183            <intent-filter>
+183-->[androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:128:13-130:29
+184                <action android:name="androidx.work.impl.background.systemalarm.UpdateProxies" />
+184-->[androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:129:17-98
+184-->[androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:129:25-95
+185            </intent-filter>
+186        </receiver>
+187        <receiver
+187-->[androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:132:9-142:20
+188            android:name="androidx.work.impl.diagnostics.DiagnosticsReceiver"
+188-->[androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:133:13-78
+189            android:directBootAware="false"
+189-->[androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:134:13-44
+190            android:enabled="true"
+190-->[androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:135:13-35
+191            android:exported="true"
+191-->[androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:136:13-36
+192            android:permission="android.permission.DUMP" >
+192-->[androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:137:13-57
+193            <intent-filter>
+193-->[androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:139:13-141:29
+194                <action android:name="androidx.work.diagnostics.REQUEST_DIAGNOSTICS" />
+194-->[androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:140:17-88
+194-->[androidx.work:work-runtime:2.9.0] /home/nama616/.gradle/caches/transforms-3/cd32b92d009f10def1e2fafea20c78a0/transformed/work-runtime-2.9.0/AndroidManifest.xml:140:25-85
+195            </intent-filter>
+196        </receiver>
+197
+198        <service
+198-->[androidx.core:core-remoteviews:1.0.0] /home/nama616/.gradle/caches/transforms-3/15ed3677e1ee3c6963814e167660655c/transformed/core-remoteviews-1.0.0/AndroidManifest.xml:24:9-27:63
+199            android:name="androidx.core.widget.RemoteViewsCompatService"
+199-->[androidx.core:core-remoteviews:1.0.0] /home/nama616/.gradle/caches/transforms-3/15ed3677e1ee3c6963814e167660655c/transformed/core-remoteviews-1.0.0/AndroidManifest.xml:25:13-73
+200            android:permission="android.permission.BIND_REMOTEVIEWS" />
+200-->[androidx.core:core-remoteviews:1.0.0] /home/nama616/.gradle/caches/transforms-3/15ed3677e1ee3c6963814e167660655c/transformed/core-remoteviews-1.0.0/AndroidManifest.xml:26:13-69
+201
+202        <activity
+202-->[androidx.compose.ui:ui-tooling-android:1.6.0] /home/nama616/.gradle/caches/transforms-3/ff69b74f6f46ab9cb9dbb4e1f1cff4ae/transformed/ui-tooling-release/AndroidManifest.xml:23:9-25:39
+203            android:name="androidx.compose.ui.tooling.PreviewActivity"
+203-->[androidx.compose.ui:ui-tooling-android:1.6.0] /home/nama616/.gradle/caches/transforms-3/ff69b74f6f46ab9cb9dbb4e1f1cff4ae/transformed/ui-tooling-release/AndroidManifest.xml:24:13-71
+204            android:exported="true" />
+204-->[androidx.compose.ui:ui-tooling-android:1.6.0] /home/nama616/.gradle/caches/transforms-3/ff69b74f6f46ab9cb9dbb4e1f1cff4ae/transformed/ui-tooling-release/AndroidManifest.xml:25:13-36
+205        <activity
+205-->[androidx.compose.ui:ui-test-manifest:1.6.0] /home/nama616/.gradle/caches/transforms-3/12f39efd2ec1499fe9c400774005e9c8/transformed/ui-test-manifest-1.6.0/AndroidManifest.xml:23:9-25:39
+206            android:name="androidx.activity.ComponentActivity"
+206-->[androidx.compose.ui:ui-test-manifest:1.6.0] /home/nama616/.gradle/caches/transforms-3/12f39efd2ec1499fe9c400774005e9c8/transformed/ui-test-manifest-1.6.0/AndroidManifest.xml:24:13-63
+207            android:exported="true" />
+207-->[androidx.compose.ui:ui-test-manifest:1.6.0] /home/nama616/.gradle/caches/transforms-3/12f39efd2ec1499fe9c400774005e9c8/transformed/ui-test-manifest-1.6.0/AndroidManifest.xml:25:13-36
+208
+209        <service
+209-->[androidx.room:room-runtime:2.6.1] /home/nama616/.gradle/caches/transforms-3/9afd3b13fd8ecf8bc8c85330be511881/transformed/room-runtime-2.6.1/AndroidManifest.xml:24:9-28:63
+210            android:name="androidx.room.MultiInstanceInvalidationService"
+210-->[androidx.room:room-runtime:2.6.1] /home/nama616/.gradle/caches/transforms-3/9afd3b13fd8ecf8bc8c85330be511881/transformed/room-runtime-2.6.1/AndroidManifest.xml:25:13-74
+211            android:directBootAware="true"
+211-->[androidx.room:room-runtime:2.6.1] /home/nama616/.gradle/caches/transforms-3/9afd3b13fd8ecf8bc8c85330be511881/transformed/room-runtime-2.6.1/AndroidManifest.xml:26:13-43
+212            android:exported="false" />
+212-->[androidx.room:room-runtime:2.6.1] /home/nama616/.gradle/caches/transforms-3/9afd3b13fd8ecf8bc8c85330be511881/transformed/room-runtime-2.6.1/AndroidManifest.xml:27:13-37
+213
+214        <receiver
+214-->[androidx.profileinstaller:profileinstaller:1.3.0] /home/nama616/.gradle/caches/transforms-3/f4c9496896eb9ef814506acf9c23f953/transformed/profileinstaller-1.3.0/AndroidManifest.xml:34:9-52:20
+215            android:name="androidx.profileinstaller.ProfileInstallReceiver"
+215-->[androidx.profileinstaller:profileinstaller:1.3.0] /home/nama616/.gradle/caches/transforms-3/f4c9496896eb9ef814506acf9c23f953/transformed/profileinstaller-1.3.0/AndroidManifest.xml:35:13-76
+216            android:directBootAware="false"
+216-->[androidx.profileinstaller:profileinstaller:1.3.0] /home/nama616/.gradle/caches/transforms-3/f4c9496896eb9ef814506acf9c23f953/transformed/profileinstaller-1.3.0/AndroidManifest.xml:36:13-44
+217            android:enabled="true"
+217-->[androidx.profileinstaller:profileinstaller:1.3.0] /home/nama616/.gradle/caches/transforms-3/f4c9496896eb9ef814506acf9c23f953/transformed/profileinstaller-1.3.0/AndroidManifest.xml:37:13-35
+218            android:exported="true"
+218-->[androidx.profileinstaller:profileinstaller:1.3.0] /home/nama616/.gradle/caches/transforms-3/f4c9496896eb9ef814506acf9c23f953/transformed/profileinstaller-1.3.0/AndroidManifest.xml:38:13-36
+219            android:permission="android.permission.DUMP" >
+219-->[androidx.profileinstaller:profileinstaller:1.3.0] /home/nama616/.gradle/caches/transforms-3/f4c9496896eb9ef814506acf9c23f953/transformed/profileinstaller-1.3.0/AndroidManifest.xml:39:13-57
+220            <intent-filter>
+220-->[androidx.profileinstaller:profileinstaller:1.3.0] /home/nama616/.gradle/caches/transforms-3/f4c9496896eb9ef814506acf9c23f953/transformed/profileinstaller-1.3.0/AndroidManifest.xml:40:13-42:29
+221                <action android:name="androidx.profileinstaller.action.INSTALL_PROFILE" />
+221-->[androidx.profileinstaller:profileinstaller:1.3.0] /home/nama616/.gradle/caches/transforms-3/f4c9496896eb9ef814506acf9c23f953/transformed/profileinstaller-1.3.0/AndroidManifest.xml:41:17-91
+221-->[androidx.profileinstaller:profileinstaller:1.3.0] /home/nama616/.gradle/caches/transforms-3/f4c9496896eb9ef814506acf9c23f953/transformed/profileinstaller-1.3.0/AndroidManifest.xml:41:25-88
+222            </intent-filter>
+223            <intent-filter>
+223-->[androidx.profileinstaller:profileinstaller:1.3.0] /home/nama616/.gradle/caches/transforms-3/f4c9496896eb9ef814506acf9c23f953/transformed/profileinstaller-1.3.0/AndroidManifest.xml:43:13-45:29
+224                <action android:name="androidx.profileinstaller.action.SKIP_FILE" />
+224-->[androidx.profileinstaller:profileinstaller:1.3.0] /home/nama616/.gradle/caches/transforms-3/f4c9496896eb9ef814506acf9c23f953/transformed/profileinstaller-1.3.0/AndroidManifest.xml:44:17-85
+224-->[androidx.profileinstaller:profileinstaller:1.3.0] /home/nama616/.gradle/caches/transforms-3/f4c9496896eb9ef814506acf9c23f953/transformed/profileinstaller-1.3.0/AndroidManifest.xml:44:25-82
+225            </intent-filter>
+226            <intent-filter>
+226-->[androidx.profileinstaller:profileinstaller:1.3.0] /home/nama616/.gradle/caches/transforms-3/f4c9496896eb9ef814506acf9c23f953/transformed/profileinstaller-1.3.0/AndroidManifest.xml:46:13-48:29
+227                <action android:name="androidx.profileinstaller.action.SAVE_PROFILE" />
+227-->[androidx.profileinstaller:profileinstaller:1.3.0] /home/nama616/.gradle/caches/transforms-3/f4c9496896eb9ef814506acf9c23f953/transformed/profileinstaller-1.3.0/AndroidManifest.xml:47:17-88
+227-->[androidx.profileinstaller:profileinstaller:1.3.0] /home/nama616/.gradle/caches/transforms-3/f4c9496896eb9ef814506acf9c23f953/transformed/profileinstaller-1.3.0/AndroidManifest.xml:47:25-85
+228            </intent-filter>
+229            <intent-filter>
+229-->[androidx.profileinstaller:profileinstaller:1.3.0] /home/nama616/.gradle/caches/transforms-3/f4c9496896eb9ef814506acf9c23f953/transformed/profileinstaller-1.3.0/AndroidManifest.xml:49:13-51:29
+230                <action android:name="androidx.profileinstaller.action.BENCHMARK_OPERATION" />
+230-->[androidx.profileinstaller:profileinstaller:1.3.0] /home/nama616/.gradle/caches/transforms-3/f4c9496896eb9ef814506acf9c23f953/transformed/profileinstaller-1.3.0/AndroidManifest.xml:50:17-95
+230-->[androidx.profileinstaller:profileinstaller:1.3.0] /home/nama616/.gradle/caches/transforms-3/f4c9496896eb9ef814506acf9c23f953/transformed/profileinstaller-1.3.0/AndroidManifest.xml:50:25-92
+231            </intent-filter>
+232        </receiver>
+233    </application>
+234
+235</manifest>

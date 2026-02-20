@@ -1,0 +1,188 @@
+package com.moneytracker.app.ui.components
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import com.moneytracker.app.data.local.database.entities.TransactionType
+import com.moneytracker.app.domain.model.Transaction
+import com.moneytracker.app.ui.theme.*
+import java.text.SimpleDateFormat
+import java.util.*
+
+@Composable
+fun TransactionItem(
+    transaction: Transaction,
+    onClick: () -> Unit = {},
+    modifier: Modifier = Modifier
+) {
+    val currency = LocalCurrencySymbol.current
+    val primarySplit = transaction.splits.firstOrNull()
+    val categoryColor = primarySplit?.categoryColor?.let { parseHexColor(it) } ?: TextSecondary
+    val displayAmount = when (transaction.type) {
+        TransactionType.EXPENSE -> "-$currency${formatAmount(transaction.totalAmount)}"
+        TransactionType.INCOME -> "+$currency${formatAmount(transaction.totalAmount)}"
+        TransactionType.TRANSFER -> "$currency${formatAmount(transaction.totalAmount)}"
+    }
+    val amountColor = when (transaction.type) {
+        TransactionType.EXPENSE -> ExpenseRed
+        TransactionType.INCOME -> IncomeGreen
+        TransactionType.TRANSFER -> TransferBlue
+    }
+
+    val categoryName = if (transaction.type == TransactionType.TRANSFER) {
+        "Transfer"
+    } else if (transaction.splits.size > 1) {
+        transaction.splits.joinToString(", ") { it.categoryName }
+    } else {
+        primarySplit?.categoryName ?: "Unknown"
+    }
+
+    val accountDisplay = if (transaction.type == TransactionType.TRANSFER && transaction.toAccountName != null) {
+        "${transaction.accountName} → ${transaction.toAccountName}"
+    } else {
+        transaction.accountName
+    }
+
+    val timeFormat = SimpleDateFormat("hh:mm a", Locale.getDefault())
+    val timeString = timeFormat.format(Date(transaction.date))
+
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Category icon
+        Box(
+            modifier = Modifier
+                .size(42.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(
+                    if (transaction.type == TransactionType.TRANSFER)
+                        TransferBlue.copy(alpha = 0.15f)
+                    else categoryColor.copy(alpha = 0.15f)
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = CategoryIcons.getIcon(
+                    if (transaction.type == TransactionType.TRANSFER) "swap_horiz"
+                    else primarySplit?.categoryIcon ?: "more_horiz"
+                ),
+                contentDescription = null,
+                tint = if (transaction.type == TransactionType.TRANSFER) TransferBlue else categoryColor,
+                modifier = Modifier.size(22.dp)
+            )
+        }
+
+        Spacer(modifier = Modifier.width(12.dp))
+
+        // Details
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = categoryName,
+                style = MaterialTheme.typography.titleMedium,
+                color = TextPrimary
+            )
+            Row {
+                Text(
+                    text = accountDisplay,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextSecondary
+                )
+                if (transaction.note?.isNotBlank() == true) {
+                    Text(" • ", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                    Text(
+                        text = transaction.note,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TextSecondary,
+                        maxLines = 1
+                    )
+                }
+            }
+        }
+
+        // Amount + time
+        Column(horizontalAlignment = Alignment.End) {
+            Text(
+                text = displayAmount,
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                color = amountColor
+            )
+            Text(
+                text = timeString,
+                style = MaterialTheme.typography.labelSmall,
+                color = TextSecondary
+            )
+        }
+    }
+}
+
+@Composable
+fun TransactionDateHeader(
+    dateLabel: String,
+    dayExpense: Double = 0.0,
+    dayIncome: Double = 0.0,
+    dayTransfer: Double = 0.0,
+    modifier: Modifier = Modifier
+) {
+    val currency = LocalCurrencySymbol.current
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .padding(top = 8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = dateLabel,
+            style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
+            color = TextSecondary
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            if (dayIncome > 0) {
+                Text(
+                    text = "+$currency${formatAmount(dayIncome)}",
+                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
+                    color = IncomeGreen
+                )
+            }
+            if (dayExpense > 0) {
+                Text(
+                    text = "-$currency${formatAmount(dayExpense)}",
+                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
+                    color = ExpenseRed
+                )
+            }
+            if (dayTransfer > 0) {
+                Text(
+                    text = "⇄$currency${formatAmount(dayTransfer)}",
+                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
+                    color = TransferBlue
+                )
+            }
+        }
+    }
+}
+
+fun parseHexColor(hex: String): Color {
+    return try {
+        val colorInt = android.graphics.Color.parseColor(hex)
+        Color(colorInt)
+    } catch (e: Exception) {
+        Color.Gray
+    }
+}
