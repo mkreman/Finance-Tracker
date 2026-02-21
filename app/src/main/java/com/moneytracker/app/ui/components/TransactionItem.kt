@@ -101,7 +101,7 @@ fun TransactionItem(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                if (transaction.note?.isNotBlank() == true) {
+                if (transaction.note?.isNotBlank() == true && !transaction.note.equals(categoryName, ignoreCase = true)) {
                     Text(" • ", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text(
                         text = transaction.note,
