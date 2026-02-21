@@ -1,0 +1,172 @@
+Great, the app works. Set the current version to 0.1.0
+
+Work on the following ability/bugs for version 0.2.0
+
+- When I create an expense or income entry after submitting it the app crashes
+- Give the ability to choose the default account for expense or income
+- In the account section
+	- In overall section, Income so far, Expense so far, Total balance
+ 	- the income does not show it stayed 0 after putting a income entry
+	- make it clickable and display the transactions done that involves the account 
+	- For account category add one more people (for lending and borrowing)
+	- Give the icons selection option for accounts while creating
+	- Give the ability to edit the starting amount
+
+- In dashboard section
+	- Give one more section for transfer
+	- when I pressing on income it's not giving me summary of income similar to every section
+	- make every category clickable which shows the expenses or income for that category
+- In Transaction section
+	- For add transaction section Edit date option is not working
+	- For category section I want multiple select option, For example One expense could be bike, EMI both. Keep the split.
+	- Save transaction in Transfer is not working
+	- Give the ability to click on old transaction and edit/delete them
+	- Give overall expense/income amount on the right side where the day is mentioned 
+	- Put the time of the transaction on the entries
+- In budget section 
+	- Give the ability of clicking on a budget category that gives the expense happened in the category 
+	- Put the remaining budget as well
+- In the setting section nothing works
+	- make the export and import in the following format
+	TIME			TYPE		AMOUNT	CATEGORY ACCOUNT		NOTES 
+	Feb 01, 2026 12:04 PM	(+) Income	128367	Salary	 Bank HDFC		January 2026 salary 
+	Feb 01, 2026 1:21 PM	(-) Expense	26786	Bike	 Bank HDFC		1st emi 
+	Feb 01, 2026 1:22 PM	(-) Expense	5000	Cats	 Bank HDFC		gave back to person
+	Feb 01, 2026 2:04 PM	(*) Transfer	30000	  -  	 Bank HDFC->Bank SBI	savings 
+
+
+For version 0.3.0
+
+- In add transaction page
+	- The app is minimizing when I enter a transaction, when I do it again it crashes
+	- New Add transaction page is nice
+		- Few minor changes: When I enter amount keyboard is there but When I select category from the list the keyboard should disappear.	
+	- I am allowed to select only one Category, I want multiple section option, count the expense or income in both category
+	- per day summary shows the total of expense and income. I want separately total expense total income side by side 
+
+
+For version 0.4.0
+Make Transaction as the default page of the app
+For Dashboard Section
+	- In the transfer section no need to show any plot just list down the transfer entries
+For the add transaction
+	- When I click on + sign the keyboard should show up (not happening) for amount section, and go away when I select category (which is happening)
+	- Instead of Other category give me option to add a new category with icon name
+
+For Account section
+	- Transfer money should reduce the balance of "from account" and increase the balance of 'to account'
+	- While adding new account give one more account type named 'people' for loaning and borrowing money
+
+For the setting section
+	- Add one import section as well in the same format as export
+
+
+
+For version 0.5.0
+For Transaction section
+	- updating the transaction is not working it's not updating the entries and account balance. 
+	- Make Account 
+
+For Account section
+	- When transfer is happening, it's not updating the 'to account's balance, it's changing 'from account's balance
+	- Show the account balance in red, if the balance is negative and - sign
+
+
+For version 0.5.1
+For budget section
+	- Summary page has overlapping text
+	- Show total remaining amount in summary page
+	- Give the ability to edit the budget and delete
+
+For Accounts section
+	- Instead of edit icon give 3 dots icon, pressing that should option to edit, delete or deactivate
+		- edit should work as it's working right now
+		- delete should delete the accounts and all the entries made with that account
+		- deactivate should put the accounts in a hidden hamburger list, and ability to activate them as well
+
+
+For version 0.5.2
+- Don't remove the category and accounts which were already there in the app when we install it for the first time.
+For Transaction section
+	- Show all categories if multiples are selected on entries
+For the Account Section 
+	- I had one transaction of 5000 from HDFC to Wallet, but when I deleted the wallet account, the transaction is removed, although HDFC balance did not change
+For Budget Section
+	- Spent amount should be in red colour
+For Setting section
+	- Make currency, First day of week setting work
+	- After opening Version should have all the history of all older version (read the chat history for this)
+
+For version 0.5.3
+- while clicking on add new account keyboard should focus on account name field
+- Add all thing in export and import file such as account names budgets 
+- While adding budget for a new category remove the categories from the list which has budget already set
+- Show transfer as well on daily summary in transaction section
+- Make reset all data work
+- While importing a tsv file if a account or category doesn't exist in the app then make it and import the whole tsv file
+
+For version 0.5.4
+- bring back accounts and categories 
+- while clicking on add new account keyboard should focus on account name field (this is working), after that I press account type, icon or color the keyboard should disappear
+- while importing the data from tsv the budget are not getting added
+- Make widget button smaller and put arrows or something else instead of simply + - signs. Give a little space on the left side where you can put app icon and clicking that should open the app.
+
+- widget is still wrong
+	- Widget should be 1x4 size, first should be the app's logo which is not correct one. Second button should be expense then income and transfer. Buttons should be square.
+- current version is showing 0.2.1, it should show the latest
+- Cash and wallet are coming in one category
+
+
+For version 0.6.0
+	- Biometric lock & Password protection
+	- Add a About section 
+		- Mayank Nagar
+		- Personal project 
+		- Contact: mkreman12@gmail.com	
+	- Summary of balance account type wise
+	- Add account type button on the side
+	- Minimizable account section
+	- Recurring entries
+		- Bug: If I delete a recurring entry it's coming back
+	- Add icon on notification
+	- Long press category or account type to edit or delete them
+	- Fix the crashes uses
+	- Recurring entries
+		- Bugs: updates are not working
+
+
+Done 
+___________________________________________________________________________________________________
+	
+	- Fix theming issue with notification bar
+	- Read upcoming text and if you find any expense related text then suggest a automatic expense or income as notification and give the option to save edit or discard
+	- Back up user data with Auto Backup  |  Identity  |  Android Developers https://share.google/PrKwcm21nU3HfmthC
+
+
+- Fix the widget
+- Moving from one page to another page is too slow is there anything you can do to increase the app speed, maybe fasten the animations
+
+ 
+
+HDFC Bank debit
+ 
+Sent Rs.xxx
+From HDFC Bank A/C *xxxx
+To MAYANK NAGAR
+On 14/02/26
+Ref xxxxxx
+Not You?
+Call xxxxxxxxxx/SMS BLOCK UPI to xxxxxxx
+
+
+Hdfc Credit Card debit
+ 
+Spent Rs.xxxx On HDFC Bank Card 1277 At ZOMATO11120 On 2026-02-14:14:01:16.Not You? To Block+Reissue Call xxxxx/SMS BLOCK CC 1277 to xxxxx
+
+
+HDFC Bank credit
+ 
+Credit Alert!
+Rs.xxxx.00 credited to HDFC Bank A/c XX9449 on 14-02-26 from VPA xxxxx@ybl (UPI xxxxxx)
+
+

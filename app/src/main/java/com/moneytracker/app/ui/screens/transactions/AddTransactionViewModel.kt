@@ -338,7 +338,10 @@ class AddTransactionViewModel @Inject constructor(
     }
 
     fun onRecurringToggle(isRecurring: Boolean) {
-        _state.update { it.copy(isRecurring = isRecurring) }
+        // Preserve all splits when toggling recurring on/off
+        _state.update { current ->
+            current.copy(isRecurring = isRecurring)
+        }
     }
 
     fun onRecurringIntervalChange(interval: String) {
@@ -402,6 +405,7 @@ class AddTransactionViewModel @Inject constructor(
                 val splits = if (currentState.type == TransactionType.TRANSFER) {
                     emptyList()
                 } else {
+                    // Try to get valid splits from current state
                     val validSplits = currentState.splits.mapNotNull { split ->
                         val categoryId = split.categoryId?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
                         val splitAmount = split.amount.toDoubleOrNull() ?: 0.0
@@ -416,18 +420,30 @@ class AddTransactionViewModel @Inject constructor(
                         )
                     }
 
-                    if (validSplits.isEmpty()) {
-                        throw IllegalStateException("Please select at least one valid category")
-                    }
-
-                    if (currentState.isSplitMode) {
-                        val splitTotal = validSplits.sumOf { it.amount }
-                        if (kotlin.math.abs(splitTotal - currentState.totalAmount) >= 0.01) {
-                            throw IllegalStateException("Split total must match the transaction amount")
+                    // If no valid splits found in current state, preserve existing transaction splits
+                    if (validSplits.isEmpty() && existingTransaction != null && existingTransaction.splits.isNotEmpty()) {
+                        // Preserve existing splits with their data intact
+                        existingTransaction.splits.map { existing ->
+                            TransactionSplitEntity(
+                                id = existing.id,  // Keep original ID
+                                transactionId = transactionId,
+                                categoryId = existing.categoryId,
+                                amount = existing.amount,
+                                note = existing.note
+                            )
                         }
+                    } else if (validSplits.isEmpty()) {
+                        throw IllegalStateException("Please select at least one valid category")
+                    } else {
+                        validSplits
                     }
+                }
 
-                    validSplits
+                if (currentState.isSplitMode && splits.isNotEmpty()) {
+                    val splitTotal = splits.sumOf { it.amount }
+                    if (kotlin.math.abs(splitTotal - currentState.totalAmount) >= 0.01) {
+                        throw IllegalStateException("Split total must match the transaction amount")
+                    }
                 }
 
                 if (currentState.isEditMode) {

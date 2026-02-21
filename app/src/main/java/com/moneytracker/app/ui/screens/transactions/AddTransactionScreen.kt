@@ -267,38 +267,17 @@ fun AddTransactionScreen(
                 Spacer(modifier = Modifier.height(16.dp))
             }
 
-            // Account selector
-            if (state.type == TransactionType.TRANSFER) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    AccountDropdown(
-                        label = "From Account",
-                        accounts = state.accounts,
-                        selectedId = state.selectedAccountId,
-                        onSelected = viewModel::onAccountSelected,
-                        modifier = Modifier.weight(1f)
-                    )
-
-                    AccountDropdown(
-                        label = "To Account",
-                        accounts = state.accounts.filter { it.id != state.selectedAccountId },
-                        selectedId = state.toAccountId,
-                        onSelected = viewModel::onToAccountSelected,
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-            } else {
+            // Account selector (non-transfer)
+            if (state.type != TransactionType.TRANSFER) {
                 AccountDropdown(
                     label = "Account",
                     accounts = state.accounts,
                     selectedId = state.selectedAccountId,
                     onSelected = viewModel::onAccountSelected
                 )
-            }
 
-            Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(12.dp))
+            }
 
             // Date & Time row
             DateTimeSelector(
@@ -321,6 +300,32 @@ fun AddTransactionScreen(
                     Icon(Icons.Filled.Notes, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
                 }
             )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Transfer Account selector (below note)
+            if (state.type == TransactionType.TRANSFER) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    AccountDropdown(
+                        label = "From Account",
+                        accounts = state.accounts,
+                        selectedId = state.selectedAccountId,
+                        onSelected = viewModel::onAccountSelected,
+                        modifier = Modifier.weight(1f)
+                    )
+
+                    AccountDropdown(
+                        label = "To Account",
+                        accounts = state.accounts.filter { it.id != state.selectedAccountId },
+                        selectedId = state.toAccountId,
+                        onSelected = viewModel::onToAccountSelected,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
 
             Spacer(modifier = Modifier.height(12.dp))
 
