@@ -81,7 +81,9 @@ class TransactionSuggestionActionReceiver : BroadcastReceiver() {
         val selectedAccount = accounts.find { it.id == defaultAccountId } ?: accounts.first()
 
         val categories = categoryRepository.getCategoriesByType(type).first()
-        val selectedCategory = categories.firstOrNull { it.name.equals("Other", ignoreCase = true) }
+        // Look for AutoDetected first, fallback to Other, then fallback to the first available
+        val selectedCategory = categories.firstOrNull { it.name.equals("AutoDetected", ignoreCase = true) }
+            ?: categories.firstOrNull { it.name.equals("Other", ignoreCase = true) }
             ?: categories.firstOrNull()
 
         val transactionId = UUID.randomUUID().toString()

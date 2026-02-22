@@ -5,7 +5,7 @@ import androidx.glance.appwidget.updateAll
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.graphics.Color // Note: Android Color (for SystemBarStyle)
+import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
 import android.widget.Toast
@@ -13,7 +13,6 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -39,7 +38,6 @@ import com.moneytracker.app.ui.navigation.BottomNavBar
 import com.moneytracker.app.ui.navigation.NavGraph
 import com.moneytracker.app.ui.navigation.Screen
 import com.moneytracker.app.ui.screens.auth.PasscodeScreen
-import com.moneytracker.app.ui.theme.DarkBackground
 import com.moneytracker.app.ui.theme.MoneyTrackerTheme
 import com.moneytracker.app.util.BiometricAuthManager
 import com.moneytracker.app.widget.MoneyTrackerWidget
@@ -55,27 +53,31 @@ class MainActivity : FragmentActivity() {
     @Inject lateinit var userPreferences: UserPreferences
     private lateinit var biometricAuthManager: BiometricAuthManager
 
+    // Launcher for multiple permissions (SMS and Notifications)
+    private val requestPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        lifecycleScope.launch {
+            // Mark notifications as prompted regardless of choice to avoid spamming
+            userPreferences.setNotificationPrompted(true)
+        }
+        
+        val smsGranted = permissions[Manifest.permission.RECEIVE_SMS] == true
+        if (!smsGranted) {
+            Toast.makeText(this, "SMS permission is required for auto-detection", Toast.LENGTH_LONG).show()
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Keep this simple. Theme.kt handles the colors.
         enableEdgeToEdge(
             statusBarStyle = SystemBarStyle.auto(Color.TRANSPARENT, Color.TRANSPARENT),
             navigationBarStyle = SystemBarStyle.auto(Color.TRANSPARENT, Color.TRANSPARENT)
         )
 
-        // Request notification permission on first app launch (Android 13+)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            val alreadyPrompted = runBlocking { userPreferences.notificationPrompted.first() }
-            if (!alreadyPrompted && ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-                val launcher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted: Boolean ->
-                    lifecycleScope.launch {
-                        userPreferences.setNotificationPrompted(true)
-                    }
-                }
-                launcher.launch(Manifest.permission.POST_NOTIFICATIONS)
-            }
-        }
+        // Request Permissions
+        checkAndRequestPermissions()
 
         biometricAuthManager = BiometricAuthManager(this)
 
@@ -84,7 +86,6 @@ class MainActivity : FragmentActivity() {
             val themeMode by userPreferences.themeMode.collectAsState(initial = 0)
             val currencySymbol = UserPreferences.symbolForCode(currencyCode)
             
-            // Authentication state
             val biometricEnabled by userPreferences.biometricEnabled.collectAsState(initial = false)
             val passcodeEnabled by userPreferences.passcodeEnabled.collectAsState(initial = false)
             val storedPasscode by userPreferences.passcode.collectAsState(initial = null)
@@ -93,10 +94,8 @@ class MainActivity : FragmentActivity() {
             var isAuthenticated by remember { mutableStateOf(false) }
             var showPasscodeScreen by remember { mutableStateOf(false) }
             
-            // Check if launched from widget
             val isWidgetLaunch = intent?.getStringExtra(MoneyTrackerWidget.EXTRA_TRANSACTION_TYPE) != null
             
-            // Trigger authentication on app launch (skip if widget launch)
             LaunchedEffect(biometricEnabled, passcodeEnabled) {
                 if (isWidgetLaunch) {
                     isAuthenticated = true
@@ -208,8 +207,6 @@ class MainActivity : FragmentActivity() {
                             }
                         }
 
-                        // --- FIX HERE: Removed hardcoded .background(DarkBackground) ---
-                        // --- FIX HERE: Added MaterialTheme.colorScheme.background ---
                         Scaffold(
                             modifier = Modifier.fillMaxSize(),
                             containerColor = MaterialTheme.colorScheme.background,
@@ -233,6 +230,30 @@ class MainActivity : FragmentActivity() {
         }
     }
 
+    private fun checkAndRequestPermissions() {
+        val permissions = mutableListOf<String>()
+        
+        // Add SMS permissions
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECEIVE_SMS) != PackageManager.PERMISSION_GRANTED) {
+            permissions.add(Manifest.permission.RECEIVE_SMS)
+        }
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_SMS) != PackageManager.PERMISSION_GRANTED) {
+            permissions.add(Manifest.permission.READ_SMS)
+        }
+
+        // Add Notification permission for Android 13+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val alreadyPrompted = runBlocking { userPreferences.notificationPrompted.first() }
+            if (!alreadyPrompted && ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                permissions.add(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
+
+        if (permissions.isNotEmpty()) {
+            requestPermissionLauncher.launch(permissions.toTypedArray())
+        }
+    }
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
@@ -240,8 +261,6 @@ class MainActivity : FragmentActivity() {
 
     override fun onResume() {
         super.onResume()
-        // Catch-up update: forces the widget to sync colors if the app was 
-        // completely dead when the system dark mode changed.
         lifecycleScope.launch(Dispatchers.IO) {
             try {
                 MoneyTrackerWidget().updateAll(this@MainActivity)

@@ -126,14 +126,15 @@ abstract class MoneyTrackerDatabase : RoomDatabase() {
                 CatSeed("cat-rent", "Rent", "home", "EXPENSE", "#795548", 7),
                 CatSeed("cat-bike", "Bike", "two_wheeler", "EXPENSE", "#607D8B", 8),
                 CatSeed("cat-cats", "Cats", "pets", "EXPENSE", "#FFEB3B", 9),
-                CatSeed("cat-people", "People", "people", "EXPENSE", "#00BCD4", 10),
-                CatSeed("cat-other-expense", "Other", "more_horiz", "EXPENSE", "#9E9E9E", 11),
+                CatSeed("cat-other-expense", "Other", "more_horiz", "EXPENSE", "#9E9E9E", 10),
+                CatSeed("cat-auto-expense", "AutoDetected", "auto_awesome", "EXPENSE", "#607D8B", 11),
                 // Income categories
                 CatSeed("cat-salary", "Salary", "work", "INCOME", "#4CAF50", 0),
                 CatSeed("cat-freelance", "Freelance", "laptop", "INCOME", "#2196F3", 1),
                 CatSeed("cat-investment-income", "Investment", "trending_up", "INCOME", "#FF9800", 2),
                 CatSeed("cat-gift", "Gift", "card_giftcard", "INCOME", "#E91E63", 3),
                 CatSeed("cat-other-income", "Other", "more_horiz", "INCOME", "#9E9E9E", 4),
+                CatSeed("cat-auto-income", "AutoDetected", "auto_awesome", "INCOME", "#607D8B", 5),
             )
             categories.forEach { cat ->
                 db.execSQL(
