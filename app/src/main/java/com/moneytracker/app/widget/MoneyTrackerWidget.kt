@@ -89,7 +89,7 @@ class MoneyTrackerWidget : GlanceAppWidget() {
             // Expense (Red)
             WidgetActionButton(
                 context = context,
-                symbol = "↓",
+                symbol = "↑",
                 bgColor = expenseBg,
                 iconColor = expenseIcon,
                 type = "EXPENSE",
@@ -101,7 +101,7 @@ class MoneyTrackerWidget : GlanceAppWidget() {
             // Income (Green)
             WidgetActionButton(
                 context = context,
-                symbol = "↑",
+                symbol = "↓",
                 bgColor = incomeBg,
                 iconColor = incomeIcon,
                 type = "INCOME",
