@@ -448,13 +448,24 @@ class AddTransactionViewModel @Inject constructor(
 
                 if (currentState.isEditMode) {
                     transactionRepository.updateTransactionFull(transaction, splits)
-                    // If recurring toggle is turned OFF on any entry in the series,
-                    // stop future recurrences by disabling the parent template.
-                    // When toggle is ON, just save the individual entry as-is — future
-                    // occurrences are automatically copied from the latest entry in the
-                    // series by the worker, so no parent propagation is needed.
-                    if (currentState.parentRecurringId != null && !currentState.isRecurring) {
-                        transactionRepository.stopRecurringSeries(currentState.parentRecurringId)
+                    
+                    // Check if the user turned off the switch from the original PARENT
+                    val wasParentTurnedOff = currentState.parentRecurringId == null && 
+                                             existingTransaction?.isRecurring == true && 
+                                             !currentState.isRecurring
+                                             
+                    // Check if the user turned off the switch from a generated CHILD
+                    val wasChildTurnedOff = currentState.parentRecurringId != null && 
+                                            !currentState.isRecurring
+
+                    // Wipe the recurring status across the whole series depending on what was edited
+                    if (wasParentTurnedOff) {
+                        transactionRepository.stopRecurringSeries(transactionId)
+                    } else if (wasChildTurnedOff) {
+                        // Safely unwrap the nullable string here:
+                        currentState.parentRecurringId?.let { parentId ->
+                            transactionRepository.stopRecurringSeries(parentId)
+                        }
                     }
                 } else {
                     transactionRepository.saveTransaction(transaction, splits)

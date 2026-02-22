@@ -128,17 +128,19 @@ For version 0.6.0
 	- Minimizable account section
 	- Recurring entries
 		- Bug: If I delete a recurring entry it's coming back
+		- Bug: When I turning it off, it should remove recurring icon
+		- Bug: Edit and deleting any entry in the recurrence series is possible now
 	- Add icon on notification
 	- Long press category or account type to edit or delete them
 	- Fix the crashes uses
 	- Recurring entries
 		- Bugs: updates are not working
+	- Fix theming issue with notification bar
 
 
 Done 
 ___________________________________________________________________________________________________
 	
-	- Fix theming issue with notification bar
 	- Read upcoming text and if you find any expense related text then suggest a automatic expense or income as notification and give the option to save edit or discard
 	- Back up user data with Auto Backup  |  Identity  |  Android Developers https://share.google/PrKwcm21nU3HfmthC
 

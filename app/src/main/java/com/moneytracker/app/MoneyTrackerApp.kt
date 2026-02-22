@@ -20,6 +20,7 @@ class MoneyTrackerApp : Application(), Configuration.Provider {
     @Inject
     lateinit var recurringTransactionManager: RecurringTransactionManager
 
+    // Required for Hilt to inject dependencies into your Workers
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder()
             .setWorkerFactory(workerFactory)
@@ -27,9 +28,11 @@ class MoneyTrackerApp : Application(), Configuration.Provider {
 
     override fun onCreate() {
         super.onCreate()
+        
         // Schedule periodic cloud sync
         syncManager.schedulePeriodicSync()
-        // Schedule recurring transaction check
+        
+        // Schedule recurring transaction background check
         recurringTransactionManager.scheduleRecurringCheck()
     }
 }

@@ -287,20 +287,9 @@ class TransactionRepository @Inject constructor(
 
     suspend fun stopRecurringSeries(parentRecurringId: String) {
         database.withTransaction {
-            val parent = transactionDao.getTransactionByIdInternal(parentRecurringId)?.transaction ?: return@withTransaction
-            if (!parent.isRecurring) return@withTransaction
-
-            transactionDao.insertTransaction(
-                parent.copy(
-                    isRecurring = false,
-                    recurringInterval = null,
-                    recurringUnit = null,
-                    recurringEndDate = null,
-                    notifyForRecurringEntries = false,
-                    modifiedAt = System.currentTimeMillis(),
-                    syncStatus = SyncStatus.DIRTY
-                )
-            )
+            // This safely removes the recurrence icon/status from the parent 
+            // AND all historical child entries at the same time.
+            transactionDao.removeRecurrenceFromSeries(parentRecurringId)
         }
     }
 

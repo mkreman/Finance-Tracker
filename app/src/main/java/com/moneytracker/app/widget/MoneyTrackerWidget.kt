@@ -1,6 +1,5 @@
 package com.moneytracker.app.widget
 
-import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
@@ -19,35 +18,14 @@ import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.provideContent
 import androidx.glance.background
 import androidx.glance.layout.*
-import androidx.glance.text.TextAlign
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
+import androidx.glance.text.TextAlign
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import com.moneytracker.app.MainActivity
 import com.moneytracker.app.R
-import com.moneytracker.app.ui.theme.md_theme_dark_onPrimaryContainer
-import com.moneytracker.app.ui.theme.md_theme_dark_onSurface
-import com.moneytracker.app.ui.theme.md_theme_dark_onSurfaceVariant
-import com.moneytracker.app.ui.theme.md_theme_dark_errorContainer
-import com.moneytracker.app.ui.theme.md_theme_dark_primary
-import com.moneytracker.app.ui.theme.md_theme_dark_primaryContainer
-import com.moneytracker.app.ui.theme.md_theme_dark_secondary
-import com.moneytracker.app.ui.theme.md_theme_dark_secondaryContainer
-import com.moneytracker.app.ui.theme.md_theme_dark_surface
-import com.moneytracker.app.ui.theme.md_theme_dark_tertiary
-import com.moneytracker.app.ui.theme.md_theme_dark_tertiaryContainer
-import com.moneytracker.app.ui.theme.md_theme_light_onPrimaryContainer
-import com.moneytracker.app.ui.theme.md_theme_light_onSurface
-import com.moneytracker.app.ui.theme.md_theme_light_onSurfaceVariant
-import com.moneytracker.app.ui.theme.md_theme_light_errorContainer
-import com.moneytracker.app.ui.theme.md_theme_light_primary
-import com.moneytracker.app.ui.theme.md_theme_light_primaryContainer
-import com.moneytracker.app.ui.theme.md_theme_light_secondary
-import com.moneytracker.app.ui.theme.md_theme_light_secondaryContainer
-import com.moneytracker.app.ui.theme.md_theme_light_surface
-import com.moneytracker.app.ui.theme.md_theme_light_tertiary
-import com.moneytracker.app.ui.theme.md_theme_light_tertiaryContainer
+import com.moneytracker.app.ui.theme.*
 
 class MoneyTrackerWidget : GlanceAppWidget() {
 
@@ -59,9 +37,24 @@ class MoneyTrackerWidget : GlanceAppWidget() {
 
     @Composable
     private fun WidgetContent() {
+        // 1. Get the UI Context which has the correct Configuration (Day/Night)
         val context = LocalContext.current
-        val colors = widgetColors(context)
         
+        // 2. Check the System Theme directly from the View Context
+        val isDark = (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+        
+        // 3. Select colors based on 'isDark'
+        val surfaceColor = if (isDark) md_theme_dark_surface else md_theme_light_surface
+        
+        val expenseBg = if (isDark) md_theme_dark_errorContainer else md_theme_light_errorContainer
+        val expenseIcon = if (isDark) md_theme_dark_onErrorContainer else md_theme_light_onErrorContainer
+        
+        val incomeBg = if (isDark) md_theme_dark_tertiaryContainer else md_theme_light_tertiaryContainer
+        val incomeIcon = if (isDark) md_theme_dark_onTertiaryContainer else md_theme_light_onTertiaryContainer
+        
+        val transferBg = if (isDark) md_theme_dark_secondaryContainer else md_theme_light_secondaryContainer
+        val transferIcon = if (isDark) md_theme_dark_onSecondaryContainer else md_theme_light_onSecondaryContainer
+
         val appIntent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
         }
@@ -70,70 +63,61 @@ class MoneyTrackerWidget : GlanceAppWidget() {
             modifier = GlanceModifier
                 .fillMaxWidth()
                 .height(80.dp)
-                .background(ColorProvider(colors.surface))
-                .cornerRadius(16.dp)
-                .padding(8.dp),
+                // Use ColorProvider(Color) which is supported in your version
+                .background(ColorProvider(surfaceColor))
+                .cornerRadius(24.dp)
+                .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // App Icon Button (no background, larger icon)
+            // App Icon
             Box(
                 modifier = GlanceModifier
-                    .defaultWeight()
-                    .fillMaxHeight()
+                    .size(56.dp)
                     .clickable(actionStartActivity(appIntent)),
                 contentAlignment = Alignment.Center
             ) {
                 Image(
                     provider = androidx.glance.ImageProvider(R.mipmap.ic_launcher),
-                    contentDescription = "Open Money Tracker",
-                    modifier = GlanceModifier.size(70.dp)
+                    contentDescription = "Open App",
+                    modifier = GlanceModifier.fillMaxSize()
                 )
             }
 
-            Spacer(modifier = GlanceModifier.width(8.dp))
+            Spacer(modifier = GlanceModifier.width(12.dp))
 
-            // Expense Button
+            // Expense (Red)
             WidgetActionButton(
                 context = context,
-                label = "Expense",
                 symbol = "↓",
-                bgColor = colors.errorContainer,
-                textColor = colors.error,
+                bgColor = expenseBg,
+                iconColor = expenseIcon,
                 type = "EXPENSE",
-                modifier = GlanceModifier
-                    .defaultWeight()
-                    .fillMaxHeight()
+                modifier = GlanceModifier.defaultWeight()
             )
 
             Spacer(modifier = GlanceModifier.width(8.dp))
 
-            // Income Button
+            // Income (Green)
             WidgetActionButton(
                 context = context,
-                label = "Income",
                 symbol = "↑",
-                bgColor = colors.tertiaryContainer,
-                textColor = colors.tertiary,
+                bgColor = incomeBg,
+                iconColor = incomeIcon,
                 type = "INCOME",
-                modifier = GlanceModifier
-                    .defaultWeight()
-                    .fillMaxHeight()
+                modifier = GlanceModifier.defaultWeight()
             )
 
             Spacer(modifier = GlanceModifier.width(8.dp))
 
-            // Transfer Button
+            // Transfer (Blue)
             WidgetActionButton(
                 context = context,
-                label = "Transfer",
                 symbol = "⇄",
-                bgColor = colors.secondaryContainer,
-                textColor = colors.secondary,
+                bgColor = transferBg,
+                iconColor = transferIcon,
                 type = "TRANSFER",
-                modifier = GlanceModifier
-                    .defaultWeight()
-                    .fillMaxHeight()
+                modifier = GlanceModifier.defaultWeight()
             )
         }
     }
@@ -141,10 +125,9 @@ class MoneyTrackerWidget : GlanceAppWidget() {
     @Composable
     private fun WidgetActionButton(
         context: Context,
-        label: String,
         symbol: String,
         bgColor: Color,
-        textColor: Color,
+        iconColor: Color,
         type: String,
         modifier: GlanceModifier = GlanceModifier
     ) {
@@ -155,85 +138,25 @@ class MoneyTrackerWidget : GlanceAppWidget() {
 
         Box(
             modifier = modifier
+                .fillMaxHeight()
                 .background(ColorProvider(bgColor))
-                .cornerRadius(12.dp)
+                .cornerRadius(16.dp)
                 .clickable(actionStartActivity(intent)),
             contentAlignment = Alignment.Center
         ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = symbol,
-                    style = TextStyle(
-                        color = ColorProvider(textColor),
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        textAlign = TextAlign.Center
-                    )
+            Text(
+                text = symbol,
+                style = TextStyle(
+                    color = ColorProvider(iconColor),
+                    fontSize = 32.sp,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center
                 )
-                Text(
-                    text = label,
-                    style = TextStyle(
-                        color = ColorProvider(textColor),
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Medium,
-                        textAlign = TextAlign.Center
-                    )
-                )
-            }
+            )
         }
     }
 
     companion object {
         const val EXTRA_TRANSACTION_TYPE = "transaction_type"
-    }
-
-    private data class WidgetColors(
-        val surface: Color,
-        val primaryContainer: Color,
-        val errorContainer: Color,
-        val error: Color,
-        val tertiaryContainer: Color,
-        val tertiary: Color,
-        val secondaryContainer: Color,
-        val secondary: Color,
-        val onPrimaryContainer: Color,
-        val onSurface: Color,
-        val onSurfaceVariant: Color
-    )
-
-    private fun widgetColors(context: Context): WidgetColors {
-        val isDark = (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
-        return if (isDark) {
-            WidgetColors(
-                surface = md_theme_dark_surface,
-                primaryContainer = md_theme_dark_primaryContainer,
-                errorContainer = md_theme_dark_errorContainer,
-                error = md_theme_dark_primary,
-                tertiaryContainer = md_theme_dark_tertiaryContainer,
-                tertiary = md_theme_dark_tertiary,
-                secondaryContainer = md_theme_dark_secondaryContainer,
-                secondary = md_theme_dark_secondary,
-                onPrimaryContainer = md_theme_dark_onPrimaryContainer,
-                onSurface = md_theme_dark_onSurface,
-                onSurfaceVariant = md_theme_dark_onSurfaceVariant
-            )
-        } else {
-            WidgetColors(
-                surface = md_theme_light_surface,
-                primaryContainer = md_theme_light_primaryContainer,
-                errorContainer = md_theme_light_errorContainer,
-                error = md_theme_light_primary,
-                tertiaryContainer = md_theme_light_tertiaryContainer,
-                tertiary = md_theme_light_tertiary,
-                secondaryContainer = md_theme_light_secondaryContainer,
-                secondary = md_theme_light_secondary,
-                onPrimaryContainer = md_theme_light_onPrimaryContainer,
-                onSurface = md_theme_light_onSurface,
-                onSurfaceVariant = md_theme_light_onSurfaceVariant
-            )
-        }
     }
 }

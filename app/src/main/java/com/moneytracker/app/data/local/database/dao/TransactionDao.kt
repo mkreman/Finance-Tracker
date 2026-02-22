@@ -245,4 +245,18 @@ interface TransactionDao {
 
     @Query("DELETE FROM transaction_splits")
     suspend fun clearAllSplits()
+
+    @Query("""
+        UPDATE transactions 
+        SET isRecurring = 0, 
+            recurringInterval = NULL, 
+            recurringUnit = NULL, 
+            recurringEndDate = NULL, 
+            parentRecurringId = NULL,
+            notifyForRecurringEntries = 0,
+            syncStatus = 'DIRTY', 
+            modifiedAt = :timestamp 
+        WHERE id = :seriesId OR parentRecurringId = :seriesId
+    """)
+    suspend fun removeRecurrenceFromSeries(seriesId: String, timestamp: Long = System.currentTimeMillis())
 }

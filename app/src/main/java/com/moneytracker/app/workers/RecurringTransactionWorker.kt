@@ -76,28 +76,25 @@ class RecurringTransactionWorker @AssistedInject constructor(
                 return@forEach
             }
 
-            val latestOccurrenceDate = latestOccurrence?.transaction?.date
+            // 1. Get the base date to calculate from
+            val baseDate = latestOccurrence?.transaction?.date ?: transaction.date
+
+            // 2. Calculate the FIRST needed occurrence by adding the interval
             var nextDate = calculateNextDate(
-                fromDate = latestOccurrenceDate ?: transaction.date,
+                fromDate = baseDate,
                 interval = transaction.recurringInterval ?: 1,
                 recurringUnit = transaction.recurringUnit ?: return@forEach
             )
 
-            var dueDateToCreate: Long? = null
-            while (isOccurrenceDue(nextDate, transaction.recurringEndDate, now)) {
-                dueDateToCreate = nextDate
-                nextDate = calculateNextDate(
-                    fromDate = nextDate,
-                    interval = transaction.recurringInterval ?: 1,
-                    recurringUnit = transaction.recurringUnit ?: break
-                )
-            }
+            var createdCount = 0
+            var latestCreatedTransaction: TransactionEntity? = null
 
-            dueDateToCreate?.let { dueDate ->
+            // 3. Keep generating transactions as long as the nextDate is in the past/present
+            while (isOccurrenceDue(nextDate, transaction.recurringEndDate, now)) {
                 val currentTime = System.currentTimeMillis()
                 val newTransaction = templateTransaction.copy(
                     id = UUID.randomUUID().toString(),
-                    date = dueDate,
+                    date = nextDate, // Assign the exact historical/current due date
                     createdAt = currentTime,
                     modifiedAt = currentTime,
                     parentRecurringId = transaction.id,
@@ -105,7 +102,7 @@ class RecurringTransactionWorker @AssistedInject constructor(
                     recurringInterval = null,
                     recurringUnit = null,
                     recurringEndDate = null,
-                    notifyForRecurringEntries = false,
+                    notifyForRecurringEntries = false, // Set false here, handled below
                     syncStatus = SyncStatus.PENDING
                 )
 
@@ -116,10 +113,23 @@ class RecurringTransactionWorker @AssistedInject constructor(
                     )
                 }
 
+                // Save this specific occurrence
                 transactionRepository.saveTransaction(newTransaction, newSplits)
-                if (transaction.notifyForRecurringEntries) {
-                    showNotification(newTransaction)
-                }
+                
+                latestCreatedTransaction = newTransaction
+                createdCount++
+
+                // Calculate the date for the NEXT loop iteration
+                nextDate = calculateNextDate(
+                    fromDate = nextDate,
+                    interval = transaction.recurringInterval ?: 1,
+                    recurringUnit = transaction.recurringUnit ?: break
+                )
+            }
+
+            // 4. Fire notification only ONCE per series if at least one entry was created
+            if (createdCount > 0 && transaction.notifyForRecurringEntries && latestCreatedTransaction != null) {
+                showNotification(latestCreatedTransaction)
             }
         }
     }
