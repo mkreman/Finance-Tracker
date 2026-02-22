@@ -2,6 +2,7 @@ package com.moneytracker.app.ui.screens.settings
 
 import android.content.Context
 import android.net.Uri
+import androidx.glance.appwidget.updateAll
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.moneytracker.app.data.local.UserPreferences
@@ -14,7 +15,9 @@ import com.moneytracker.app.data.local.repository.BudgetRepository
 import com.moneytracker.app.data.local.repository.CategoryRepository
 import com.moneytracker.app.data.local.repository.TransactionRepository
 import com.moneytracker.app.domain.model.Account
+import com.moneytracker.app.widget.MoneyTrackerWidget
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.io.BufferedReader
@@ -31,8 +34,7 @@ data class SettingsState(
     val accounts: List<Account> = emptyList(),
     val defaultAccountId: String? = null,
     val currencyCode: String = "INR",
-    val firstDayOfWeek: Int = java.util.Calendar.MONDAY
-    ,
+    val firstDayOfWeek: Int = java.util.Calendar.MONDAY,
     val biometricEnabled: Boolean = false,
     val passcodeEnabled: Boolean = false,
     val defaultNotifyForRecurringEntries: Boolean = true,
@@ -45,7 +47,8 @@ class SettingsViewModel @Inject constructor(
     private val accountRepository: AccountRepository,
     private val categoryRepository: CategoryRepository,
     private val budgetRepository: BudgetRepository,
-    private val userPreferences: UserPreferences
+    private val userPreferences: UserPreferences,
+    @ApplicationContext private val context: Context // Injected context for updating the widget
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(SettingsState())
@@ -130,6 +133,8 @@ class SettingsViewModel @Inject constructor(
     fun setThemeMode(mode: Int) {
         viewModelScope.launch {
             userPreferences.setThemeMode(mode)
+            // Tell the Glance widget to instantly redraw itself with the new theme
+            MoneyTrackerWidget().updateAll(context)
         }
     }
 

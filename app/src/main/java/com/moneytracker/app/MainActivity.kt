@@ -1,5 +1,7 @@
 package com.moneytracker.app
 
+import kotlinx.coroutines.Dispatchers
+import androidx.glance.appwidget.updateAll
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -234,5 +236,18 @@ class MainActivity : FragmentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Catch-up update: forces the widget to sync colors if the app was 
+        // completely dead when the system dark mode changed.
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                MoneyTrackerWidget().updateAll(this@MainActivity)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
     }
 }

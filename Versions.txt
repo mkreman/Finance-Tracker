@@ -136,7 +136,7 @@ For version 0.6.0
 	- Recurring entries
 		- Bugs: updates are not working
 	- Fix theming issue with notification bar
-
+	- Fix the widget and theme changes with the system and app
 
 Done 
 ___________________________________________________________________________________________________
@@ -145,7 +145,6 @@ ________________________________________________________________________________
 	- Back up user data with Auto Backup  |  Identity  |  Android Developers https://share.google/PrKwcm21nU3HfmthC
 
 
-- Fix the widget
 - Moving from one page to another page is too slow is there anything you can do to increase the app speed, maybe fasten the animations
 
  

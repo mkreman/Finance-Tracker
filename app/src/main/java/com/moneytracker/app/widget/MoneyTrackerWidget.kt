@@ -2,14 +2,17 @@ package com.moneytracker.app.widget
 
 import android.content.Context
 import android.content.Intent
-import android.content.res.Configuration
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.Image
+import androidx.glance.ColorFilter
+import androidx.glance.ImageProvider
 import androidx.glance.LocalContext
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
@@ -22,38 +25,80 @@ import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextAlign
 import androidx.glance.text.TextStyle
-import androidx.glance.unit.ColorProvider
+import androidx.glance.unit.ColorProvider // 🌟 The correct import for the TYPE
 import com.moneytracker.app.MainActivity
 import com.moneytracker.app.R
+import com.moneytracker.app.data.local.UserPreferences
 import com.moneytracker.app.ui.theme.*
+import dagger.hilt.EntryPoint
+import dagger.hilt.InstallIn
+import dagger.hilt.android.EntryPointAccessors
+import dagger.hilt.components.SingletonComponent
+
+@EntryPoint
+@InstallIn(SingletonComponent::class)
+interface WidgetEntryPoint {
+    fun userPreferences(): UserPreferences
+}
 
 class MoneyTrackerWidget : GlanceAppWidget() {
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
+        val entryPoint = EntryPointAccessors.fromApplication(
+            context.applicationContext,
+            WidgetEntryPoint::class.java
+        )
+        val userPreferences = entryPoint.userPreferences()
+        
         provideContent {
-            WidgetContent()
+            val themeMode by userPreferences.themeMode.collectAsState(initial = 0)
+            WidgetContent(themeMode = themeMode)
         }
     }
 
     @Composable
-    private fun WidgetContent() {
-        // 1. Get the UI Context which has the correct Configuration (Day/Night)
+    private fun WidgetContent(themeMode: Int) {
         val context = LocalContext.current
         
-        // 2. Check the System Theme directly from the View Context
-        val isDark = (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+        // 🌟 Native OS Theming Delegation using fully qualified factory calls to avoid import clashes
+        val surfaceColor = when (themeMode) {
+            1 -> androidx.glance.color.ColorProvider(day = md_theme_light_surface, night = md_theme_light_surface)
+            2 -> androidx.glance.color.ColorProvider(day = md_theme_dark_surface, night = md_theme_dark_surface)
+            else -> androidx.glance.color.ColorProvider(day = md_theme_light_surface, night = md_theme_dark_surface)
+        }
         
-        // 3. Select colors based on 'isDark'
-        val surfaceColor = if (isDark) md_theme_dark_surface else md_theme_light_surface
+        val expenseBg = when (themeMode) {
+            1 -> androidx.glance.color.ColorProvider(day = md_theme_light_errorContainer, night = md_theme_light_errorContainer)
+            2 -> androidx.glance.color.ColorProvider(day = md_theme_dark_errorContainer, night = md_theme_dark_errorContainer)
+            else -> androidx.glance.color.ColorProvider(day = md_theme_light_errorContainer, night = md_theme_dark_errorContainer)
+        }
+        val expenseIcon = when (themeMode) {
+            1 -> androidx.glance.color.ColorProvider(day = md_theme_light_onErrorContainer, night = md_theme_light_onErrorContainer)
+            2 -> androidx.glance.color.ColorProvider(day = md_theme_dark_onErrorContainer, night = md_theme_dark_onErrorContainer)
+            else -> androidx.glance.color.ColorProvider(day = md_theme_light_onErrorContainer, night = md_theme_dark_onErrorContainer)
+        }
         
-        val expenseBg = if (isDark) md_theme_dark_errorContainer else md_theme_light_errorContainer
-        val expenseIcon = if (isDark) md_theme_dark_onErrorContainer else md_theme_light_onErrorContainer
+        val incomeBg = when (themeMode) {
+            1 -> androidx.glance.color.ColorProvider(day = md_theme_light_tertiaryContainer, night = md_theme_light_tertiaryContainer)
+            2 -> androidx.glance.color.ColorProvider(day = md_theme_dark_tertiaryContainer, night = md_theme_dark_tertiaryContainer)
+            else -> androidx.glance.color.ColorProvider(day = md_theme_light_tertiaryContainer, night = md_theme_dark_tertiaryContainer)
+        }
+        val incomeIcon = when (themeMode) {
+            1 -> androidx.glance.color.ColorProvider(day = md_theme_light_onTertiaryContainer, night = md_theme_light_onTertiaryContainer)
+            2 -> androidx.glance.color.ColorProvider(day = md_theme_dark_onTertiaryContainer, night = md_theme_dark_onTertiaryContainer)
+            else -> androidx.glance.color.ColorProvider(day = md_theme_light_onTertiaryContainer, night = md_theme_dark_onTertiaryContainer)
+        }
         
-        val incomeBg = if (isDark) md_theme_dark_tertiaryContainer else md_theme_light_tertiaryContainer
-        val incomeIcon = if (isDark) md_theme_dark_onTertiaryContainer else md_theme_light_onTertiaryContainer
-        
-        val transferBg = if (isDark) md_theme_dark_secondaryContainer else md_theme_light_secondaryContainer
-        val transferIcon = if (isDark) md_theme_dark_onSecondaryContainer else md_theme_light_onSecondaryContainer
+        val transferBg = when (themeMode) {
+            1 -> androidx.glance.color.ColorProvider(day = md_theme_light_secondaryContainer, night = md_theme_light_secondaryContainer)
+            2 -> androidx.glance.color.ColorProvider(day = md_theme_dark_secondaryContainer, night = md_theme_dark_secondaryContainer)
+            else -> androidx.glance.color.ColorProvider(day = md_theme_light_secondaryContainer, night = md_theme_dark_secondaryContainer)
+        }
+        val transferIcon = when (themeMode) {
+            1 -> androidx.glance.color.ColorProvider(day = md_theme_light_onSecondaryContainer, night = md_theme_light_onSecondaryContainer)
+            2 -> androidx.glance.color.ColorProvider(day = md_theme_dark_onSecondaryContainer, night = md_theme_dark_onSecondaryContainer)
+            else -> androidx.glance.color.ColorProvider(day = md_theme_light_onSecondaryContainer, night = md_theme_dark_onSecondaryContainer)
+        }
 
         val appIntent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
@@ -63,14 +108,12 @@ class MoneyTrackerWidget : GlanceAppWidget() {
             modifier = GlanceModifier
                 .fillMaxWidth()
                 .height(80.dp)
-                // Use ColorProvider(Color) which is supported in your version
-                .background(ColorProvider(surfaceColor))
+                .background(surfaceColor)
                 .cornerRadius(24.dp)
                 .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // App Icon
             Box(
                 modifier = GlanceModifier
                     .size(56.dp)
@@ -78,7 +121,7 @@ class MoneyTrackerWidget : GlanceAppWidget() {
                 contentAlignment = Alignment.Center
             ) {
                 Image(
-                    provider = androidx.glance.ImageProvider(R.mipmap.ic_launcher),
+                    provider = ImageProvider(R.mipmap.ic_launcher),
                     contentDescription = "Open App",
                     modifier = GlanceModifier.fillMaxSize()
                 )
@@ -86,10 +129,12 @@ class MoneyTrackerWidget : GlanceAppWidget() {
 
             Spacer(modifier = GlanceModifier.width(12.dp))
 
+            // ... (inside WidgetContent Row) ...
+
             // Expense (Red)
             WidgetActionButton(
                 context = context,
-                symbol = "↑",
+                iconRes = R.drawable.ic_arrow_upward, // 🌟 Updated to use drawable
                 bgColor = expenseBg,
                 iconColor = expenseIcon,
                 type = "EXPENSE",
@@ -101,7 +146,7 @@ class MoneyTrackerWidget : GlanceAppWidget() {
             // Income (Green)
             WidgetActionButton(
                 context = context,
-                symbol = "↓",
+                iconRes = R.drawable.ic_arrow_downward, // 🌟 Updated to use drawable
                 bgColor = incomeBg,
                 iconColor = incomeIcon,
                 type = "INCOME",
@@ -113,7 +158,7 @@ class MoneyTrackerWidget : GlanceAppWidget() {
             // Transfer (Blue)
             WidgetActionButton(
                 context = context,
-                symbol = "⇄",
+                iconRes = R.drawable.ic_swap_horiz, // 🌟 Updated to use drawable
                 bgColor = transferBg,
                 iconColor = transferIcon,
                 type = "TRANSFER",
@@ -122,12 +167,13 @@ class MoneyTrackerWidget : GlanceAppWidget() {
         }
     }
 
+    // 🌟 Updated Composable
     @Composable
     private fun WidgetActionButton(
         context: Context,
-        symbol: String,
-        bgColor: Color,
-        iconColor: Color,
+        iconRes: Int, // <-- Changed from symbol: String
+        bgColor: ColorProvider,
+        iconColor: ColorProvider,
         type: String,
         modifier: GlanceModifier = GlanceModifier
     ) {
@@ -139,19 +185,17 @@ class MoneyTrackerWidget : GlanceAppWidget() {
         Box(
             modifier = modifier
                 .fillMaxHeight()
-                .background(ColorProvider(bgColor))
+                .background(bgColor)
                 .cornerRadius(16.dp)
                 .clickable(actionStartActivity(intent)),
             contentAlignment = Alignment.Center
         ) {
-            Text(
-                text = symbol,
-                style = TextStyle(
-                    color = ColorProvider(iconColor),
-                    fontSize = 32.sp,
-                    fontWeight = FontWeight.Bold,
-                    textAlign = TextAlign.Center
-                )
+            // Replaced Text() with Image()
+            Image(
+                provider = ImageProvider(iconRes),
+                contentDescription = type,
+                modifier = GlanceModifier.size(32.dp),
+                colorFilter = ColorFilter.tint(iconColor) // Applies your dynamic Day/Night colors to the icon!
             )
         }
     }
