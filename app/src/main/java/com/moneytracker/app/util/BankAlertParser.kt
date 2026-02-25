@@ -38,9 +38,16 @@ object BankAlertParser {
             ?.toDoubleOrNull()
             ?: return null
 
+        // Extract and clean the payee
         val payee = extractPayee(cleaned, type)
+        
         val note = buildString {
-            append(if (type == TransactionType.EXPENSE) "Auto-detected debit alert" else "Auto-detected credit alert")
+            if (type == TransactionType.EXPENSE) {
+                append("Paid to: $payee (Auto-detected)")
+            } else {
+                append("Received from: $payee (Auto-detected)")
+            }
+            
             val refMatch = Regex("""(?i)\bref\s+([A-Z0-9]+)""").find(cleaned)?.groupValues?.getOrNull(1)
             if (!refMatch.isNullOrBlank()) {
                 append(" • Ref ")
@@ -66,10 +73,26 @@ object BankAlertParser {
             else -> null
         }
 
-        return match?.groupValues
-            ?.getOrNull(1)
-            ?.trim()
-            ?.takeIf { it.isNotBlank() }
+        var payee = match?.groupValues?.getOrNull(1)?.trim()
+
+        if (payee != null) {
+            // 1. Cut off at common trailing words that a greedy regex catches
+            val stopWords = listOf(" on ", " ref ", " via ", " txn ", " date ", " available ", " avail ", " avl ", " bal ")
+            for (word in stopWords) {
+                val idx = payee!!.indexOf(word, ignoreCase = true)
+                if (idx > 0) {
+                    payee = payee!!.substring(0, idx).trim()
+                }
+            }
+
+            // 2. Remove common prefixes like "VPA ", "VPA-", "Mr ", "Mrs "
+            payee = payee!!.replace(Regex("(?i)^vpa[- ]*"), "")
+                           .replace(Regex("(?i)^mr\\.?\\s+"), "")
+                           .replace(Regex("(?i)^mrs\\.?\\s+"), "")
+                           .trim()
+        }
+
+        return payee?.takeIf { it.isNotBlank() }
             ?: if (type == TransactionType.EXPENSE) "Expense" else "Income"
     }
 }

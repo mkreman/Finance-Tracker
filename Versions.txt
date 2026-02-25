@@ -137,20 +137,22 @@ For version 1.0.0
 	- Long press category or account type to edit or delete them
 	- Fix the crashes issues
 	- Fix theming issue with notification bar
-
+	- Ask for confirmation before deleting an entry
+	- When I open the app from recent opened apps it doesn't ask for password or authentication
+	- When I make an entry with the widgets it doesn't ask for the password which I wanted but after saving it, it opens the app without authentication. I want the app to close after saving the entry if we start from the widget
+	- Add account and add budget page has gap on the top
+	- Rotation of the screen while the app is open is asking for authentication. Shouldn't happen
+	- Reduce the animation speed for the whole app
+	- Make edit and save buttons a bit bigger
+	- When we edit an entry the keyboard should land on the right most side of the amount not left.
+	- Remove people from category
+	- Auto detect credit notes should contain the sender s name or upi
 
 Done 
 ___________________________________________________________________________________________________
 
-- Ask for confirmation before deleting an entry
-- When I open the app from recent opened apps it doesn't ask for password or authentication
-- When I make an entry with the widgets it doesn't ask for the password which I wanted but after saving it, it opens the app without authentication. I want the app to close after saving the entry if we start from the widget
-- Add account and add budget page has gap on the top
-- Rotation of the screen while the app is open is asking for authentication. Shouldn't happen
-- Reduce the animation speed for the whole app
 
-
-- Back up user data with Auto Backup  |  Identity  |  Android Developers https://share.google/PrKwcm21nU3HfmthC
-- Moving from one page to another page is too slow is there anything you can do to increase the app speed, maybe fasten the animations
-
- 
+Version 1.1.0
+	- Back up user data with Auto Backup  |  Identity  |  Android Developers https://share.google/PrKwcm21nU3HfmthC
+	- Make a database for category recommendations for auto transactions
+	- Build calculator in amount section

@@ -29,9 +29,11 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -118,7 +120,6 @@ fun AddTransactionScreen(
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     
-                    // Action Buttons Row (No collective outer background)
                     Row(
                         modifier = Modifier.padding(end = 8.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -129,7 +130,6 @@ fun AddTransactionScreen(
                         if (state.isEditMode) {
                             FilledIconButton(
                                 onClick = { showDeleteConfirmation = true },
-                                // Restored your original parabolic dimensions
                                 modifier = Modifier.size(width = 56.dp, height = 35.dp),
                                 shape = RoundedCornerShape(16.dp),
                                 colors = IconButtonDefaults.filledIconButtonColors(
@@ -161,7 +161,6 @@ fun AddTransactionScreen(
                         FilledIconButton(
                             onClick = viewModel::saveTransaction,
                             enabled = state.isValid && !state.isSaving,
-                            // Restored your original parabolic dimensions
                             modifier = Modifier.size(width = 56.dp, height = 35.dp),
                             shape = RoundedCornerShape(16.dp),
                             colors = IconButtonDefaults.filledIconButtonColors(
@@ -183,7 +182,6 @@ fun AddTransactionScreen(
                     }
                 }
 
-                // Transaction type tabs
                 Row(
                     modifier = Modifier
                         .padding(horizontal = 16.dp)
@@ -222,13 +220,32 @@ fun AddTransactionScreen(
 
                 Spacer(modifier = Modifier.height(20.dp))
 
-                // Amount display
                 Column(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text("Amount", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(modifier = Modifier.height(4.dp))
+
+                    // TextFieldValue state to strictly manage cursor position
+                    var amountTextFieldValue by remember {
+                        mutableStateOf(
+                            TextFieldValue(
+                                text = state.amount,
+                                selection = TextRange(state.amount.length) // Cursor at the end
+                            )
+                        )
+                    }
+
+                    // Keep local cursor state in sync with ViewModel state changes
+                    LaunchedEffect(state.amount) {
+                        if (state.amount != amountTextFieldValue.text) {
+                            amountTextFieldValue = amountTextFieldValue.copy(
+                                text = state.amount,
+                                selection = TextRange(state.amount.length)
+                            )
+                        }
+                    }
 
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -241,8 +258,11 @@ fun AddTransactionScreen(
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         BasicTextField(
-                            value = state.amount,
-                            onValueChange = viewModel::onAmountChange,
+                            value = amountTextFieldValue,
+                            onValueChange = { newValue ->
+                                amountTextFieldValue = newValue
+                                viewModel.onAmountChange(newValue.text)
+                            },
                             textStyle = TextStyle(
                                 fontSize = 40.sp,
                                 fontWeight = FontWeight.Bold,
@@ -256,7 +276,7 @@ fun AddTransactionScreen(
                                 .widthIn(min = 60.dp, max = 220.dp)
                                 .focusRequester(focusRequester),
                             decorationBox = { innerTextField ->
-                                if (state.amount.isEmpty()) {
+                                if (amountTextFieldValue.text.isEmpty()) {
                                     Text(
                                         "0",
                                         style = TextStyle(
@@ -274,7 +294,6 @@ fun AddTransactionScreen(
             }
         }
 
-        // Body content
         Column(
             modifier = Modifier
                 .fillMaxSize()

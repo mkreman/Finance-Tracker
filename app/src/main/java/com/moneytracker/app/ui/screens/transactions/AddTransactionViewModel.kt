@@ -64,14 +64,16 @@ class AddTransactionViewModel @Inject constructor(
         if (editTransactionId == null) {
             _state.update { state ->
                 val amountValue = initialAmount?.takeIf { it.isNotBlank() }
-                val mergedNote = listOfNotNull(
-                    initialPayee?.takeIf { it.isNotBlank() },
-                    initialNote?.takeIf { it.isNotBlank() }
-                ).joinToString(" • ")
+                
+                // Use initialNote directly. Since the parser already includes 
+                // the payee in the note, we avoid duplicating it.
+                val startingNote = initialNote?.takeIf { it.isNotBlank() } 
+                    ?: initialPayee?.takeIf { it.isNotBlank() } 
+                    ?: state.note
 
                 state.copy(
                     amount = amountValue ?: state.amount,
-                    note = if (mergedNote.isNotBlank()) mergedNote else state.note
+                    note = startingNote
                 )
             }
         }
