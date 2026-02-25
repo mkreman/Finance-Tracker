@@ -58,7 +58,6 @@ class CategoryRepository @Inject constructor(
             Category("cat-rent", "Rent", "home", TransactionType.EXPENSE, 0.0, "#795548"),
             Category("cat-bike", "Bike", "two_wheeler", TransactionType.EXPENSE, 0.0, "#607D8B"),
             Category("cat-cats", "Cats", "pets", TransactionType.EXPENSE, 0.0, "#FFEB3B"),
-            Category("cat-people", "People", "people", TransactionType.EXPENSE, 0.0, "#00BCD4"),
             Category("cat-other-expense", "Other", "more_horiz", TransactionType.EXPENSE, 0.0, "#9E9E9E"),
             // Income categories
             Category("cat-salary", "Salary", "work", TransactionType.INCOME, 0.0, "#4CAF50"),
