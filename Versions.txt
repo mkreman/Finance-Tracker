@@ -117,57 +117,40 @@ For version 0.5.4
 - Cash and wallet are coming in one category
 
 
-For version 0.6.0
+For version 1.0.0
 	- Biometric lock & Password protection
+	- Fix the widget and theme changes with the system and app
+	- Read upcoming text and if you find any expense related text then suggest a automatic expense or income as notification and give the option to save edit or discard
 	- Add a About section 
 		- Mayank Nagar
 		- Personal project 
 		- Contact: mkreman12@gmail.com	
 	- Summary of balance account type wise
 	- Add account type button on the side
-	- Minimizable account section
+	- Minimize account section
 	- Recurring entries
 		- Bug: If I delete a recurring entry it's coming back
 		- Bug: When I turning it off, it should remove recurring icon
 		- Bug: Edit and deleting any entry in the recurrence series is possible now
+		- Bugs: updates are not working
 	- Add icon on notification
 	- Long press category or account type to edit or delete them
-	- Fix the crashes uses
-	- Recurring entries
-		- Bugs: updates are not working
+	- Fix the crashes issues
 	- Fix theming issue with notification bar
-	- Fix the widget and theme changes with the system and app
+
 
 Done 
 ___________________________________________________________________________________________________
-	
-	- Read upcoming text and if you find any expense related text then suggest a automatic expense or income as notification and give the option to save edit or discard
-	- Back up user data with Auto Backup  |  Identity  |  Android Developers https://share.google/PrKwcm21nU3HfmthC
+
+- Ask for confirmation before deleting an entry
+- When I open the app from recent opened apps it doesn't ask for password or authentication
+- When I make an entry with the widgets it doesn't ask for the password which I wanted but after saving it, it opens the app without authentication. I want the app to close after saving the entry if we start from the widget
+- Add account and add budget page has gap on the top
+- Rotation of the screen while the app is open is asking for authentication. Shouldn't happen
+- Reduce the animation speed for the whole app
 
 
+- Back up user data with Auto Backup  |  Identity  |  Android Developers https://share.google/PrKwcm21nU3HfmthC
 - Moving from one page to another page is too slow is there anything you can do to increase the app speed, maybe fasten the animations
 
  
-
-HDFC Bank debit
- 
-Sent Rs.xxx
-From HDFC Bank A/C *xxxx
-To MAYANK NAGAR
-On 14/02/26
-Ref xxxxxx
-Not You?
-Call xxxxxxxxxx/SMS BLOCK UPI to xxxxxxx
-
-
-Hdfc Credit Card debit
- 
-Spent Rs.xxxx On HDFC Bank Card 1277 At ZOMATO11120 On 2026-02-14:14:01:16.Not You? To Block+Reissue Call xxxxx/SMS BLOCK CC 1277 to xxxxx
-
-
-HDFC Bank credit
- 
-Credit Alert!
-Rs.xxxx.00 credited to HDFC Bank A/c XX9449 on 14-02-26 from VPA xxxxx@ybl (UPI xxxxxx)
-
-

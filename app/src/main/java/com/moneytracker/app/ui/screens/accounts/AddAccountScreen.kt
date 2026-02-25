@@ -206,7 +206,8 @@ fun AddAccountScreen(
                     Icon(Icons.Filled.ArrowBack, "Back", tint = MaterialTheme.colorScheme.onSurface)
                 }
             },
-            colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background)
+            colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
+            windowInsets = WindowInsets(0.dp) // <-- This removes the top gap!
         )
 
         Column(

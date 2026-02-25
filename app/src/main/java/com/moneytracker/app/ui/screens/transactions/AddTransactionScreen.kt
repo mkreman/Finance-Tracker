@@ -125,27 +125,84 @@ fun AddTransactionScreen(
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurface
                     )
-                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    
+                    // Grouped Parabolic Container for Actions
+                    Row(
+                        modifier = Modifier
+                            .padding(end = 4.dp)
+                            .clip(RoundedCornerShape(24.dp)) // Smooth pill-shaped background
+                            .background(MaterialTheme.colorScheme.background.copy(alpha = 0.5f))
+                            .padding(horizontal = 8.dp, vertical = 6.dp), // Wider padding to create room
+                        horizontalArrangement = Arrangement.spacedBy(12.dp), // Distinct gap between the buttons
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        var showDeleteConfirmation by remember { mutableStateOf(false) }
+
+                        // Parabolic Delete Button
                         if (state.isEditMode) {
-                            IconButton(onClick = viewModel::deleteTransaction) {
-                                Icon(Icons.Filled.Delete, "Delete", tint = MaterialTheme.colorScheme.error)
+                            FilledIconButton(
+                                onClick = { showDeleteConfirmation = true },
+                                modifier = Modifier.size(width = 56.dp, height = 42.dp), // Wider than tall
+                                shape = RoundedCornerShape(16.dp), // Parabolic/Rounded edges
+                                colors = IconButtonDefaults.filledIconButtonColors(
+                                    containerColor = MaterialTheme.colorScheme.errorContainer,
+                                    contentColor = MaterialTheme.colorScheme.error
+                                )
+                            ) {
+                                Icon(Icons.Filled.Delete, "Delete", modifier = Modifier.size(22.dp))
+                            }
+
+                            // Safety Confirmation Dialog
+                            if (showDeleteConfirmation) {
+                                AlertDialog(
+                                    onDismissRequest = { showDeleteConfirmation = false },
+                                    title = { Text("Delete Transaction", color = MaterialTheme.colorScheme.onSurface) },
+                                    text = { Text("Are you sure you want to delete this transaction?", color = MaterialTheme.colorScheme.onSurfaceVariant) },
+                                    confirmButton = {
+                                        TextButton(
+                                            onClick = {
+                                                showDeleteConfirmation = false
+                                                viewModel.deleteTransaction()
+                                            }
+                                        ) {
+                                            Text("Delete", color = MaterialTheme.colorScheme.error)
+                                        }
+                                    },
+                                    dismissButton = {
+                                        TextButton(onClick = { showDeleteConfirmation = false }) {
+                                            Text("Cancel", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        }
+                                    },
+                                    containerColor = MaterialTheme.colorScheme.surface,
+                                    shape = RoundedCornerShape(16.dp)
+                                )
                             }
                         }
-                        IconButton(
+
+                        // Parabolic Save/Check Button
+                        FilledIconButton(
                             onClick = viewModel::saveTransaction,
-                            enabled = state.isValid && !state.isSaving
+                            enabled = state.isValid && !state.isSaving,
+                            modifier = Modifier.size(width = 56.dp, height = 42.dp), // Wider than tall
+                            shape = RoundedCornerShape(16.dp), // Parabolic/Rounded edges
+                            colors = IconButtonDefaults.filledIconButtonColors(
+                                containerColor = typeColor,
+                                contentColor = Color.White,
+                                disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         ) {
                             if (state.isSaving) {
                                 CircularProgressIndicator(
                                     modifier = Modifier.size(20.dp),
-                                    color = typeColor,
-                                    strokeWidth = 2.dp
+                                    color = Color.White,
+                                    strokeWidth = 2.5.dp
                                 )
                             } else {
                                 Icon(
                                     Icons.Filled.Check,
                                     contentDescription = if (state.isEditMode) "Update" else "Save",
-                                    tint = typeColor
+                                    modifier = Modifier.size(26.dp)
                                 )
                             }
                         }
@@ -604,7 +661,6 @@ private fun CategoryGrid(
 
     // Show as a wrapping grid: 4 per row
     // We add a virtual "+Add" item at the end
-    val itemCount = displayCategories.size + 1 // +1 for "Add New"
     val fullRows = displayCategories.chunked(4)
     // Check if the last row has space for our "Add" button
     val lastRow = fullRows.lastOrNull()
@@ -1029,7 +1085,7 @@ private fun AccountDropdown(
     ExposedDropdownMenuBox(
         expanded = expanded,
         onExpandedChange = { expanded = !expanded },
-        modifier = modifier // FIXED: Apply weight modifier here
+        modifier = modifier
     ) {
         OutlinedTextField(
             value = selectedAccount?.name ?: "",
@@ -1047,7 +1103,7 @@ private fun AccountDropdown(
                     )
                 }
             },
-            modifier = Modifier // FIXED: Clean modifier for the text field
+            modifier = Modifier
                 .fillMaxWidth()
                 .menuAnchor(),
             colors = textFieldColors(),

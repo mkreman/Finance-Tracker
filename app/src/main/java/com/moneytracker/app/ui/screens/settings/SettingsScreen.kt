@@ -580,7 +580,7 @@ fun SettingsScreen(
         SettingsItem(
             icon = Icons.Filled.Info,
             title = "Version",
-            subtitle = "0.5.4",
+            subtitle = "1.0.0",
             iconTint = MaterialTheme.colorScheme.onSurfaceVariant,
             onClick = { showVersionHistory = true }
         )
@@ -787,119 +787,135 @@ private fun VersionHistoryDialog(onDismiss: () -> Unit) {
                     .verticalScroll(rememberScrollState())
             ) {
                 VersionItem(
+                    version = "1.0.0",
+                    features = listOf(
+                        "Feature: Added a new icon for the app",
+                        "Feature: Introduced Biometric lock and Passcode protection for enhanced app security.",
+                        "Feature: Smart SMS Detection – Automatically analyzes incoming bank alerts and suggests expense/income entries via notification, with options to quickly save, edit, or discard.",
+                        "Feature: Added full support for Recurring Transactions to automate regular expenses and income.",
+                        "Feature: Implemented a new balance summary grouped by account type.",
+                        "Feature: Added the ability to minimize or collapse account sections for a cleaner overview.",
+                        "Feature: Long-press on any category or account type to quickly edit or delete it.",
+                        "Feature: Added an 'About' section containing developer information and contact details.",
+                        "Improvement: Added a convenient quick-access button on the side for adding new account types.",
+                        "Improvement: Enabled full editing and deletion capabilities for individual entries within a recurring series.",
+                        "Improvement: App notifications now display the correct app icon.",
+                        "Fixed: Resolved an issue where widget and app themes were not correctly syncing with the system's dark/light mode.",
+                        "Fixed: Resolved an issue where deleted recurring entries would sometimes reappear.",
+                        "Fixed: The recurring icon is now properly removed when a recurring transaction is toggled off.",
+                        "Fixed: Addressed bugs preventing transaction updates from saving correctly.",
+                        "Fixed: Resolved a visual glitch where the system notification bar did not match the app's theme.",
+                        "Fixed: Addressed various underlying bugs to improve overall app stability and prevent crashes."
+                    )
+                )
+                
+                VersionItem(
                     version = "0.5.4",
                     features = listOf(
-                        "Bring back accounts and categories after reset",
-                        "Auto-focus on account name field when adding account",
-                        "Keyboard dismisses when selecting account type, icon or color",
-                        "Budget import/export functionality fixed",
-                        "Widget redesigned with smaller buttons and arrow symbols (↓↑⇄)",
-                        "Added app icon to widget that opens the app when clicked"
+                        "Fixed: Restored default accounts and categories automatically after a data reset.",
+                        "Improvement: Auto-focus on the account name field when creating a new account.",
+                        "Improvement: Keyboard now automatically dismisses when selecting account type, icon, or color.",
+                        "Fixed: Resolved issues with budget import and export functionality.",
+                        "Feature: Redesigned the home screen widget with compact buttons and directional arrows (↓↑⇄).",
+                        "Feature: Added an app icon to the widget for quick access to the main application."
                     )
                 )
                 
                 VersionItem(
                     version = "0.5.3",
                     features = listOf(
-                        "Auto-focus on account name field when adding account",
-                        "Added accounts and budgets to export/import file",
-                        "Filter categories with existing budgets when adding new budget",
-                        "Show transfers in daily summary on transaction section",
-                        "Fixed reset all data functionality",
-                        "Auto-create missing accounts/categories when importing TSV file"
+                        "Feature: Export and import TSV files now include accounts and budgets data.",
+                        "Improvement: Categories with existing budgets are now filtered out when creating a new budget.",
+                        "Feature: Daily summaries in the transaction list now display transfer totals.",
+                        "Fixed: Addressed an issue preventing the 'Clear All Data' function from working correctly.",
+                        "Feature: Automatically create missing accounts and categories during TSV imports."
                     )
                 )
                 
                 VersionItem(
                     version = "0.5.2",
                     features = listOf(
-                        "Default categories and accounts preserved after app installation",
-                        "Show all selected categories on transaction entries",
-                        "Fixed account balance update when deleting accounts with transactions",
-                        "Budget spent amount displayed in red color",
-                        "Currency and first day of week settings now functional",
-                        "Complete version history in Settings"
+                        "Improvement: Default categories and accounts are now reliably generated upon initial installation.",
+                        "Feature: Transaction entries now display all selected categories for split transactions.",
+                        "Fixed: Account balances now update correctly when deleting an account with associated transactions.",
+                        "Improvement: Spent amounts in budgets are now highlighted in red for better visibility.",
+                        "Fixed: Currency selection and 'First Day of Week' settings are now fully functional.",
+                        "Feature: Added a comprehensive version history dialog in Settings."
                     )
                 )
                 
                 VersionItem(
                     version = "0.5.1",
                     features = listOf(
-                        "Fixed overlapping text in budget summary page",
-                        "Show total remaining amount in budget summary",
-                        "Added ability to edit and delete budgets",
-                        "Three-dot menu for accounts with edit, delete, and deactivate options",
-                        "Deactivate accounts to hidden list with ability to reactivate"
+                        "Fixed: Resolved text overlapping issues on the budget summary page.",
+                        "Feature: Budget summary now displays the total remaining amount.",
+                        "Feature: Added support for editing and deleting existing budgets.",
+                        "Feature: Introduced a context menu for accounts with Edit, Delete, and Deactivate actions.",
+                        "Feature: Accounts can now be deactivated and hidden, with the ability to reactivate them later."
                     )
                 )
                 
                 VersionItem(
                     version = "0.5.0",
                     features = listOf(
-                        "Fixed transaction update functionality and account balance update",
-                        "Transfer now correctly updates 'to account' balance",
-                        "Negative account balance shown in red with minus sign"
+                        "Fixed: Resolved issues with transaction updates failing to reflect in account balances.",
+                        "Fixed: Transfers now correctly update the destination account's balance.",
+                        "Improvement: Negative account balances are now clearly indicated with a minus sign and red text."
                     )
                 )
                 
                 VersionItem(
                     version = "0.4.0",
                     features = listOf(
-                        "Transaction set as default page",
-                        "Transfer section now lists entries without plot",
-                        "Keyboard auto-shows when clicking + for amount",
-                        "Option to add new category with custom icon",
-                        "Transfer correctly updates both account balances",
-                        "Added 'People' account type for lending/borrowing"
+                        "Improvement: Set the Transactions screen as the default start page.",
+                        "Improvement: Transfer section now cleanly lists entries without rendering a chart.",
+                        "Improvement: Keyboard automatically appears when tapping to enter an amount.",
+                        "Feature: Added the ability to create custom categories with selectable icons.",
+                        "Fixed: Transfers accurately deduct from the source and add to the destination accounts.",
+                        "Feature: Introduced a 'People' account type to track lending and borrowing."
                     )
                 )
                 
                 VersionItem(
                     version = "0.3.0",
                     features = listOf(
-                        "Fixed app crash on transaction entry",
-                        "Redesigned add transaction page",
-                        "Keyboard dismisses after category selection",
-                        "Multiple category selection support",
-                        "Separate daily totals for expense and income"
+                        "Fixed: Resolved a critical crash occurring during transaction entry.",
+                        "Feature: Completely redesigned the 'Add Transaction' interface for better usability.",
+                        "Improvement: Keyboard now automatically hides after selecting a category.",
+                        "Feature: Added support for selecting multiple categories (split transactions).",
+                        "Feature: Daily headers now display separate totals for expenses and income."
                     )
                 )
                 
                 VersionItem(
                     version = "0.2.0",
                     features = listOf(
-                        "Fixed app crash after creating expense/income entry",
-                        "Default account selection for expense/income",
-                        "Account overview with income, expense, and balance",
-                        "Clickable accounts showing transaction history",
-                        "People category for lending/borrowing",
-                        "Icon selection for accounts",
-                        "Edit starting amount capability",
-                        "Transfer section in dashboard",
-                        "Income summary when pressing income",
-                        "Clickable categories showing filtered transactions",
-                        "Working date edit option",
-                        "Multiple category selection with split",
-                        "Transfer save functionality",
-                        "Edit/delete old transactions",
-                        "Overall expense/income on daily headers",
-                        "Transaction timestamps",
-                        "Clickable budget categories with expense details",
-                        "Remaining budget display",
-                        "TSV export/import functionality"
+                        "Fixed: Resolved a crash occurring immediately after saving an expense or income.",
+                        "Feature: Added support for default account selection on new transactions.",
+                        "Feature: Enhanced account overview to show total income, expense, and current balance.",
+                        "Feature: Accounts are now clickable, navigating directly to their specific transaction history.",
+                        "Feature: Added a dedicated 'People' category.",
+                        "Feature: Enabled custom icon selection when creating or editing accounts.",
+                        "Feature: Added the ability to edit an account's initial starting balance.",
+                        "Feature: Added a dedicated Transfer tracking section to the Dashboard.",
+                        "Feature: Viewing income details now provides a comprehensive summary.",
+                        "Feature: Categories on the dashboard are now clickable to view filtered transactions.",
+                        "Fixed: Resolved issues with editing the date of past transactions.",
+                        "Feature: Enabled splitting a single transaction across multiple categories.",
+                        "Fixed: Resolved issues preventing transfers from saving correctly.",
+                        "Feature: Fully implemented editing and deleting for historical transactions.",
+                        "Feature: Daily headers now summarize the net expense and income for the day.",
+                        "Feature: Transactions now record and display precise timestamps.",
+                        "Feature: Budget categories are now clickable, revealing detailed expense breakdowns.",
+                        "Feature: Budgets now clearly display the remaining available amount.",
+                        "Feature: Introduced full TSV data export and import capabilities."
                     )
                 )
                 
                 VersionItem(
                     version = "0.1.0",
                     features = listOf(
-                        "Initial release",
-                        "Basic expense and income tracking",
-                        "Account management",
-                        "Category organization",
-                        "Budget setting",
-                        "Transaction history",
-                        "Dashboard with statistics"
+                        "Initial release: Includes basic expense and income tracking, account management, category organization, budget setting, transaction history, and a statistical dashboard."
                     )
                 )
             }

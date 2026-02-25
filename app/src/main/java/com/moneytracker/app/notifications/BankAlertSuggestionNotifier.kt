@@ -43,6 +43,7 @@ object BankAlertSuggestionNotifier {
             putExtra("suggestion_amount", suggestion.amount.toString())
             putExtra("suggestion_note", suggestion.note)
             putExtra("suggestion_payee", suggestion.payee)
+            putExtra(EXTRA_SUGGESTION_ID, suggestion.suggestionId)
         }
         val editPendingIntent = PendingIntent.getActivity(
             context,
@@ -114,6 +115,7 @@ object BankAlertSuggestionNotifier {
             .setStyle(NotificationCompat.BigTextStyle().bigText(expandedText))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
+            .setContentIntent(editPendingIntent)
             .addAction(R.drawable.ic_notification, "Save", savePendingIntent)
             .addAction(R.drawable.ic_notification, "Edit", editPendingIntent)
             .addAction(R.drawable.ic_notification, "Discard", discardPendingIntent)

@@ -13,22 +13,41 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
@@ -42,6 +61,7 @@ import com.moneytracker.app.ui.theme.MoneyTrackerTheme
 import com.moneytracker.app.util.BiometricAuthManager
 import com.moneytracker.app.widget.MoneyTrackerWidget
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -52,13 +72,15 @@ class MainActivity : FragmentActivity() {
 
     @Inject lateinit var userPreferences: UserPreferences
     private lateinit var biometricAuthManager: BiometricAuthManager
+    
+    // We use this Flow to cleanly capture intents when the widget is tapped
+    // while the app is already sitting in the background.
+    private val intentState = MutableStateFlow<Intent?>(null)
 
-    // Launcher for multiple permissions (SMS and Notifications)
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
         lifecycleScope.launch {
-            // Mark notifications as prompted regardless of choice to avoid spamming
             userPreferences.setNotificationPrompted(true)
         }
         
@@ -70,15 +92,15 @@ class MainActivity : FragmentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        intentState.value = intent
 
         enableEdgeToEdge(
             statusBarStyle = SystemBarStyle.auto(Color.TRANSPARENT, Color.TRANSPARENT),
             navigationBarStyle = SystemBarStyle.auto(Color.TRANSPARENT, Color.TRANSPARENT)
         )
 
-        // Request Permissions
         checkAndRequestPermissions()
-
         biometricAuthManager = BiometricAuthManager(this)
 
         setContent {
@@ -86,45 +108,82 @@ class MainActivity : FragmentActivity() {
             val themeMode by userPreferences.themeMode.collectAsState(initial = 0)
             val currencySymbol = UserPreferences.symbolForCode(currencyCode)
             
-            val biometricEnabled by userPreferences.biometricEnabled.collectAsState(initial = false)
-            val passcodeEnabled by userPreferences.passcodeEnabled.collectAsState(initial = false)
-            val storedPasscode by userPreferences.passcode.collectAsState(initial = null)
+            val biometricEnabled by userPreferences.biometricEnabled.collectAsState(initial = null as Boolean?)
+            val passcodeEnabled by userPreferences.passcodeEnabled.collectAsState(initial = null as Boolean?)
+            val storedPasscode by userPreferences.passcode.collectAsState(initial = null as String?)
             val passcodeLockoutEndTime by userPreferences.passcodeLockoutEndTime.collectAsState(initial = 0L)
             val passcodeLockoutLevel by userPreferences.passcodeLockoutLevel.collectAsState(initial = 0)
-            var isAuthenticated by remember { mutableStateOf(false) }
+
+            val currentIntent by intentState.collectAsState()
+
+            // Auth states
+            var isAuthenticated by rememberSaveable { mutableStateOf(false) }
+            var isAuthenticating by remember { mutableStateOf(false) }
             var showPasscodeScreen by remember { mutableStateOf(false) }
             
-            val isWidgetLaunch = intent?.getStringExtra(MoneyTrackerWidget.EXTRA_TRANSACTION_TYPE) != null
-            
-            LaunchedEffect(biometricEnabled, passcodeEnabled) {
+            // Trigger Auth Helper Function
+            val triggerAuth = {
+                // Determine if this launch originated from the Widget
+                val isWidgetLaunch = currentIntent?.getStringExtra("transaction_type") != null
+                
                 if (isWidgetLaunch) {
+                    // Bypass all security immediately if coming from the widget
                     isAuthenticated = true
-                    return@LaunchedEffect
-                }
-                if (biometricEnabled || passcodeEnabled) {
-                    if (biometricEnabled && biometricAuthManager.canAuthenticate(this@MainActivity)) {
-                        biometricAuthManager.authenticate(
-                            onSuccess = { isAuthenticated = true },
-                            onError = { error ->
-                                Toast.makeText(this@MainActivity, error, Toast.LENGTH_SHORT).show()
-                                if (passcodeEnabled && storedPasscode != null) {
-                                    showPasscodeScreen = true
-                                } else {
-                                    finish()
+                } else if (!isAuthenticated && !isAuthenticating && biometricEnabled != null && passcodeEnabled != null) {
+                    if (biometricEnabled == true || passcodeEnabled == true) {
+                        isAuthenticating = true
+                        if (biometricEnabled == true && biometricAuthManager.canAuthenticate(this@MainActivity)) {
+                            biometricAuthManager.authenticate(
+                                onSuccess = { 
+                                    isAuthenticated = true 
+                                    isAuthenticating = false
+                                },
+                                onError = { error ->
+                                    isAuthenticating = false
+                                    Toast.makeText(this@MainActivity, error, Toast.LENGTH_SHORT).show()
+                                    if (passcodeEnabled == true && storedPasscode != null) {
+                                        showPasscodeScreen = true
+                                    } else {
+                                        finish() 
+                                    }
+                                },
+                                onFailed = {
+                                    isAuthenticating = false
+                                    Toast.makeText(this@MainActivity, "Authentication failed", Toast.LENGTH_SHORT).show()
                                 }
-                            },
-                            onFailed = {
-                                Toast.makeText(this@MainActivity, "Authentication failed", Toast.LENGTH_SHORT).show()
-                            }
-                        )
-                    } else if (passcodeEnabled && storedPasscode != null) {
-                        showPasscodeScreen = true
+                            )
+                        } else if (passcodeEnabled == true && storedPasscode != null) {
+                            showPasscodeScreen = true
+                            isAuthenticating = false
+                        } else {
+                            isAuthenticated = true
+                            isAuthenticating = false
+                        }
                     } else {
-                        isAuthenticated = true
+                        isAuthenticated = true // Security is disabled by user
                     }
-                } else {
-                    isAuthenticated = true
                 }
+            }
+
+            // Require Auth when brought from background using Lifecycle Observer
+            val lifecycleOwner = LocalLifecycleOwner.current
+            DisposableEffect(lifecycleOwner) {
+                val observer = LifecycleEventObserver { _, event ->
+                    if (event == Lifecycle.Event.ON_STOP) {
+                        if (!this@MainActivity.isChangingConfigurations && !isAuthenticating) {
+                            isAuthenticated = false
+                        }
+                    } else if (event == Lifecycle.Event.ON_RESUME) {
+                        triggerAuth()
+                    }
+                }
+                lifecycleOwner.lifecycle.addObserver(observer)
+                onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+            }
+            
+            // Re-check automatically when intent updates or preferences initially load
+            LaunchedEffect(biometricEnabled, passcodeEnabled, currentIntent) {
+                triggerAuth()
             }
 
             val darkTheme = when (themeMode) {
@@ -135,78 +194,47 @@ class MainActivity : FragmentActivity() {
 
             MoneyTrackerTheme(darkTheme = darkTheme) {
                 val passcodeValue = storedPasscode
-                if (!isAuthenticated && showPasscodeScreen && passcodeValue != null) {
-                    PasscodeScreen(
-                        storedPasscode = passcodeValue,
-                        initialLockoutEndTime = passcodeLockoutEndTime,
-                        initialLockoutLevel = passcodeLockoutLevel,
-                        onLockoutStateChange = { endTime, level ->
-                            lifecycleScope.launch {
-                                userPreferences.setPasscodeLockout(endTime, level)
-                            }
-                        },
-                        onLockoutReset = {
-                            lifecycleScope.launch {
-                                userPreferences.clearPasscodeLockout()
-                            }
-                        },
-                        onSuccess = {
-                            isAuthenticated = true
-                            showPasscodeScreen = false
-                        },
-                        onBiometricClick = if (biometricEnabled && biometricAuthManager.canAuthenticate(this@MainActivity)) {
-                            {
-                                biometricAuthManager.authenticate(
-                                    onSuccess = {
-                                        isAuthenticated = true
-                                        showPasscodeScreen = false
-                                    },
-                                    onError = { error ->
-                                        Toast.makeText(this@MainActivity, error, Toast.LENGTH_SHORT).show()
-                                    },
-                                    onFailed = {
-                                        Toast.makeText(this@MainActivity, "Authentication failed", Toast.LENGTH_SHORT).show()
-                                    }
-                                )
-                            }
-                        } else null,
-                        showBiometricOption = biometricEnabled && biometricAuthManager.canAuthenticate(this@MainActivity)
-                    )
-                } else if (isAuthenticated) {
-                    CompositionLocalProvider(
-                        LocalCurrencySymbol provides currencySymbol
-                    ) {
-                        val navController = rememberNavController()
-                        val navBackStackEntry by navController.currentBackStackEntryAsState()
-                        val currentRoute = navBackStackEntry?.destination?.route
+                
+                CompositionLocalProvider(
+                    LocalCurrencySymbol provides currencySymbol
+                ) {
+                    val navController = rememberNavController()
+                    val navBackStackEntry by navController.currentBackStackEntryAsState()
+                    val currentRoute = navBackStackEntry?.destination?.route
+                    val showBottomNav = currentRoute in Screen.bottomNavItems.map { it.route }
 
-                        val showBottomNav = currentRoute in Screen.bottomNavItems.map { it.route }
+                    // Process navigation intents cleanly
+                    LaunchedEffect(currentIntent) {
+                        val transactionType = currentIntent?.getStringExtra("transaction_type")
+                        val suggestionAmount = currentIntent?.getStringExtra("suggestion_amount")
+                        val suggestionNote = currentIntent?.getStringExtra("suggestion_note")
+                        val suggestionPayee = currentIntent?.getStringExtra("suggestion_payee")
+                        val suggestionId = currentIntent?.getStringExtra("extra_suggestion_id")
 
-                        var widgetHandled by remember { mutableStateOf(false) }
-                        LaunchedEffect(Unit) {
-                            if (!widgetHandled) {
-                                val transactionType = intent?.getStringExtra("transaction_type")
-                                val suggestionAmount = intent?.getStringExtra("suggestion_amount")
-                                val suggestionNote = intent?.getStringExtra("suggestion_note")
-                                val suggestionPayee = intent?.getStringExtra("suggestion_payee")
-                                if (transactionType != null) {
-                                    navController.navigate(
-                                        Screen.AddTransaction.createRoute(
-                                            type = transactionType,
-                                            amount = suggestionAmount,
-                                            note = suggestionNote,
-                                            payee = suggestionPayee
-                                        )
-                                    )
-                                    intent?.removeExtra("transaction_type")
-                                    intent?.removeExtra("suggestion_amount")
-                                    intent?.removeExtra("suggestion_note")
-                                    intent?.removeExtra("suggestion_payee")
-                                    widgetHandled = true
-                                }
-                            }
+                        if (suggestionId != null) {
+                            com.moneytracker.app.notifications.BankAlertSuggestionNotifier.cancel(this@MainActivity, suggestionId)
                         }
+                        
+                        if (transactionType != null) {
+                            navController.navigate(
+                                Screen.AddTransaction.createRoute(
+                                    type = transactionType,
+                                    amount = suggestionAmount,
+                                    note = suggestionNote,
+                                    payee = suggestionPayee,
+                                    fromWidget = true // Triggers the auto-close via NavGraph when saved
+                                )
+                            )
+                            // Clean the intent so the lock screen properly engages later!
+                            currentIntent?.removeExtra("transaction_type")
+                            currentIntent?.removeExtra("suggestion_amount")
+                            currentIntent?.removeExtra("suggestion_note")
+                            currentIntent?.removeExtra("suggestion_payee")
+                            currentIntent?.removeExtra("extra_suggestion_id")
+                        }
+                    }
 
+                    Box(modifier = Modifier.fillMaxSize()) {
                         Scaffold(
                             modifier = Modifier.fillMaxSize(),
                             containerColor = MaterialTheme.colorScheme.background,
@@ -224,6 +252,84 @@ class MainActivity : FragmentActivity() {
                                 NavGraph(navController = navController)
                             }
                         }
+
+                        // Overlay the Auth screen if not authenticated
+                        if (!isAuthenticated) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(MaterialTheme.colorScheme.background)
+                                    .clickable(enabled = true, onClick = {}) // Block background clicks
+                            ) {
+                                if (showPasscodeScreen && passcodeValue != null) {
+                                    PasscodeScreen(
+                                        storedPasscode = passcodeValue,
+                                        initialLockoutEndTime = passcodeLockoutEndTime,
+                                        initialLockoutLevel = passcodeLockoutLevel,
+                                        onLockoutStateChange = { endTime, level ->
+                                            lifecycleScope.launch {
+                                                userPreferences.setPasscodeLockout(endTime, level)
+                                            }
+                                        },
+                                        onLockoutReset = {
+                                            lifecycleScope.launch {
+                                                userPreferences.clearPasscodeLockout()
+                                            }
+                                        },
+                                        onSuccess = {
+                                            isAuthenticated = true
+                                            showPasscodeScreen = false
+                                        },
+                                        onBiometricClick = if (biometricEnabled == true && biometricAuthManager.canAuthenticate(this@MainActivity)) {
+                                            {
+                                                isAuthenticating = true
+                                                biometricAuthManager.authenticate(
+                                                    onSuccess = {
+                                                        isAuthenticated = true
+                                                        showPasscodeScreen = false
+                                                        isAuthenticating = false
+                                                    },
+                                                    onError = { error ->
+                                                        isAuthenticating = false
+                                                        Toast.makeText(this@MainActivity, error, Toast.LENGTH_SHORT).show()
+                                                    },
+                                                    onFailed = {
+                                                        isAuthenticating = false
+                                                        Toast.makeText(this@MainActivity, "Authentication failed", Toast.LENGTH_SHORT).show()
+                                                    }
+                                                )
+                                            }
+                                        } else null,
+                                        showBiometricOption = biometricEnabled == true && biometricAuthManager.canAuthenticate(this@MainActivity)
+                                    )
+                                } else {
+                                    Column(
+                                        modifier = Modifier.fillMaxSize(),
+                                        verticalArrangement = Arrangement.Center,
+                                        horizontalAlignment = Alignment.CenterHorizontally
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Filled.Lock,
+                                            contentDescription = "Locked",
+                                            modifier = Modifier.size(64.dp),
+                                            tint = MaterialTheme.colorScheme.primary
+                                        )
+                                        Spacer(modifier = Modifier.height(16.dp))
+                                        Text(
+                                            "App Locked",
+                                            style = MaterialTheme.typography.titleLarge,
+                                            color = MaterialTheme.colorScheme.onBackground
+                                        )
+                                        if (!isAuthenticating && biometricEnabled == true) {
+                                            Spacer(modifier = Modifier.height(24.dp))
+                                            Button(onClick = { triggerAuth() }) {
+                                                Text("Unlock with Biometrics")
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -232,31 +338,22 @@ class MainActivity : FragmentActivity() {
 
     private fun checkAndRequestPermissions() {
         val permissions = mutableListOf<String>()
-        
-        // Add SMS permissions
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECEIVE_SMS) != PackageManager.PERMISSION_GRANTED) {
-            permissions.add(Manifest.permission.RECEIVE_SMS)
-        }
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_SMS) != PackageManager.PERMISSION_GRANTED) {
-            permissions.add(Manifest.permission.READ_SMS)
-        }
-
-        // Add Notification permission for Android 13+
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECEIVE_SMS) != PackageManager.PERMISSION_GRANTED) permissions.add(Manifest.permission.RECEIVE_SMS)
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_SMS) != PackageManager.PERMISSION_GRANTED) permissions.add(Manifest.permission.READ_SMS)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             val alreadyPrompted = runBlocking { userPreferences.notificationPrompted.first() }
             if (!alreadyPrompted && ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
                 permissions.add(Manifest.permission.POST_NOTIFICATIONS)
             }
         }
-
-        if (permissions.isNotEmpty()) {
-            requestPermissionLauncher.launch(permissions.toTypedArray())
-        }
+        if (permissions.isNotEmpty()) requestPermissionLauncher.launch(permissions.toTypedArray())
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        // Ensure the StateFlow updates so widget clicks while backgrounded work immediately
+        intentState.value = intent
     }
 
     override fun onResume() {

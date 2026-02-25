@@ -1,6 +1,13 @@
 package com.moneytracker.app.ui.navigation
 
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -18,11 +25,22 @@ import com.moneytracker.app.ui.screens.settings.SettingsScreen
 import com.moneytracker.app.ui.screens.transactions.AddTransactionScreen
 import com.moneytracker.app.ui.screens.transactions.TransactionsScreen
 
+// Helper function to safely extract the Activity from Compose's wrapped Contexts
+fun Context.getActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.getActivity()
+    else -> null
+}
+
 @Composable
 fun NavGraph(navController: NavHostController) {
     NavHost(
         navController = navController,
-        startDestination = Screen.Transactions.route
+        startDestination = Screen.Transactions.route,
+        enterTransition = { fadeIn(animationSpec = tween(150)) },
+        exitTransition = { fadeOut(animationSpec = tween(150)) },
+        popEnterTransition = { fadeIn(animationSpec = tween(150)) },
+        popExitTransition = { fadeOut(animationSpec = tween(150)) }
     ) {
         composable(Screen.Dashboard.route) {
             DashboardScreen(
@@ -105,14 +123,26 @@ fun NavGraph(navController: NavHostController) {
                     type = NavType.StringType
                     nullable = true
                     defaultValue = null
+                },
+                navArgument("fromWidget") {
+                    type = NavType.BoolType
+                    defaultValue = false
                 }
             )
-        ) {
+        ) { backStackEntry ->
+            val fromWidget = backStackEntry.arguments?.getBoolean("fromWidget") ?: false
+            val context = LocalContext.current
+
             AddTransactionScreen(
                 onNavigateBack = {
-                    if (!navController.popBackStack(Screen.Transactions.route, inclusive = false)) {
-                        navController.navigate(Screen.Transactions.route) {
-                            launchSingleTop = true
+                    if (fromWidget) {
+                        // Correctly finish the underlying activity
+                        context.getActivity()?.finish()
+                    } else {
+                        if (!navController.popBackStack(Screen.Transactions.route, inclusive = false)) {
+                            navController.navigate(Screen.Transactions.route) {
+                                launchSingleTop = true
+                            }
                         }
                     }
                 }

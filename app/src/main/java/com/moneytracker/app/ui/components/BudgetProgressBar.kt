@@ -29,7 +29,7 @@ fun BudgetProgressBar(
 ) {
     val progress by animateFloatAsState(
         targetValue = budget.progress.coerceIn(0f, 1.5f),
-        animationSpec = tween(durationMillis = 600),
+        animationSpec = tween(durationMillis = 600), // Animation for smooth progress changes
         label = "budget_progress"
     )
 

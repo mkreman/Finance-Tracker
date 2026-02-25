@@ -48,20 +48,22 @@ sealed class Screen(
     )
 
     object AddTransaction : Screen(
-        route = "add_transaction?type={type}&amount={amount}&note={note}&payee={payee}",
+        route = "add_transaction?type={type}&amount={amount}&note={note}&payee={payee}&fromWidget={fromWidget}",
         title = "Add Transaction"
     ) {
         fun createRoute(
             type: String? = null,
             amount: String? = null,
             note: String? = null,
-            payee: String? = null
+            payee: String? = null,
+            fromWidget: Boolean = false
         ): String {
             val parts = mutableListOf<String>()
             if (type != null) parts.add("type=${Uri.encode(type)}")
             if (amount != null) parts.add("amount=${Uri.encode(amount)}")
             if (note != null) parts.add("note=${Uri.encode(note)}")
             if (payee != null) parts.add("payee=${Uri.encode(payee)}")
+            if (fromWidget) parts.add("fromWidget=true")
             return if (parts.isEmpty()) "add_transaction" else "add_transaction?${parts.joinToString("&")}" 
         }
     }
