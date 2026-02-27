@@ -331,6 +331,28 @@ class AddTransactionViewModel @Inject constructor(
         }
     }
 
+    fun editCategory(categoryId: String, newName: String, newIconKey: String) {
+        viewModelScope.launch {
+            try {
+                val existing = categoryRepository.getCategoryById(categoryId) ?: return@launch
+                val updated = existing.copy(name = newName, iconKey = newIconKey)
+                categoryRepository.saveCategory(updated)
+                
+                // If this category is currently selected in any split, update its name in the UI immediately
+                _state.update { state ->
+                    val newSplits = state.splits.map { split ->
+                        if (split.categoryId == categoryId) {
+                            split.copy(categoryName = newName)
+                        } else split
+                    }
+                    state.copy(splits = newSplits)
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("AddTransactionVM", "Failed to edit category", e)
+            }
+        }
+    }
+
     fun removeSplit(index: Int) {
         _state.update { state ->
             if (state.splits.size > 1) {

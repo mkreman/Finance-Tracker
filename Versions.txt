@@ -153,6 +153,7 @@ ________________________________________________________________________________
 
 
 Version 1.1.0
+	- Adding edit option to category
 	- Back up user data with Auto Backup  |  Identity  |  Android Developers https://share.google/PrKwcm21nU3HfmthC
 	- Make a database for category recommendations for auto transactions
 	- Build calculator in amount section

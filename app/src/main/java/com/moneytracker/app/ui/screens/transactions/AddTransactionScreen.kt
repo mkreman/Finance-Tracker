@@ -44,6 +44,7 @@ import com.moneytracker.app.domain.model.Category
 import com.moneytracker.app.ui.components.CategoryIcons
 import com.moneytracker.app.ui.components.LocalCurrencySymbol
 import com.moneytracker.app.ui.components.parseHexColor
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -227,17 +228,15 @@ fun AddTransactionScreen(
                     Text("Amount", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(modifier = Modifier.height(4.dp))
 
-                    // TextFieldValue state to strictly manage cursor position
                     var amountTextFieldValue by remember {
                         mutableStateOf(
                             TextFieldValue(
                                 text = state.amount,
-                                selection = TextRange(state.amount.length) // Cursor at the end
+                                selection = TextRange(state.amount.length)
                             )
                         )
                     }
 
-                    // Keep local cursor state in sync with ViewModel state changes
                     LaunchedEffect(state.amount) {
                         if (state.amount != amountTextFieldValue.text) {
                             amountTextFieldValue = amountTextFieldValue.copy(
@@ -311,6 +310,7 @@ fun AddTransactionScreen(
                     onAddSplit = viewModel::addSplit,
                     onRemoveSplit = viewModel::removeSplit,
                     onAddCategory = viewModel::addCategory,
+                    onEditCategory = viewModel::editCategory,
                     onDeleteCategory = viewModel::deleteCategory
                 )
                 Spacer(modifier = Modifier.height(16.dp))
@@ -385,6 +385,7 @@ private fun CategorySplitSection(
     onAddSplit: () -> Unit,
     onRemoveSplit: (Int) -> Unit,
     onAddCategory: (String, String) -> Unit,
+    onEditCategory: (String, String, String) -> Unit,
     onDeleteCategory: (String) -> Unit
 ) {
     Column(
@@ -427,6 +428,7 @@ private fun CategorySplitSection(
                 selectedIds = state.selectedCategoryIds,
                 onCategoryToggled = onCategoryToggled,
                 onAddCategory = onAddCategory,
+                onEditCategory = onEditCategory,
                 onDeleteCategory = onDeleteCategory
             )
         }
@@ -439,27 +441,50 @@ private fun CategoryGrid(
     selectedIds: Set<String>,
     onCategoryToggled: (String, String) -> Unit,
     onAddCategory: (String, String) -> Unit,
+    onEditCategory: (String, String, String) -> Unit,
     onDeleteCategory: (String) -> Unit
 ) {
     val focusManager = LocalFocusManager.current
-    val displayCategories = categories.filter { !it.name.equals("Other", ignoreCase = true) }
+    val scope = rememberCoroutineScope() // FIX 1: Add a coroutine scope for delaying the dialog change
     
+    var showAddCategoryDialog by remember { mutableStateOf(false) }
+    var categoryActionDialog by remember { mutableStateOf<Category?>(null) }
+    var categoryToEdit by remember { mutableStateOf<Category?>(null) }
+    var categoryToDelete by remember { mutableStateOf<Category?>(null) }
+
+    val displayCategories = categories.filter { !it.name.equals("Other", ignoreCase = true) }
+    val fullRows = displayCategories.chunked(4)
+    val lastRow = fullRows.lastOrNull()
+    val needsExtraRow = lastRow == null || lastRow.size == 4
+
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        displayCategories.chunked(4).forEach { rowItems ->
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        fullRows.forEachIndexed { rowIndex, rowItems ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
                 rowItems.forEach { category ->
                     val isSelected = category.id in selectedIds
                     val catColor = parseHexColor(category.colorHex)
+
                     Column(
                         modifier = Modifier
                             .weight(1f)
                             .clip(RoundedCornerShape(12.dp))
                             .background(if (isSelected) catColor.copy(alpha = 0.1f) else Color.Transparent)
-                            .clickable { 
-                                focusManager.clearFocus()
-                                onCategoryToggled(category.id, category.name) 
+                            .pointerInput(category.id) {
+                                detectTapGestures(
+                                    onTap = {
+                                        focusManager.clearFocus()
+                                        onCategoryToggled(category.id, category.name)
+                                    },
+                                    onLongPress = {
+                                        focusManager.clearFocus()
+                                        categoryActionDialog = category
+                                    }
+                                )
                             }
-                            .padding(8.dp),
+                            .padding(vertical = 8.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Box(
@@ -469,15 +494,198 @@ private fun CategoryGrid(
                                 .background(catColor.copy(alpha = 0.15f)),
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(CategoryIcons.getIcon(category.iconKey), null, tint = catColor, modifier = Modifier.size(22.dp))
+                            Icon(
+                                imageVector = CategoryIcons.getIcon(category.iconKey),
+                                contentDescription = category.name,
+                                tint = catColor,
+                                modifier = Modifier.size(22.dp)
+                            )
                         }
-                        Text(category.name, style = MaterialTheme.typography.labelSmall, maxLines = 1)
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            category.name,
+                            style = MaterialTheme.typography.labelSmall,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            textAlign = TextAlign.Center
+                        )
                     }
                 }
-                repeat(4 - rowItems.size) { Spacer(modifier = Modifier.weight(1f)) }
+                
+                if (rowIndex == fullRows.lastIndex && !needsExtraRow) {
+                    AddNewCategoryButton(modifier = Modifier.weight(1f), onClick = { showAddCategoryDialog = true })
+                    repeat(3 - rowItems.size) { Spacer(modifier = Modifier.weight(1f)) }
+                } else {
+                    repeat(4 - rowItems.size) { Spacer(modifier = Modifier.weight(1f)) }
+                }
+            }
+        }
+
+        if (needsExtraRow) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                AddNewCategoryButton(modifier = Modifier.weight(1f), onClick = { showAddCategoryDialog = true })
+                repeat(3) { Spacer(modifier = Modifier.weight(1f)) }
             }
         }
     }
+
+    // 1. Long-press options dialog
+    categoryActionDialog?.let { category ->
+        AlertDialog(
+            onDismissRequest = { categoryActionDialog = null },
+            title = { Text(category.name) },
+            text = { Text("What would you like to do?") },
+            confirmButton = {
+                TextButton(onClick = { 
+                    categoryActionDialog = null
+                    // FIX 2: Wait 50ms so this dialog fully closes before the edit dialog opens
+                    scope.launch {
+                        kotlinx.coroutines.delay(50)
+                        categoryToEdit = category 
+                    }
+                }) { Text("Edit") }
+            },
+            dismissButton = {
+                TextButton(onClick = { 
+                    categoryActionDialog = null
+                    // Same delay added here to be safe
+                    scope.launch {
+                        kotlinx.coroutines.delay(50)
+                        categoryToDelete = category
+                    }
+                }) { Text("Delete", color = MaterialTheme.colorScheme.error) }
+            }
+        )
+    }
+
+    // 2. Dialog for Adding a New Category
+    if (showAddCategoryDialog) {
+        AddCategoryDialog(
+            isEditMode = false,
+            onDismiss = { showAddCategoryDialog = false },
+            onSave = { name, iconKey ->
+                onAddCategory(name, iconKey)
+                showAddCategoryDialog = false
+            }
+        )
+    }
+
+    // 3. Dialog for Editing an Existing Category
+    categoryToEdit?.let { category ->
+        AddCategoryDialog(
+            initialName = category.name,
+            initialIconKey = category.iconKey,
+            isEditMode = true,
+            onDismiss = { categoryToEdit = null },
+            onSave = { name, iconKey ->
+                onEditCategory(category.id, name, iconKey)
+                categoryToEdit = null
+            }
+        )
+    }
+
+    // 4. Confirmation Dialog for Deletion
+    categoryToDelete?.let { category ->
+        AlertDialog(
+            onDismissRequest = { categoryToDelete = null },
+            title = { Text("Delete Category") },
+            text = { Text("Are you sure you want to delete the '${category.name}' category?") },
+            confirmButton = {
+                TextButton(onClick = { 
+                    onDeleteCategory(category.id)
+                    categoryToDelete = null 
+                }) {
+                    Text("Delete", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { categoryToDelete = null }) { Text("Cancel") }
+            }
+        )
+    }
+}
+
+@Composable
+private fun AddNewCategoryButton(modifier: Modifier = Modifier, onClick: () -> Unit) {
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(12.dp))
+            .clickable(onClick = onClick)
+            .padding(vertical = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Box(
+            modifier = Modifier
+                .size(44.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(Icons.Filled.Add, "Add Category", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(22.dp))
+        }
+        Spacer(modifier = Modifier.height(4.dp))
+        Text("Add New", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+    }
+}
+
+@Composable
+private fun AddCategoryDialog(
+    initialName: String = "",
+    initialIconKey: String = "restaurant",
+    isEditMode: Boolean,
+    onDismiss: () -> Unit, 
+    onSave: (name: String, iconKey: String) -> Unit
+) {
+    // FIX 3: Add `initialName` and `initialIconKey` into the `remember` key, 
+    // so it properly loads the values when editing different categories.
+    var name by remember(initialName) { mutableStateOf(initialName) }
+    var selectedIcon by remember(initialIconKey) { mutableStateOf(initialIconKey) }
+    
+    val availableIcons = listOf("restaurant", "directions_car", "shopping_bag", "movie", "medical_services", "school", "receipt", "home", "two_wheeler", "pets", "people", "work", "laptop", "trending_up", "card_giftcard", "wallet", "store", "phone_android", "savings", "payments")
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(if (isEditMode) "Edit Category" else "Add New Category") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedTextField(
+                    value = name, 
+                    onValueChange = { name = it }, 
+                    label = { Text("Category Name") }, 
+                    singleLine = true, 
+                    modifier = Modifier.fillMaxWidth(), 
+                    shape = RoundedCornerShape(12.dp)
+                )
+                Text("Select Icon", style = MaterialTheme.typography.titleSmall)
+                val iconRows = availableIcons.chunked(5)
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    iconRows.forEach { row ->
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            row.forEach { iconKey ->
+                                val isSelected = iconKey == selectedIcon
+                                Box(
+                                    modifier = Modifier
+                                        .size(44.dp)
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .background(if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.2f) else MaterialTheme.colorScheme.surfaceVariant)
+                                        .then(if (isSelected) Modifier.border(1.5.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(10.dp)) else Modifier)
+                                        .clickable { selectedIcon = iconKey },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(CategoryIcons.getIcon(iconKey), iconKey, tint = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(22.dp))
+                                }
+                            }
+                            repeat(5 - row.size) { Spacer(modifier = Modifier.size(44.dp)) }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { if (name.isNotBlank()) onSave(name.trim(), selectedIcon) }, enabled = name.isNotBlank()) { Text("Save") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+    )
 }
 
 @Composable
