@@ -47,8 +47,9 @@ fun SettingsScreen(
     var showVersionHistory by remember { mutableStateOf(false) }
     var showAbout by remember { mutableStateOf(false) }
 
+    // CHANGED: Set the MIME type to application/json
     val exportLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.CreateDocument("text/tab-separated-values")
+        contract = ActivityResultContracts.CreateDocument("application/json")
     ) { uri ->
         uri?.let { viewModel.exportData(context, it) }
     }
@@ -510,25 +511,27 @@ fun SettingsScreen(
             iconTint = MaterialTheme.colorScheme.tertiary
         )
 
+        // CHANGED: Subtitle and extension to JSON
         SettingsItem(
             icon = Icons.Filled.FileDownload,
             title = "Export Data",
-            subtitle = "Export as TSV",
+            subtitle = "Export as JSON",
             iconTint = MaterialTheme.colorScheme.primary,
             onClick = {
                 val timestamp = java.text.SimpleDateFormat("yyyyMMdd_HHmm", java.util.Locale.getDefault())
                     .format(java.util.Date())
-                exportLauncher.launch("MoneyTracker_$timestamp.tsv")
+                exportLauncher.launch("MoneyTracker_$timestamp.json")
             }
         )
 
+        // CHANGED: Subtitle and intent array to application/json
         SettingsItem(
             icon = Icons.Filled.FileUpload,
             title = "Import Data",
-            subtitle = "Import from TSV",
+            subtitle = "Import from JSON",
             iconTint = MaterialTheme.colorScheme.secondary,
             onClick = {
-                importLauncher.launch(arrayOf("text/tab-separated-values", "text/plain", "*/*"))
+                importLauncher.launch(arrayOf("application/json", "*/*"))
             }
         )
 
@@ -789,6 +792,8 @@ private fun VersionHistoryDialog(onDismiss: () -> Unit) {
                 VersionItem(
                     version = "1.0.0",
                     features = listOf(
+                        "Feature: Adding edit option to category",
+                        "Feature: Replaced TSV export/import with JSON format for much better multi-table backup structure.",
                         "Feature: Added a new icon for the app",
                         "Feature: Introduced Biometric lock and Passcode protection for enhanced app security.",
                         "Feature: Smart SMS Detection – Automatically analyzes incoming bank alerts and suggests expense/income entries via notification, with options to quickly save, edit, or discard.",
@@ -828,7 +833,7 @@ private fun VersionHistoryDialog(onDismiss: () -> Unit) {
                         "Improvement: Categories with existing budgets are now filtered out when creating a new budget.",
                         "Feature: Daily summaries in the transaction list now display transfer totals.",
                         "Fixed: Addressed an issue preventing the 'Clear All Data' function from working correctly.",
-                        "Feature: Automatically create missing accounts and categories during TSV imports."
+                        "Feature: Automatically create missing accounts and categories during imports."
                     )
                 )
                 
