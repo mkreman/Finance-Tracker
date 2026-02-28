@@ -27,9 +27,57 @@ class CategoryTransactionsViewModel @Inject constructor(
     val categoryName: String = savedStateHandle.get<String>("categoryName") ?: "Category"
     val type: String = savedStateHandle.get<String>("type") ?: "EXPENSE"
 
-    val transactions: StateFlow<List<TransactionListItem>> =
-        transactionRepository.getTransactionsByCategory(categoryId, type)
-            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    // Null represents "All Time". By default, start on the current month.
+    private val _currentMonth = MutableStateFlow<Calendar?>(Calendar.getInstance())
+    val currentMonth: StateFlow<Calendar?> = _currentMonth.asStateFlow()
+
+    fun previousMonth() {
+        _currentMonth.update { cal ->
+            if (cal == null) {
+                Calendar.getInstance().apply { add(Calendar.MONTH, -1) }
+            } else {
+                (cal.clone() as Calendar).apply { add(Calendar.MONTH, -1) }
+            }
+        }
+    }
+
+    fun nextMonth() {
+        _currentMonth.update { cal ->
+            if (cal == null) {
+                Calendar.getInstance().apply { add(Calendar.MONTH, 1) }
+            } else {
+                (cal.clone() as Calendar).apply { add(Calendar.MONTH, 1) }
+            }
+        }
+    }
+
+    fun selectAll() {
+        _currentMonth.value = null
+    }
+
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    val transactions: StateFlow<List<TransactionListItem>> = _currentMonth.flatMapLatest { cal ->
+        if (cal == null) {
+            transactionRepository.getTransactionsByCategory(categoryId, type)
+        } else {
+            val start = (cal.clone() as Calendar).apply {
+                set(Calendar.DAY_OF_MONTH, 1)
+                set(Calendar.HOUR_OF_DAY, 0)
+                set(Calendar.MINUTE, 0)
+                set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
+            }.timeInMillis
+            val end = (cal.clone() as Calendar).apply {
+                set(Calendar.DAY_OF_MONTH, getActualMaximum(Calendar.DAY_OF_MONTH))
+                set(Calendar.HOUR_OF_DAY, 23)
+                set(Calendar.MINUTE, 59)
+                set(Calendar.SECOND, 59)
+                set(Calendar.MILLISECOND, 999)
+            }.timeInMillis
+            
+            transactionRepository.getTransactionsByCategoryForPeriod(categoryId, start, end)
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val summary: StateFlow<CategorySummary> =
         transactions.map { items ->
@@ -43,18 +91,16 @@ class CategoryTransactionsViewModel @Inject constructor(
             )
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), CategorySummary())
 
-    // Percentage of this category relative to the month's total for the selected type
-    val percentage: StateFlow<Float> = flow {
-        // use current month range
-        val cal = Calendar.getInstance()
-        val start = (cal.clone() as Calendar).apply {
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    val percentage: StateFlow<Float> = _currentMonth.flatMapLatest { cal ->
+        val start = if (cal == null) 0L else (cal.clone() as Calendar).apply {
             set(Calendar.DAY_OF_MONTH, 1)
             set(Calendar.HOUR_OF_DAY, 0)
             set(Calendar.MINUTE, 0)
             set(Calendar.SECOND, 0)
             set(Calendar.MILLISECOND, 0)
         }.timeInMillis
-        val end = (cal.clone() as Calendar).apply {
+        val end = if (cal == null) Long.MAX_VALUE else (cal.clone() as Calendar).apply {
             set(Calendar.DAY_OF_MONTH, getActualMaximum(Calendar.DAY_OF_MONTH))
             set(Calendar.HOUR_OF_DAY, 23)
             set(Calendar.MINUTE, 59)
@@ -62,7 +108,7 @@ class CategoryTransactionsViewModel @Inject constructor(
             set(Calendar.MILLISECOND, 999)
         }.timeInMillis
 
-        emitAll(if (type.uppercase() == "INCOME") {
+        if (type.uppercase() == "INCOME") {
             transactionRepository.getCategoryIncome(start, end).map { list ->
                 list.firstOrNull { it.categoryId == categoryId }?.percentage ?: 0f
             }
@@ -70,6 +116,6 @@ class CategoryTransactionsViewModel @Inject constructor(
             transactionRepository.getCategorySpending(start, end).map { list ->
                 list.firstOrNull { it.categoryId == categoryId }?.percentage ?: 0f
             }
-        })
+        }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0f)
 }

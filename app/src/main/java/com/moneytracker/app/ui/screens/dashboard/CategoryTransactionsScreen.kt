@@ -7,6 +7,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.ChevronLeft
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -23,6 +25,9 @@ import com.moneytracker.app.ui.components.LocalCurrencySymbol
 import com.moneytracker.app.ui.components.TransactionDateHeader
 import com.moneytracker.app.ui.components.TransactionItem
 import com.moneytracker.app.ui.components.formatAmount
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -34,6 +39,7 @@ fun CategoryTransactionsScreen(
     val transactions by viewModel.transactions.collectAsState()
     val summary by viewModel.summary.collectAsState()
     val percentage by viewModel.percentage.collectAsState()
+    val currentMonth by viewModel.currentMonth.collectAsState()
     val currency = LocalCurrencySymbol.current
 
     val typeColor = when (viewModel.type.uppercase()) {
@@ -53,15 +59,32 @@ fun CategoryTransactionsScreen(
                 }
             },
             colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
-            windowInsets = WindowInsets(0.dp) // <-- Added to remove top gap
+            windowInsets = WindowInsets(0.dp)
         )
+        
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        // Month Selector
+        Box(
+            modifier = Modifier.fillMaxWidth(),
+            contentAlignment = Alignment.Center
+        ) {
+            CategoryMonthSelector(
+                currentMonth = currentMonth,
+                onPreviousMonth = viewModel::previousMonth,
+                onNextMonth = viewModel::nextMonth,
+                onSelectAll = viewModel::selectAll
+            )
+        }
+        
+        Spacer(modifier = Modifier.height(8.dp))
 
         if (transactions.isEmpty()) {
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
-                Text("No transactions", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("No transactions for this period", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         } else {
             LazyColumn(
@@ -104,6 +127,68 @@ fun CategoryTransactionsScreen(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun CategoryMonthSelector(
+    currentMonth: Calendar?,
+    onPreviousMonth: () -> Unit,
+    onNextMonth: () -> Unit,
+    onSelectAll: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val monthText = if (currentMonth == null) {
+        "All Time"
+    } else {
+        val sdf = SimpleDateFormat("MMMM yyyy", Locale.getDefault())
+        sdf.format(currentMonth.time)
+    }
+
+    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = modifier) {
+        Row(
+            modifier = Modifier
+                .clip(RoundedCornerShape(24.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+                .padding(horizontal = 8.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            IconButton(onClick = onPreviousMonth, modifier = Modifier.size(36.dp)) {
+                Icon(
+                    imageVector = Icons.Filled.ChevronLeft,
+                    contentDescription = "Previous Month",
+                    tint = MaterialTheme.colorScheme.onSurface
+                )
+            }
+
+            Text(
+                text = monthText,
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.padding(horizontal = 16.dp)
+            )
+
+            IconButton(onClick = onNextMonth, modifier = Modifier.size(36.dp)) {
+                Icon(
+                    imageVector = Icons.Filled.ChevronRight,
+                    contentDescription = "Next Month",
+                    tint = MaterialTheme.colorScheme.onSurface
+                )
+            }
+        }
+        
+        if (currentMonth != null) {
+            TextButton(
+                onClick = onSelectAll,
+                contentPadding = PaddingValues(0.dp),
+                modifier = Modifier.height(32.dp)
+            ) {
+                Text("Show All Time", style = MaterialTheme.typography.labelMedium)
+            }
+        } else {
+            Spacer(modifier = Modifier.height(32.dp))
         }
     }
 }
