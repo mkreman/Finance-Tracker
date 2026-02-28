@@ -1,5 +1,6 @@
 package com.moneytracker.app.ui.screens.dashboard
 
+import com.moneytracker.app.domain.model.Account
 import com.moneytracker.app.domain.model.ChartData
 import com.moneytracker.app.domain.model.Transaction
 
@@ -15,5 +16,10 @@ data class DashboardState(
     val transferTransactions: List<Transaction> = emptyList(),
     val selectedOverview: OverviewType = OverviewType.EXPENSE,
     val isLoading: Boolean = true,
-    val currentMonthMillis: Long = System.currentTimeMillis()
+    val currentMonthMillis: Long = System.currentTimeMillis(),
+    
+    // Transfer filters
+    val accounts: List<Account> = emptyList(),
+    val selectedFromAccountId: String? = null,
+    val selectedToAccountId: String? = null
 )

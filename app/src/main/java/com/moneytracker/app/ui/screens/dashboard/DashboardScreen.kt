@@ -8,9 +8,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -19,16 +17,18 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.moneytracker.app.data.local.database.entities.TransactionType
+import com.moneytracker.app.domain.model.Account
 import com.moneytracker.app.domain.model.ChartData
 import com.moneytracker.app.domain.model.Transaction
 import com.moneytracker.app.ui.components.*
 import java.text.SimpleDateFormat
 import java.util.*
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen(
     onCategoryClick: (String, String, String) -> Unit = { _, _, _ -> },
-    onEditTransaction: (String) -> Unit = {}, // FIX: Added to support click navigation
+    onEditTransaction: (String) -> Unit = {},
     viewModel: DashboardViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsState()
@@ -106,8 +106,42 @@ fun DashboardScreen(
         Spacer(modifier = Modifier.height(16.dp))
 
         if (state.selectedOverview == OverviewType.TRANSFER) {
+            
+            // Filters for Transfer Overview
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                AccountFilterDropdown(
+                    label = "From",
+                    accounts = state.accounts,
+                    selectedId = state.selectedFromAccountId,
+                    onSelected = viewModel::setFromAccountFilter,
+                    modifier = Modifier.weight(1f)
+                )
+
+                AccountFilterDropdown(
+                    label = "To",
+                    accounts = state.accounts,
+                    selectedId = state.selectedToAccountId,
+                    onSelected = viewModel::setToAccountFilter,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+            
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Apply filters to list
+            val filteredTransfers = state.transferTransactions.filter { txn ->
+                val matchFrom = state.selectedFromAccountId == null || txn.accountId == state.selectedFromAccountId
+                val matchTo = state.selectedToAccountId == null || txn.toAccountId == state.selectedToAccountId
+                matchFrom && matchTo
+            }
+
             // Transfer entries list
-            if (state.transferTransactions.isEmpty()) {
+            if (filteredTransfers.isEmpty()) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -115,17 +149,17 @@ fun DashboardScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "No transfers this month",
+                        text = if (state.transferTransactions.isEmpty()) "No transfers this month" else "No matching transfers",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             } else {
                 Column(modifier = Modifier.fillMaxWidth()) {
-                    state.transferTransactions.forEach { transfer ->
+                    filteredTransfers.forEach { transfer ->
                         TransferEntryItem(
                             transfer = transfer,
-                            onClick = { onEditTransaction(transfer.id) } // FIX: Passes the ID when clicked
+                            onClick = { onEditTransaction(transfer.id) }
                         )
                     }
                 }
@@ -172,6 +206,64 @@ fun DashboardScreen(
         }
 
         Spacer(modifier = Modifier.height(100.dp))
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AccountFilterDropdown(
+    label: String,
+    accounts: List<Account>,
+    selectedId: String?,
+    onSelected: (String?) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val selectedAccount = accounts.find { it.id == selectedId }
+    val displayText = selectedAccount?.name ?: "All"
+
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = !expanded },
+        modifier = modifier
+    ) {
+        OutlinedTextField(
+            value = displayText,
+            onValueChange = {},
+            readOnly = true,
+            label = { Text(label) },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
+            modifier = Modifier
+                .fillMaxWidth()
+                .menuAnchor(),
+            shape = RoundedCornerShape(12.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                focusedBorderColor = MaterialTheme.colorScheme.primary
+            )
+        )
+        ExposedDropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+            modifier = Modifier.background(MaterialTheme.colorScheme.surface)
+        ) {
+            DropdownMenuItem(
+                text = { Text("All", color = MaterialTheme.colorScheme.onSurface) },
+                onClick = { 
+                    onSelected(null)
+                    expanded = false 
+                }
+            )
+            accounts.forEach { account ->
+                DropdownMenuItem(
+                    text = { Text(account.name, color = MaterialTheme.colorScheme.onSurface) },
+                    onClick = { 
+                        onSelected(account.id)
+                        expanded = false 
+                    }
+                )
+            }
+        }
     }
 }
 
@@ -231,7 +323,7 @@ private fun TransferEntryItem(transfer: Transaction, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick) // FIX: Row is now clickable
+            .clickable(onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {

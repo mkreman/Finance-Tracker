@@ -324,9 +324,13 @@ private fun AccountSection(
             modifier = Modifier.weight(1f)
         )
 
-        // Show detailed "Loaned" and "Borrowed" text if Positive/Negative amounts are passed
+        // Show detailed Loaned/Borrowed as a Row if Positive/Negative amounts are passed
         if (sumPositive != null && sumNegative != null) {
-            Column(horizontalAlignment = Alignment.End, modifier = Modifier.padding(end = 8.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.padding(end = 8.dp)
+            ) {
                 Text(
                     text = "Loaned: $currency${formatAmount(sumPositive)}",
                     style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
