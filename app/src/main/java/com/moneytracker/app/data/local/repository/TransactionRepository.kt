@@ -66,6 +66,16 @@ class TransactionRepository @Inject constructor(
             toGroupedList(list)
         }
 
+    // FIX: Connect the new DAO period query to the repository
+    fun getTransactionsByAccountForPeriod(
+        accountId: String,
+        startDate: Long,
+        endDate: Long
+    ): Flow<List<TransactionListItem>> =
+        transactionDao.getTransactionsByAccountIncludingTransfersForPeriod(accountId, startDate, endDate).map { list ->
+            toGroupedList(list)
+        }
+
     fun getTransactionsByCategory(categoryId: String, type: String): Flow<List<TransactionListItem>> =
         transactionDao.getTransactionsByCategory(categoryId, type).map { list ->
             toGroupedList(list)
@@ -114,14 +124,11 @@ class TransactionRepository @Inject constructor(
         splits: List<TransactionSplitEntity>
     ) {
         database.withTransaction {
-            // Insert transaction and splits directly (avoid DAO default methods
-            // to ensure proper coroutine context propagation within withTransaction)
             transactionDao.insertTransaction(transaction)
             if (splits.isNotEmpty()) {
                 transactionDao.insertSplits(splits)
             }
 
-            // Update account balance
             when (transaction.type) {
                 TransactionType.EXPENSE -> {
                     accountDao.updateBalance(transaction.accountId, -transaction.totalAmount)
@@ -142,7 +149,6 @@ class TransactionRepository @Inject constructor(
     suspend fun deleteTransaction(id: String) {
         database.withTransaction {
             val txn = transactionDao.getTransactionByIdInternal(id) ?: return@withTransaction
-            // Reverse the balance effect
             when (txn.transaction.type) {
                 TransactionType.EXPENSE -> {
                     accountDao.updateBalance(txn.transaction.accountId, txn.transaction.totalAmount)
@@ -167,7 +173,6 @@ class TransactionRepository @Inject constructor(
         newSplits: List<TransactionSplitEntity>
     ) {
         database.withTransaction {
-            // Reverse old balance
             when (oldTransaction.type) {
                 TransactionType.EXPENSE -> accountDao.updateBalance(oldTransaction.accountId, oldTransaction.totalAmount)
                 TransactionType.INCOME -> accountDao.updateBalance(oldTransaction.accountId, -oldTransaction.totalAmount)
@@ -176,7 +181,6 @@ class TransactionRepository @Inject constructor(
                     oldTransaction.toAccountId?.let { accountDao.updateBalance(it, -oldTransaction.totalAmount) }
                 }
             }
-            // Apply new balance
             when (newTransaction.type) {
                 TransactionType.EXPENSE -> accountDao.updateBalance(newTransaction.accountId, -newTransaction.totalAmount)
                 TransactionType.INCOME -> accountDao.updateBalance(newTransaction.accountId, newTransaction.totalAmount)
@@ -185,8 +189,6 @@ class TransactionRepository @Inject constructor(
                     newTransaction.toAccountId?.let { accountDao.updateBalance(it, newTransaction.totalAmount) }
                 }
             }
-            // Update transaction and splits directly (avoid DAO default methods
-            // to ensure proper coroutine context propagation within withTransaction)
             transactionDao.insertTransaction(newTransaction)
             transactionDao.deleteSplitsByTransactionId(newTransaction.id)
             if (newSplits.isNotEmpty()) {
@@ -287,8 +289,6 @@ class TransactionRepository @Inject constructor(
 
     suspend fun stopRecurringSeries(parentRecurringId: String) {
         database.withTransaction {
-            // This safely removes the recurrence icon/status from the parent 
-            // AND all historical child entries at the same time.
             transactionDao.removeRecurrenceFromSeries(parentRecurringId)
         }
     }

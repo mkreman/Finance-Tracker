@@ -24,12 +24,6 @@ interface TransactionDao {
     @Query("UPDATE transactions SET isDeleted = 1, modifiedAt = :timestamp, syncStatus = 'DIRTY' WHERE id = :id")
     suspend fun softDeleteTransaction(id: String, timestamp: Long = System.currentTimeMillis())
 
-    /**
-     * Atomic save: inserts parent transaction + all splits in one DB transaction.
-     * NOTE: Call individual methods (insertTransaction + insertSplits) directly from
-     * a database.withTransaction block in the repository instead of using this method,
-     * to ensure proper coroutine context propagation.
-     */
     @androidx.room.Transaction
     suspend fun saveFullTransaction(
         transaction: TransactionEntity,
@@ -41,11 +35,6 @@ interface TransactionDao {
         }
     }
 
-    /**
-     * Atomic update: replaces splits for an existing transaction.
-     * NOTE: Call individual methods directly from a database.withTransaction block
-     * in the repository instead of using this method.
-     */
     @androidx.room.Transaction
     suspend fun updateFullTransaction(
         transaction: TransactionEntity,
@@ -80,11 +69,26 @@ interface TransactionDao {
     @androidx.room.Transaction
     @Query("""
         SELECT * FROM transactions 
-        WHERE accountId = :accountId 
+        WHERE (accountId = :accountId OR toAccountId = :accountId)
         AND isDeleted = 0 
         ORDER BY date DESC
     """)
-    fun getTransactionsByAccount(accountId: String): Flow<List<TransactionWithSplits>>
+    fun getTransactionsByAccountIncludingTransfers(accountId: String): Flow<List<TransactionWithSplits>>
+
+    // FIX: Added period-specific query for accounts
+    @androidx.room.Transaction
+    @Query("""
+        SELECT * FROM transactions 
+        WHERE (accountId = :accountId OR toAccountId = :accountId)
+        AND isDeleted = 0 
+        AND date BETWEEN :startDate AND :endDate
+        ORDER BY date DESC
+    """)
+    fun getTransactionsByAccountIncludingTransfersForPeriod(
+        accountId: String, 
+        startDate: Long, 
+        endDate: Long
+    ): Flow<List<TransactionWithSplits>>
 
     @androidx.room.Transaction
     @Query("""
@@ -114,19 +118,9 @@ interface TransactionDao {
     ): Flow<List<TransactionWithSplits>>
 
     @androidx.room.Transaction
-    @Query("""
-        SELECT * FROM transactions 
-        WHERE (accountId = :accountId OR toAccountId = :accountId)
-        AND isDeleted = 0 
-        ORDER BY date DESC
-    """)
-    fun getTransactionsByAccountIncludingTransfers(accountId: String): Flow<List<TransactionWithSplits>>
-
-    @androidx.room.Transaction
     @Query("SELECT * FROM transactions WHERE id = :id AND isDeleted = 0")
     suspend fun getTransactionById(id: String): TransactionWithSplits?
 
-    // For use within database.withTransaction blocks
     @androidx.room.Transaction
     @Query("SELECT * FROM transactions WHERE id = :id AND isDeleted = 0")
     suspend fun getTransactionByIdInternal(id: String): TransactionWithSplits?
@@ -160,9 +154,6 @@ interface TransactionDao {
     """)
     fun getTotalTransferForPeriod(startDate: Long, endDate: Long): Flow<Double?>
 
-    /**
-     * Category spending aggregation for the donut chart.
-     */
     @Query("""
         SELECT 
             c.id as categoryId,
@@ -181,9 +172,6 @@ interface TransactionDao {
     """)
     fun getCategorySpendingForPeriod(startDate: Long, endDate: Long): Flow<List<CategorySpending>>
 
-    /**
-     * Category spending for income.
-     */
     @Query("""
         SELECT 
             c.id as categoryId,
@@ -202,9 +190,6 @@ interface TransactionDao {
     """)
     fun getCategoryIncomeForPeriod(startDate: Long, endDate: Long): Flow<List<CategorySpending>>
 
-    /**
-     * Transfer transactions for a given period.
-     */
     @androidx.room.Transaction
     @Query("""
         SELECT * FROM transactions
