@@ -208,7 +208,8 @@ fun AccountsScreen(
                 AccountSection(
                     title = "People",
                     accounts = state.peopleAccounts,
-                    sum = state.peopleTotal,
+                    sumPositive = state.peoplePositiveTotal,
+                    sumNegative = state.peopleNegativeTotal,
                     expanded = state.peopleExpanded,
                     onToggle = { viewModel.setSectionExpanded(AccountType.PEOPLE, !state.peopleExpanded) },
                     onAccountClick = onAccountClick,
@@ -299,6 +300,8 @@ private fun AccountSection(
     title: String,
     accounts: List<Account>,
     sum: Double? = null,
+    sumPositive: Double? = null,
+    sumNegative: Double? = null,
     expanded: Boolean = true,
     onToggle: () -> Unit = {},
     onAccountClick: (String, String) -> Unit,
@@ -321,10 +324,24 @@ private fun AccountSection(
             modifier = Modifier.weight(1f)
         )
 
-        if (sum != null) {
+        // Show detailed "Loaned" and "Borrowed" text if Positive/Negative amounts are passed
+        if (sumPositive != null && sumNegative != null) {
+            Column(horizontalAlignment = Alignment.End, modifier = Modifier.padding(end = 8.dp)) {
+                Text(
+                    text = "Loaned: $currency${formatAmount(sumPositive)}",
+                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                    color = MaterialTheme.colorScheme.tertiary
+                )
+                Text(
+                    text = "Borrowed: $currency${formatAmount(kotlin.math.abs(sumNegative))}",
+                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+        } else if (sum != null) {
             val sumColor = if (sum < 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.tertiary
             Text(
-                text = "$currency${formatAmount(sum)}",
+                text = if (sum < 0) "-$currency${formatAmount(kotlin.math.abs(sum))}" else "$currency${formatAmount(sum)}",
                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
                 color = sumColor,
                 modifier = Modifier.padding(end = 8.dp)

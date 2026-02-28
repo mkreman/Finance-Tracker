@@ -28,15 +28,15 @@ data class AccountsState(
     val bankTotal: Double = 0.0,
     val investmentTotal: Double = 0.0,
     val peopleTotal: Double = 0.0,
+    val peoplePositiveTotal: Double = 0.0, // Loaned
+    val peopleNegativeTotal: Double = 0.0, // Borrowed
     val customTotal: Double = 0.0,
-    val isLoading: Boolean = true
-    ,
+    val isLoading: Boolean = true,
     val cashExpanded: Boolean = true,
     val walletExpanded: Boolean = true,
     val bankExpanded: Boolean = true,
     val investmentExpanded: Boolean = true,
-    val peopleExpanded: Boolean = true
-    ,
+    val peopleExpanded: Boolean = true,
     val customExpanded: Boolean = true
 )
 
@@ -124,6 +124,8 @@ class AccountsViewModel @Inject constructor(
                 val bankTotal = bankAccounts.sumOf { it.currentBalance }
                 val investmentTotal = investmentAccounts.sumOf { it.currentBalance }
                 val peopleTotal = peopleAccounts.sumOf { it.currentBalance }
+                val peoplePositiveTotal = peopleAccounts.filter { it.currentBalance > 0 }.sumOf { it.currentBalance }
+                val peopleNegativeTotal = peopleAccounts.filter { it.currentBalance < 0 }.sumOf { it.currentBalance }
                 val customTotal = customAccounts.sumOf { it.currentBalance }
 
                 // Group custom accounts by their customTypeName (use "Custom" when blank)
@@ -157,6 +159,8 @@ class AccountsViewModel @Inject constructor(
                         bankTotal = bankTotal,
                         investmentTotal = investmentTotal,
                         peopleTotal = peopleTotal,
+                        peoplePositiveTotal = peoplePositiveTotal,
+                        peopleNegativeTotal = peopleNegativeTotal,
                         customTotal = customTotal,
                         isLoading = false
                     )
