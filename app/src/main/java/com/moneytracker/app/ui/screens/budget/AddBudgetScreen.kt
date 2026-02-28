@@ -58,24 +58,36 @@ class AddBudgetViewModel @Inject constructor(
     private val editCategoryName: String? = savedStateHandle.get<String>("categoryName")
     private val editLimitAmount: String? = savedStateHandle.get<String>("limitAmount")
 
+    // Extract month and year. Fallback to the current actual month/year if null
+    private val selectedMonth = savedStateHandle.get<String>("month")?.toIntOrNull() ?: (Calendar.getInstance().get(Calendar.MONTH) + 1)
+    private val selectedYear = savedStateHandle.get<String>("year")?.toIntOrNull() ?: Calendar.getInstance().get(Calendar.YEAR)
+
     private val _state = MutableStateFlow(AddBudgetState())
     val state: StateFlow<AddBudgetState> = _state.asStateFlow()
 
     init {
-        val cal = Calendar.getInstance()
-        val month = cal.get(Calendar.MONTH) + 1
-        val year = cal.get(Calendar.YEAR)
+        val cal = Calendar.getInstance().apply {
+            set(Calendar.YEAR, selectedYear)
+            set(Calendar.MONTH, selectedMonth - 1)
+        }
+        
+        val month = selectedMonth
+        val year = selectedYear
+        
         val startDate = cal.apply {
             set(Calendar.DAY_OF_MONTH, 1)
             set(Calendar.HOUR_OF_DAY, 0)
             set(Calendar.MINUTE, 0)
             set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
         }.timeInMillis
+        
         val endDate = cal.apply {
             set(Calendar.DAY_OF_MONTH, cal.getActualMaximum(Calendar.DAY_OF_MONTH))
             set(Calendar.HOUR_OF_DAY, 23)
             set(Calendar.MINUTE, 59)
             set(Calendar.SECOND, 59)
+            set(Calendar.MILLISECOND, 999)
         }.timeInMillis
         
         viewModelScope.launch {
@@ -95,7 +107,7 @@ class AddBudgetViewModel @Inject constructor(
                     )
                 }
             } else {
-                // Add mode - filter out categories that already have budgets
+                // Add mode - filter out categories that already have budgets FOR THIS SPECIFIC MONTH
                 budgetRepository.getBudgetsWithSpending(month, year, startDate, endDate).collect { budgets ->
                     val categoriesWithBudgets = budgets.map { it.categoryId }.toSet()
                     val availableCategories = allExpenseCategories.filter { it.id !in categoriesWithBudgets }
@@ -120,12 +132,13 @@ class AddBudgetViewModel @Inject constructor(
 
         viewModelScope.launch {
             _state.update { it.copy(isSaving = true) }
-            val cal = Calendar.getInstance()
+            
+            // Save to the selected target month, not the real-world current calendar month
             budgetRepository.saveBudget(
                 categoryId = catId,
                 limitAmount = limit,
-                month = cal.get(Calendar.MONTH) + 1,
-                year = cal.get(Calendar.YEAR)
+                month = selectedMonth,
+                year = selectedYear
             )
             _state.update { it.copy(isSaving = false, isSaved = true) }
         }

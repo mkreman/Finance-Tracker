@@ -74,16 +74,28 @@ sealed class Screen(
     )
 
     object AddBudget : Screen(
-        route = "add_budget",
+        route = "add_budget?month={month}&year={year}",
         title = "Add Budget"
-    )
+    ) {
+        fun createRoute(month: Int? = null, year: Int? = null): String {
+            val parts = mutableListOf<String>()
+            if (month != null) parts.add("month=$month")
+            if (year != null) parts.add("year=$year")
+            return if (parts.isEmpty()) "add_budget" else "add_budget?${parts.joinToString("&")}"
+        }
+    }
 
     object EditBudget : Screen(
-        route = "edit_budget/{budgetId}/{categoryId}/{categoryName}/{limitAmount}",
+        route = "edit_budget/{budgetId}/{categoryId}/{categoryName}/{limitAmount}?month={month}&year={year}",
         title = "Edit Budget"
     ) {
-        fun createRoute(budgetId: String, categoryId: String, categoryName: String, limitAmount: Double) =
-            "edit_budget/$budgetId/$categoryId/$categoryName/$limitAmount"
+        fun createRoute(budgetId: String, categoryId: String, categoryName: String, limitAmount: Double, month: Int? = null, year: Int? = null): String {
+            val base = "edit_budget/$budgetId/$categoryId/$categoryName/$limitAmount"
+            val parts = mutableListOf<String>()
+            if (month != null) parts.add("month=$month")
+            if (year != null) parts.add("year=$year")
+            return if (parts.isEmpty()) base else "$base?${parts.joinToString("&")}"
+        }
     }
 
     object EditAccount : Screen(

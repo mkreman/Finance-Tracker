@@ -81,17 +81,17 @@ fun NavGraph(navController: NavHostController) {
 
         composable(Screen.Budget.route) {
             BudgetScreen(
-                onAddBudget = {
-                    navController.navigate(Screen.AddBudget.route)
+                onAddBudget = { month, year ->
+                    navController.navigate(Screen.AddBudget.createRoute(month, year))
                 },
                 onBudgetClick = { categoryId, categoryName ->
                     navController.navigate(
                         Screen.BudgetTransactions.createRoute(categoryId, categoryName)
                     )
                 },
-                onEditBudget = { budgetId, categoryId, categoryName, limitAmount ->
+                onEditBudget = { budgetId, categoryId, categoryName, limitAmount, month, year ->
                     navController.navigate(
-                        Screen.EditBudget.createRoute(budgetId, categoryId, categoryName, limitAmount)
+                        Screen.EditBudget.createRoute(budgetId, categoryId, categoryName, limitAmount, month, year)
                     )
                 }
             )
@@ -149,13 +149,14 @@ fun NavGraph(navController: NavHostController) {
             )
         }
 
-        composable(Screen.AddAccount.route) {
-            AddAccountScreen(
-                onNavigateBack = { navController.popBackStack() }
+        // Add Budget
+        composable(
+            route = Screen.AddBudget.route,
+            arguments = listOf(
+                navArgument("month") { type = NavType.StringType; nullable = true; defaultValue = null },
+                navArgument("year") { type = NavType.StringType; nullable = true; defaultValue = null }
             )
-        }
-
-        composable(Screen.AddBudget.route) {
+        ) {
             AddBudgetScreen(
                 onNavigateBack = { navController.popBackStack() }
             )
@@ -168,10 +169,18 @@ fun NavGraph(navController: NavHostController) {
                 navArgument("budgetId") { type = NavType.StringType },
                 navArgument("categoryId") { type = NavType.StringType },
                 navArgument("categoryName") { type = NavType.StringType },
-                navArgument("limitAmount") { type = NavType.StringType }
+                navArgument("limitAmount") { type = NavType.StringType },
+                navArgument("month") { type = NavType.StringType; nullable = true; defaultValue = null },
+                navArgument("year") { type = NavType.StringType; nullable = true; defaultValue = null }
             )
         ) {
             AddBudgetScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(Screen.AddAccount.route) {
+            AddAccountScreen(
                 onNavigateBack = { navController.popBackStack() }
             )
         }

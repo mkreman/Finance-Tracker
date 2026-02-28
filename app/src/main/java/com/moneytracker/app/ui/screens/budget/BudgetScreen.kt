@@ -19,12 +19,13 @@ import com.moneytracker.app.ui.components.BudgetProgressBar
 import com.moneytracker.app.ui.components.LocalCurrencySymbol
 import com.moneytracker.app.ui.components.MonthSelector
 import com.moneytracker.app.ui.components.formatAmount
+import java.util.Calendar
 
 @Composable
 fun BudgetScreen(
-    onAddBudget: () -> Unit,
+    onAddBudget: (Int, Int) -> Unit,
     onBudgetClick: (String, String) -> Unit = { _, _ -> },
-    onEditBudget: (String, String, String, Double) -> Unit = { _, _, _, _ -> },
+    onEditBudget: (String, String, String, Double, Int, Int) -> Unit = { _, _, _, _, _, _ -> },
     viewModel: BudgetViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsState()
@@ -146,7 +147,11 @@ fun BudgetScreen(
                         BudgetProgressBar(
                             budget = budget,
                             onClick = { onBudgetClick(budget.categoryId, budget.categoryName) },
-                            onEdit = { onEditBudget(budget.id, budget.categoryId, budget.categoryName, budget.limitAmount) },
+                            onEdit = { 
+                                val m = currentMonth.get(Calendar.MONTH) + 1
+                                val y = currentMonth.get(Calendar.YEAR)
+                                onEditBudget(budget.id, budget.categoryId, budget.categoryName, budget.limitAmount, m, y) 
+                            },
                             onDelete = { showDeleteDialog = budget.id }
                         )
                     }
@@ -179,7 +184,11 @@ fun BudgetScreen(
 
         // FAB
         FloatingActionButton(
-            onClick = onAddBudget,
+            onClick = {
+                val m = currentMonth.get(Calendar.MONTH) + 1
+                val y = currentMonth.get(Calendar.YEAR)
+                onAddBudget(m, y)
+            },
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(end = 16.dp, bottom = 96.dp),
