@@ -28,6 +28,7 @@ import java.util.*
 @Composable
 fun DashboardScreen(
     onCategoryClick: (String, String, String) -> Unit = { _, _, _ -> },
+    onEditTransaction: (String) -> Unit = {}, // FIX: Added to support click navigation
     viewModel: DashboardViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsState()
@@ -122,7 +123,10 @@ fun DashboardScreen(
             } else {
                 Column(modifier = Modifier.fillMaxWidth()) {
                     state.transferTransactions.forEach { transfer ->
-                        TransferEntryItem(transfer = transfer)
+                        TransferEntryItem(
+                            transfer = transfer,
+                            onClick = { onEditTransaction(transfer.id) } // FIX: Passes the ID when clicked
+                        )
                     }
                 }
             }
@@ -186,7 +190,6 @@ private fun ClickableLegend(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable {
-                        // extract categoryId from ChartData - we need to pass it
                         onCategoryClick(item.categoryId, item.categoryName, type)
                     }
                     .padding(horizontal = 16.dp, vertical = 10.dp),
@@ -221,13 +224,14 @@ private fun ClickableLegend(
 }
 
 @Composable
-private fun TransferEntryItem(transfer: Transaction) {
+private fun TransferEntryItem(transfer: Transaction, onClick: () -> Unit) {
     val timeFormat = SimpleDateFormat("MMM dd, hh:mm a", Locale.getDefault())
     val timeString = timeFormat.format(Date(transfer.date))
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .clickable(onClick = onClick) // FIX: Row is now clickable
             .padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {

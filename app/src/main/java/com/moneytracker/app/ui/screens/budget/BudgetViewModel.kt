@@ -59,11 +59,14 @@ class BudgetViewModel @Inject constructor(
 
                 budgetRepository.getBudgetsWithSpending(month, year, startDate, endDate)
                     .collect { budgets ->
+                        // FIX: Sort the budgets descending by their limit amount
+                        val sortedBudgets = budgets.sortedByDescending { it.limitAmount }
+                        
                         _state.update {
                             it.copy(
-                                budgets = budgets,
-                                totalBudget = budgets.sumOf { b -> b.limitAmount },
-                                totalSpent = budgets.sumOf { b -> b.spentAmount },
+                                budgets = sortedBudgets,
+                                totalBudget = sortedBudgets.sumOf { b -> b.limitAmount },
+                                totalSpent = sortedBudgets.sumOf { b -> b.spentAmount },
                                 isLoading = false
                             )
                         }

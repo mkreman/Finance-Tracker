@@ -452,7 +452,7 @@ private fun CategoryGrid(
     var categoryToEdit by remember { mutableStateOf<Category?>(null) }
     var categoryToDelete by remember { mutableStateOf<Category?>(null) }
 
-    val displayCategories = categories.filter { !it.name.equals("Other", ignoreCase = true) }
+    val displayCategories = categories 
     val fullRows = displayCategories.chunked(4)
     val lastRow = fullRows.lastOrNull()
     val needsExtraRow = lastRow == null || lastRow.size == 4

@@ -48,6 +48,10 @@ fun NavGraph(navController: NavHostController) {
                     navController.navigate(
                         Screen.CategoryTransactions.createRoute(categoryId, categoryName, type)
                     )
+                },
+                // FIX: Pass the edit transaction route to the Dashboard
+                onEditTransaction = { transactionId ->
+                    navController.navigate(Screen.EditTransaction.createRoute(transactionId))
                 }
             )
         }
