@@ -41,6 +41,22 @@ class CategoryRepository @Inject constructor(
         )
     }
 
+    // FIX: Added updateCategory to safely modify existing rows without replacing them
+    suspend fun updateCategory(category: Category) {
+        val existingEntity = categoryDao.getCategoryById(category.id) ?: return
+        
+        categoryDao.updateCategory(
+            existingEntity.copy(
+                name = category.name,
+                iconKey = category.iconKey,
+                type = category.type,
+                budgetLimit = category.budgetLimit,
+                colorHex = category.colorHex,
+                modifiedAt = System.currentTimeMillis()
+            )
+        )
+    }
+
     suspend fun deleteCategory(id: String) {
         categoryDao.softDelete(id)
     }

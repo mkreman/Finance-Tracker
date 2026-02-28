@@ -293,13 +293,11 @@ class AddTransactionViewModel @Inject constructor(
         }
     }
 
-    fun addCategory(name: String, iconKey: String) {
+    // FIX: Accept the colorHex dynamically 
+    fun addCategory(name: String, iconKey: String, colorHex: String) {
         viewModelScope.launch {
             val type = _state.value.type
             val categoryType = if (type == TransactionType.TRANSFER) TransactionType.EXPENSE else type
-            // Generate a random color for the new category
-            val colors = listOf("#FF5722", "#2196F3", "#9C27B0", "#E91E63", "#4CAF50", "#3F51B5", "#FF9800", "#795548", "#607D8B", "#00BCD4")
-            val colorHex = colors.random()
             val category = com.moneytracker.app.domain.model.Category(
                 id = UUID.randomUUID().toString(),
                 name = name,
@@ -308,7 +306,6 @@ class AddTransactionViewModel @Inject constructor(
                 colorHex = colorHex
             )
             categoryRepository.saveCategory(category)
-            // The category list will auto-update via Flow
         }
     }
 
@@ -331,14 +328,15 @@ class AddTransactionViewModel @Inject constructor(
         }
     }
 
-    fun editCategory(categoryId: String, newName: String, newIconKey: String) {
+    // FIX: Update to accept newColorHex
+    fun editCategory(categoryId: String, newName: String, newIconKey: String, newColorHex: String) {
         viewModelScope.launch {
             try {
                 val existing = categoryRepository.getCategoryById(categoryId) ?: return@launch
-                val updated = existing.copy(name = newName, iconKey = newIconKey)
-                categoryRepository.saveCategory(updated)
+                val updated = existing.copy(name = newName, iconKey = newIconKey, colorHex = newColorHex)
                 
-                // If this category is currently selected in any split, update its name in the UI immediately
+                categoryRepository.updateCategory(updated)
+                
                 _state.update { state ->
                     val newSplits = state.splits.map { split ->
                         if (split.categoryId == categoryId) {
