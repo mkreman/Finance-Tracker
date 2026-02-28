@@ -43,7 +43,8 @@ fun AccountTransactionsScreen(
                 containerColor = MaterialTheme.colorScheme.background,
                 titleContentColor = MaterialTheme.colorScheme.onSurface,
                 navigationIconContentColor = MaterialTheme.colorScheme.onSurface
-            )
+            ),
+            windowInsets = WindowInsets(0.dp) // <-- Added to remove top gap
         )
 
         if (transactions.isEmpty()) {

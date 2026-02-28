@@ -47,7 +47,6 @@ fun SettingsScreen(
     var showVersionHistory by remember { mutableStateOf(false) }
     var showAbout by remember { mutableStateOf(false) }
 
-    // CHANGED: Set the MIME type to application/json
     val exportLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("application/json")
     ) { uri ->
@@ -269,7 +268,6 @@ fun SettingsScreen(
                 title = { Text("Default Account", color = MaterialTheme.colorScheme.onSurface) },
                 text = {
                     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        // "Auto" option — first available
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -323,7 +321,6 @@ fun SettingsScreen(
         // Security Section
         SettingsSectionHeader("Security")
 
-        // Biometric toggle wired to preferences (mutually exclusive with passcode)
         SettingsToggleItem(
             icon = Icons.Filled.Fingerprint,
             title = "Biometric Lock",
@@ -331,28 +328,53 @@ fun SettingsScreen(
             iconTint = MaterialTheme.colorScheme.primary,
             isChecked = state.biometricEnabled,
             onCheckedChange = { enable ->
+                val activity = context as? FragmentActivity
+                if (activity == null) {
+                    Toast.makeText(context, "Unable to verify biometric on this screen", Toast.LENGTH_SHORT).show()
+                    return@SettingsToggleItem
+                }
+
                 val biometricManager = BiometricManager.from(context)
-                val can = biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.DEVICE_CREDENTIAL)
+                val canAuth = biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG)
+
                 if (enable) {
-                    if (can == BiometricManager.BIOMETRIC_SUCCESS) {
-                        // Disable passcode when enabling biometric
-                        if (state.passcodeEnabled) {
-                            viewModel.setPasscodeEnabled(false)
-                        }
-                        viewModel.setBiometricEnabled(true)
-                        Toast.makeText(context, "Biometric enabled", Toast.LENGTH_SHORT).show()
+                    if (canAuth == BiometricManager.BIOMETRIC_SUCCESS) {
+                        val biometricPrompt = BiometricPrompt(
+                            activity,
+                            ContextCompat.getMainExecutor(context),
+                            object : BiometricPrompt.AuthenticationCallback() {
+                                override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                                    super.onAuthenticationSucceeded(result)
+                                    // Disable passcode when enabling biometric
+                                    if (state.passcodeEnabled) {
+                                        viewModel.setPasscodeEnabled(false)
+                                    }
+                                    viewModel.setBiometricEnabled(true)
+                                    Toast.makeText(context, "Biometric enabled", Toast.LENGTH_SHORT).show()
+                                }
+
+                                override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
+                                    super.onAuthenticationError(errorCode, errString)
+                                    if (errorCode != BiometricPrompt.ERROR_USER_CANCELED && errorCode != BiometricPrompt.ERROR_NEGATIVE_BUTTON) {
+                                        Toast.makeText(context, "Authentication failed: $errString", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            }
+                        )
+
+                        val promptInfo = BiometricPrompt.PromptInfo.Builder()
+                            .setTitle("Enable Biometric Lock")
+                            .setSubtitle("Verify your identity to enable biometric lock")
+                            .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG)
+                            .setNegativeButtonText("Cancel")
+                            .build()
+
+                        biometricPrompt.authenticate(promptInfo)
                     } else {
-                        Toast.makeText(context, "Biometric not available on this device", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "Biometric not available or not set up on this device", Toast.LENGTH_SHORT).show()
                     }
                 } else {
-                    val activity = context as? FragmentActivity
-                    if (activity == null) {
-                        Toast.makeText(context, "Unable to verify biometric on this screen", Toast.LENGTH_SHORT).show()
-                        return@SettingsToggleItem
-                    }
-
-                    val canDisableAuth = biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG)
-                    if (canDisableAuth != BiometricManager.BIOMETRIC_SUCCESS) {
+                    if (canAuth != BiometricManager.BIOMETRIC_SUCCESS) {
                         Toast.makeText(context, "Biometric authentication is required to disable", Toast.LENGTH_SHORT).show()
                         return@SettingsToggleItem
                     }
@@ -511,7 +533,6 @@ fun SettingsScreen(
             iconTint = MaterialTheme.colorScheme.tertiary
         )
 
-        // CHANGED: Subtitle and extension to JSON
         SettingsItem(
             icon = Icons.Filled.FileDownload,
             title = "Export Data",
@@ -524,7 +545,6 @@ fun SettingsScreen(
             }
         )
 
-        // CHANGED: Subtitle and intent array to application/json
         SettingsItem(
             icon = Icons.Filled.FileUpload,
             title = "Import Data",
@@ -631,7 +651,6 @@ private fun AboutDialog(onDismiss: () -> Unit) {
         },
         confirmButton = {
             TextButton(onClick = {
-                // Launch email intent
                 val intent = Intent(Intent.ACTION_SENDTO).apply {
                     data = Uri.parse("mailto:mkreman12@gmail.com")
                 }

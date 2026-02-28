@@ -44,6 +44,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.math.BigDecimal
 import java.util.UUID
 import javax.inject.Inject
 
@@ -76,6 +77,12 @@ class AddAccountViewModel @Inject constructor(
         }
     }
 
+    private fun toEditableAmount(value: Double): String {
+        return BigDecimal.valueOf(value)
+            .stripTrailingZeros()
+            .toPlainString()
+    }
+
     private fun loadAccount(accountId: String) {
         viewModelScope.launch {
             val accounts = accountRepository.getAllAccounts().firstOrNull() ?: return@launch
@@ -85,7 +92,7 @@ class AddAccountViewModel @Inject constructor(
                     name = account.name,
                     type = account.type,
                     customTypeName = account.customTypeName ?: "",
-                    initialBalance = account.initialBalance.toLong().toString(),
+                    initialBalance = toEditableAmount(account.initialBalance),
                     colorHex = account.colorHex,
                     iconKey = account.iconKey,
                     isEditMode = true,
