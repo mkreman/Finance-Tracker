@@ -9,6 +9,7 @@ import com.moneytracker.app.data.local.database.entities.TransactionEntity
 import com.moneytracker.app.data.local.database.entities.TransactionSplitEntity
 import com.moneytracker.app.data.local.database.entities.TransactionType
 import com.moneytracker.app.data.local.database.entities.RecurringUnit
+import com.moneytracker.app.data.local.database.entities.AccountType
 import com.moneytracker.app.data.local.repository.AccountRepository
 import com.moneytracker.app.data.local.repository.CategoryRepository
 import com.moneytracker.app.data.local.repository.TransactionRepository
@@ -135,15 +136,27 @@ class AddTransactionViewModel @Inject constructor(
             val defaultAccountId = userPreferences.defaultAccountId.first()
 
             accountRepository.getAllAccounts().collect { accounts ->
+                // Sort accounts matching the Accounts Screen order
+                val sortedAccounts = accounts.sortedWith(compareBy<com.moneytracker.app.domain.model.Account> { 
+                    when (it.type) {
+                        AccountType.CASH -> 0
+                        AccountType.WALLET -> 1
+                        AccountType.BANK -> 2
+                        AccountType.INVESTMENT -> 3
+                        AccountType.PEOPLE -> 4
+                        AccountType.CUSTOM -> 5
+                    }
+                }.thenBy { it.name })
+
                 _state.update { currentState ->
                     val accountId = when {
                         currentState.isEditMode -> currentState.selectedAccountId
                         currentState.selectedAccountId != null -> currentState.selectedAccountId
-                        defaultAccountId != null && accounts.any { it.id == defaultAccountId } -> defaultAccountId
-                        else -> accounts.firstOrNull()?.id
+                        defaultAccountId != null && sortedAccounts.any { it.id == defaultAccountId } -> defaultAccountId
+                        else -> sortedAccounts.firstOrNull()?.id
                     }
                     currentState.copy(
-                        accounts = accounts,
+                        accounts = sortedAccounts,
                         selectedAccountId = accountId
                     )
                 }
@@ -172,7 +185,6 @@ class AddTransactionViewModel @Inject constructor(
         _state.update { state ->
             val newState = state.copy(amount = value)
             if (!state.isSplitMode) {
-                // In single/multi-category mode, each split gets the full amount
                 newState.copy(
                     splits = state.splits.map { it.copy(amount = value) }
                 )
@@ -190,7 +202,6 @@ class AddTransactionViewModel @Inject constructor(
             } else {
                 newIds.add(categoryId)
             }
-            // Rebuild splits — one per selected category, each with full amount
             val newSplits = if (newIds.isEmpty()) {
                 listOf(SplitState())
             } else {
@@ -266,7 +277,6 @@ class AddTransactionViewModel @Inject constructor(
     fun toggleSplitMode() {
         _state.update { state ->
             if (state.isSplitMode) {
-                // Going back to single/multi mode — keep categories, set each split amount to full amount
                 val categoryIds = state.splits.mapNotNull { it.categoryId }.toSet()
                 val newSplits = if (categoryIds.isEmpty()) {
                     listOf(SplitState(amount = state.amount))
@@ -293,7 +303,6 @@ class AddTransactionViewModel @Inject constructor(
         }
     }
 
-    // FIX: Accept the colorHex dynamically 
     fun addCategory(name: String, iconKey: String, colorHex: String) {
         viewModelScope.launch {
             val type = _state.value.type
@@ -328,7 +337,6 @@ class AddTransactionViewModel @Inject constructor(
         }
     }
 
-    // FIX: Update to accept newColorHex
     fun editCategory(categoryId: String, newName: String, newIconKey: String, newColorHex: String) {
         viewModelScope.launch {
             try {
@@ -360,7 +368,6 @@ class AddTransactionViewModel @Inject constructor(
     }
 
     fun onRecurringToggle(isRecurring: Boolean) {
-        // Preserve all splits when toggling recurring on/off
         _state.update { current ->
             current.copy(isRecurring = isRecurring)
         }
@@ -427,7 +434,6 @@ class AddTransactionViewModel @Inject constructor(
                 val splits = if (currentState.type == TransactionType.TRANSFER) {
                     emptyList()
                 } else {
-                    // Try to get valid splits from current state
                     val validSplits = currentState.splits.mapNotNull { split ->
                         val categoryId = split.categoryId?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
                         val splitAmount = split.amount.toDoubleOrNull() ?: 0.0
@@ -442,12 +448,10 @@ class AddTransactionViewModel @Inject constructor(
                         )
                     }
 
-                    // If no valid splits found in current state, preserve existing transaction splits
                     if (validSplits.isEmpty() && existingTransaction != null && existingTransaction.splits.isNotEmpty()) {
-                        // Preserve existing splits with their data intact
                         existingTransaction.splits.map { existing ->
                             TransactionSplitEntity(
-                                id = existing.id,  // Keep original ID
+                                id = existing.id,
                                 transactionId = transactionId,
                                 categoryId = existing.categoryId,
                                 amount = existing.amount,
@@ -471,33 +475,27 @@ class AddTransactionViewModel @Inject constructor(
                 if (currentState.isEditMode) {
                     transactionRepository.updateTransactionFull(transaction, splits)
                     
-                    // Check if the user turned off the switch from the original PARENT
                     val wasParentTurnedOff = currentState.parentRecurringId == null && 
                                              existingTransaction?.isRecurring == true && 
                                              !currentState.isRecurring
                                              
-                    // Check if the user turned off the switch from a generated CHILD
                     val wasChildTurnedOff = currentState.parentRecurringId != null && 
                                             !currentState.isRecurring
 
-                    // Wipe the recurring status across the whole series depending on what was edited
                     if (wasParentTurnedOff) {
                         transactionRepository.stopRecurringSeries(transactionId)
                     } else if (wasChildTurnedOff) {
-                        // Safely unwrap the nullable string here:
                         currentState.parentRecurringId?.let { parentId ->
                             transactionRepository.stopRecurringSeries(parentId)
                         }
                     }
                 } else {
                     transactionRepository.saveTransaction(transaction, splits)
-                    // Trigger an immediate check so today's occurrences are created promptly
                     if (shouldPersistRecurringOnThisEntry) {
                         recurringTransactionManager.checkNow()
                     }
                 }
                 _state.update { it.copy(isSaving = false) }
-                android.util.Log.d("AddTxnVM", "Save successful, sending navigateBack")
                 _navigateBack.trySend(Unit)
             } catch (e: Exception) {
                 android.util.Log.e("AddTxnVM", "Save failed", e)

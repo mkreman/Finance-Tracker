@@ -370,9 +370,7 @@ fun AddTransactionScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // ==========================================
-            // RECURRING SECTION
-            // ==========================================
+            // Recurring Section
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -885,6 +883,7 @@ private fun SplitRow(
     }
 }
 
+// FIX: Updated to include leadingIcon showing the account's set icon and color
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun AccountDropdown(
@@ -902,13 +901,39 @@ private fun AccountDropdown(
             onValueChange = {},
             readOnly = true,
             label = { Text(label) },
+            leadingIcon = selectedAccount?.let { account ->
+                {
+                    Icon(
+                        imageVector = CategoryIcons.getIcon(account.iconKey),
+                        contentDescription = null,
+                        tint = parseHexColor(account.colorHex),
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            },
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
             modifier = Modifier.fillMaxWidth().menuAnchor(),
-            shape = RoundedCornerShape(12.dp)
+            shape = RoundedCornerShape(12.dp),
+            colors = textFieldColors()
         )
-        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+        ExposedDropdownMenu(
+            expanded = expanded, 
+            onDismissRequest = { expanded = false },
+            modifier = Modifier.background(MaterialTheme.colorScheme.surface)
+        ) {
             accounts.forEach { account ->
-                DropdownMenuItem(text = { Text(account.name) }, onClick = { onSelected(account.id); expanded = false })
+                DropdownMenuItem(
+                    text = { Text(account.name, color = MaterialTheme.colorScheme.onSurface) },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = CategoryIcons.getIcon(account.iconKey),
+                            contentDescription = null,
+                            tint = parseHexColor(account.colorHex),
+                            modifier = Modifier.size(20.dp)
+                        )
+                    },
+                    onClick = { onSelected(account.id); expanded = false }
+                )
             }
         }
     }
