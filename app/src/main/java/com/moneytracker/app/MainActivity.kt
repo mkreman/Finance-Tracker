@@ -8,6 +8,7 @@ import android.content.pm.PackageManager
 import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
+import android.view.WindowManager // FIX: Added to support FLAG_SECURE
 import android.widget.Toast
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
@@ -92,6 +93,9 @@ class MainActivity : FragmentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        // FIX: Add FLAG_SECURE to prevent screenshots and hide app content in the Android "Recents" screen
+        window.setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE)
         
         intentState.value = intent
 
@@ -188,8 +192,6 @@ class MainActivity : FragmentActivity() {
 
             MoneyTrackerTheme(darkTheme = darkTheme) {
                 val passcodeValue = storedPasscode
-                
-                // FIX: Initialize the Flow that will carry the tab clicks globally
                 val bottomTabReselectFlow = remember { MutableSharedFlow<String>(extraBufferCapacity = 1) }
                 
                 CompositionLocalProvider(
