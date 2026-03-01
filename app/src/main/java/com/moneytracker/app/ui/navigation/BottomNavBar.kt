@@ -3,13 +3,17 @@ package com.moneytracker.app.ui.navigation
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.height
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.moneytracker.app.ui.theme.*
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.launch
+
+// An event bus accessible anywhere in the composition to listen for tab re-selections
+val LocalBottomTabReselect = compositionLocalOf<MutableSharedFlow<String>> { MutableSharedFlow() }
 
 @Composable
 fun BottomNavBar(
@@ -18,6 +22,9 @@ fun BottomNavBar(
 ) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
+    
+    val reselectFlow = LocalBottomTabReselect.current
+    val coroutineScope = rememberCoroutineScope()
 
     NavigationBar(
         modifier = modifier.height(80.dp),
@@ -45,7 +52,12 @@ fun BottomNavBar(
                 },
                 selected = currentRoute == screen.route,
                 onClick = {
-                    if (currentRoute != screen.route) {
+                    if (currentRoute == screen.route) {
+                        // FIX: Broadcast the route so the active screen can scroll to the top
+                        coroutineScope.launch {
+                            reselectFlow.emit(screen.route)
+                        }
+                    } else {
                         navController.navigate(screen.route) {
                             popUpTo(Screen.Transactions.route) {
                                 saveState = true

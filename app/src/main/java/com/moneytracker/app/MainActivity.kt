@@ -54,6 +54,7 @@ import androidx.navigation.compose.rememberNavController
 import com.moneytracker.app.data.local.UserPreferences
 import com.moneytracker.app.ui.components.LocalCurrencySymbol
 import com.moneytracker.app.ui.navigation.BottomNavBar
+import com.moneytracker.app.ui.navigation.LocalBottomTabReselect
 import com.moneytracker.app.ui.navigation.NavGraph
 import com.moneytracker.app.ui.navigation.Screen
 import com.moneytracker.app.ui.screens.auth.PasscodeScreen
@@ -61,6 +62,7 @@ import com.moneytracker.app.ui.theme.MoneyTrackerTheme
 import com.moneytracker.app.util.BiometricAuthManager
 import com.moneytracker.app.widget.MoneyTrackerWidget
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -73,8 +75,6 @@ class MainActivity : FragmentActivity() {
     @Inject lateinit var userPreferences: UserPreferences
     private lateinit var biometricAuthManager: BiometricAuthManager
     
-    // We use this Flow to cleanly capture intents when the widget is tapped
-    // while the app is already sitting in the background.
     private val intentState = MutableStateFlow<Intent?>(null)
 
     private val requestPermissionLauncher = registerForActivityResult(
@@ -116,18 +116,14 @@ class MainActivity : FragmentActivity() {
 
             val currentIntent by intentState.collectAsState()
 
-            // Auth states
             var isAuthenticated by rememberSaveable { mutableStateOf(false) }
             var isAuthenticating by remember { mutableStateOf(false) }
             var showPasscodeScreen by remember { mutableStateOf(false) }
             
-            // Trigger Auth Helper Function
             val triggerAuth = {
-                // Determine if this launch originated from the Widget
                 val isWidgetLaunch = currentIntent?.getStringExtra("transaction_type") != null
                 
                 if (isWidgetLaunch) {
-                    // Bypass all security immediately if coming from the widget
                     isAuthenticated = true
                 } else if (!isAuthenticated && !isAuthenticating && biometricEnabled != null && passcodeEnabled != null) {
                     if (biometricEnabled == true || passcodeEnabled == true) {
@@ -160,12 +156,11 @@ class MainActivity : FragmentActivity() {
                             isAuthenticating = false
                         }
                     } else {
-                        isAuthenticated = true // Security is disabled by user
+                        isAuthenticated = true 
                     }
                 }
             }
 
-            // Require Auth when brought from background using Lifecycle Observer
             val lifecycleOwner = LocalLifecycleOwner.current
             DisposableEffect(lifecycleOwner) {
                 val observer = LifecycleEventObserver { _, event ->
@@ -181,7 +176,6 @@ class MainActivity : FragmentActivity() {
                 onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
             }
             
-            // Re-check automatically when intent updates or preferences initially load
             LaunchedEffect(biometricEnabled, passcodeEnabled, currentIntent) {
                 triggerAuth()
             }
@@ -195,15 +189,18 @@ class MainActivity : FragmentActivity() {
             MoneyTrackerTheme(darkTheme = darkTheme) {
                 val passcodeValue = storedPasscode
                 
+                // FIX: Initialize the Flow that will carry the tab clicks globally
+                val bottomTabReselectFlow = remember { MutableSharedFlow<String>(extraBufferCapacity = 1) }
+                
                 CompositionLocalProvider(
-                    LocalCurrencySymbol provides currencySymbol
+                    LocalCurrencySymbol provides currencySymbol,
+                    LocalBottomTabReselect provides bottomTabReselectFlow
                 ) {
                     val navController = rememberNavController()
                     val navBackStackEntry by navController.currentBackStackEntryAsState()
                     val currentRoute = navBackStackEntry?.destination?.route
                     val showBottomNav = currentRoute in Screen.bottomNavItems.map { it.route }
 
-                    // Process navigation intents cleanly
                     LaunchedEffect(currentIntent) {
                         val transactionType = currentIntent?.getStringExtra("transaction_type")
                         val suggestionAmount = currentIntent?.getStringExtra("suggestion_amount")
@@ -222,10 +219,9 @@ class MainActivity : FragmentActivity() {
                                     amount = suggestionAmount,
                                     note = suggestionNote,
                                     payee = suggestionPayee,
-                                    fromWidget = true // Triggers the auto-close via NavGraph when saved
+                                    fromWidget = true 
                                 )
                             )
-                            // Clean the intent so the lock screen properly engages later!
                             currentIntent?.removeExtra("transaction_type")
                             currentIntent?.removeExtra("suggestion_amount")
                             currentIntent?.removeExtra("suggestion_note")
@@ -253,13 +249,12 @@ class MainActivity : FragmentActivity() {
                             }
                         }
 
-                        // Overlay the Auth screen if not authenticated
                         if (!isAuthenticated) {
                             Box(
                                 modifier = Modifier
                                     .fillMaxSize()
                                     .background(MaterialTheme.colorScheme.background)
-                                    .clickable(enabled = true, onClick = {}) // Block background clicks
+                                    .clickable(enabled = true, onClick = {}) 
                             ) {
                                 if (showPasscodeScreen && passcodeValue != null) {
                                     PasscodeScreen(
@@ -352,7 +347,6 @@ class MainActivity : FragmentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        // Ensure the StateFlow updates so widget clicks while backgrounded work immediately
         intentState.value = intent
     }
 

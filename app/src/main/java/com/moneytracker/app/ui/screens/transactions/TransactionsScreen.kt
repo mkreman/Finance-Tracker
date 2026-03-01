@@ -4,12 +4,11 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -18,6 +17,8 @@ import com.moneytracker.app.domain.model.TransactionListItem
 import com.moneytracker.app.ui.components.MonthSelector
 import com.moneytracker.app.ui.components.TransactionDateHeader
 import com.moneytracker.app.ui.components.TransactionItem
+import com.moneytracker.app.ui.navigation.LocalBottomTabReselect
+import com.moneytracker.app.ui.navigation.Screen
 
 @Composable
 fun TransactionsScreen(
@@ -27,6 +28,18 @@ fun TransactionsScreen(
 ) {
     val transactions by viewModel.transactions.collectAsState()
     val currentMonth by viewModel.currentMonth.collectAsState()
+
+    val listState = rememberLazyListState()
+    val reselectFlow = LocalBottomTabReselect.current
+
+    // FIX: Listen for reselect events to scroll to top
+    LaunchedEffect(Unit) {
+        reselectFlow.collect { route ->
+            if (route == Screen.Transactions.route) {
+                listState.animateScrollToItem(0)
+            }
+        }
+    }
 
     Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         Column(modifier = Modifier.fillMaxSize()) {
@@ -69,6 +82,7 @@ fun TransactionsScreen(
                 }
             } else {
                 LazyColumn(
+                    state = listState,
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(bottom = 100.dp)
                 ) {

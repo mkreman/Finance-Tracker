@@ -21,6 +21,8 @@ import com.moneytracker.app.domain.model.Account
 import com.moneytracker.app.domain.model.ChartData
 import com.moneytracker.app.domain.model.Transaction
 import com.moneytracker.app.ui.components.*
+import com.moneytracker.app.ui.navigation.LocalBottomTabReselect
+import com.moneytracker.app.ui.navigation.Screen
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -34,11 +36,23 @@ fun DashboardScreen(
     val state by viewModel.state.collectAsState()
     val currentMonth by viewModel.currentMonth.collectAsState()
 
+    val scrollState = rememberScrollState()
+    val reselectFlow = LocalBottomTabReselect.current
+
+    // FIX: Listen for reselect events to scroll to top
+    LaunchedEffect(Unit) {
+        reselectFlow.collect { route ->
+            if (route == Screen.Dashboard.route) {
+                scrollState.animateScrollTo(0)
+            }
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .verticalScroll(rememberScrollState())
+            .verticalScroll(scrollState)
     ) {
         Spacer(modifier = Modifier.height(16.dp))
 

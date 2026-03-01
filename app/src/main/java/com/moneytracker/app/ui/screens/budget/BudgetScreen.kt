@@ -19,6 +19,8 @@ import com.moneytracker.app.ui.components.BudgetProgressBar
 import com.moneytracker.app.ui.components.LocalCurrencySymbol
 import com.moneytracker.app.ui.components.MonthSelector
 import com.moneytracker.app.ui.components.formatAmount
+import com.moneytracker.app.ui.navigation.LocalBottomTabReselect
+import com.moneytracker.app.ui.navigation.Screen
 import java.util.Calendar
 
 @Composable
@@ -31,6 +33,18 @@ fun BudgetScreen(
     val state by viewModel.state.collectAsState()
     val currentMonth by viewModel.currentMonth.collectAsState()
     val currency = LocalCurrencySymbol.current
+
+    val scrollState = rememberScrollState()
+    val reselectFlow = LocalBottomTabReselect.current
+
+    // FIX: Listen for reselect events to scroll to top
+    LaunchedEffect(Unit) {
+        reselectFlow.collect { route ->
+            if (route == Screen.Budget.route) {
+                scrollState.animateScrollTo(0)
+            }
+        }
+    }
 
     var showDeleteDialog by remember { mutableStateOf<String?>(null) }
 
@@ -61,7 +75,7 @@ fun BudgetScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(scrollState)
         ) {
             Spacer(modifier = Modifier.height(16.dp))
 

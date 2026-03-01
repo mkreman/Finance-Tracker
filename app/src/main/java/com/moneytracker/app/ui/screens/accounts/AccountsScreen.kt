@@ -28,6 +28,8 @@ import com.moneytracker.app.ui.components.CategoryIcons
 import com.moneytracker.app.ui.components.LocalCurrencySymbol
 import com.moneytracker.app.ui.components.formatAmount
 import com.moneytracker.app.ui.components.parseHexColor
+import com.moneytracker.app.ui.navigation.LocalBottomTabReselect
+import com.moneytracker.app.ui.navigation.Screen
 
 @Composable
 fun AccountsScreen(
@@ -38,6 +40,18 @@ fun AccountsScreen(
 ) {
     val state by viewModel.state.collectAsState()
     val currency = LocalCurrencySymbol.current
+
+    val scrollState = rememberScrollState()
+    val reselectFlow = LocalBottomTabReselect.current
+
+    // FIX: Listen for reselect events to scroll to top
+    LaunchedEffect(Unit) {
+        reselectFlow.collect { route ->
+            if (route == Screen.Accounts.route) {
+                scrollState.animateScrollTo(0)
+            }
+        }
+    }
 
     var showDeleteDialog by remember { mutableStateOf<Account?>(null) }
 
@@ -73,7 +87,7 @@ fun AccountsScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(scrollState)
         ) {
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -324,7 +338,6 @@ private fun AccountSection(
             modifier = Modifier.weight(1f)
         )
 
-        // Show detailed Loaned/Borrowed as a Row if Positive/Negative amounts are passed
         if (sumPositive != null && sumNegative != null) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,

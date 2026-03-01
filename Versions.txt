@@ -161,7 +161,8 @@ Version 1.1.0
 	- Show Account's icons and color in the accounts from transaction selection box
 	- Show accounts in the selection box in the same order as they are in Account section
 	- Give option to create an account in the section box itself, added account type as well
-
+	- Budget entries page has a gap on top
+	- If I am not some section for example transaction, and I tap on the same button the app should scroll to the top if the view is not at the top
 
 Done  
 ___________________________________________________________________________________________________
@@ -170,17 +171,12 @@ ________________________________________________________________________________
 	- Build calculator in amount section
 
 	- Make a database for category recommendations for auto transactions
-	
-	
-	
 
 	- Make a prominent bar for the collapsed accounts
 	- Ability to rearrange the order of account type
-	- If I am not some section for example transaction, and I tap on the same button the app should scroll to the top if the view is not at the top
 	?- Add tags to account SBI (saving, for SIPs), show tag filters on top in account view 
-
 
 	- Add more icons for category
 	- Hide content in recent opened app section
 	- Make a database for category recommendations for auto transactions Put a cab on the size of the database for example, 5 MB check how many records can be stored in 5 MB data base? If the number of records exceed 5 MB then remove the records which are less used. That's why the number of times the record used should also be there in the database. If I wish to update using edit button in the notification the current suggestion it should be replaced in the database as well and next time the updated category should be used.
-	- Budget entries page has a gap on top
+	
