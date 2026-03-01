@@ -160,7 +160,9 @@ Version 1.1.0
 	- In transfer dashboard give the filter option from and to account
 	- Show Account's icons and color in the accounts from transaction selection box
 	- Show accounts in the selection box in the same order as they are in Account section
-	
+	- Give option to create an account in the section box itself, added account type as well
+
+
 Done  
 ___________________________________________________________________________________________________
 
@@ -170,7 +172,7 @@ ________________________________________________________________________________
 	- Make a database for category recommendations for auto transactions
 	
 	
-	- Give option to create an account in the section box itself
+	
 
 	- Make a prominent bar for the collapsed accounts
 	- Ability to rearrange the order of account type

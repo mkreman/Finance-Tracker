@@ -49,7 +49,6 @@ fun NavGraph(navController: NavHostController) {
                         Screen.CategoryTransactions.createRoute(categoryId, categoryName, type)
                     )
                 },
-                // FIX: Pass the edit transaction route to the Dashboard
                 onEditTransaction = { transactionId ->
                     navController.navigate(Screen.EditTransaction.createRoute(transactionId))
                 }
@@ -149,6 +148,10 @@ fun NavGraph(navController: NavHostController) {
                             }
                         }
                     }
+                },
+                // FIX: Support jumping straight to adding a new account
+                onAddAccount = {
+                    navController.navigate(Screen.AddAccount.route)
                 }
             )
         }

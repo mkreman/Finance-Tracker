@@ -43,7 +43,8 @@ fun BudgetTransactionsScreen(
                 containerColor = MaterialTheme.colorScheme.background,
                 titleContentColor = MaterialTheme.colorScheme.onSurface,
                 navigationIconContentColor = MaterialTheme.colorScheme.onSurface
-            )
+            ),
+            windowInsets = WindowInsets(0.dp)
         )
 
         if (transactions.isEmpty()) {

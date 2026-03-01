@@ -52,6 +52,7 @@ import java.util.*
 @Composable
 fun AddTransactionScreen(
     onNavigateBack: () -> Unit,
+    onAddAccount: () -> Unit = {},
     viewModel: AddTransactionViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsState()
@@ -321,10 +322,10 @@ fun AddTransactionScreen(
                     label = "Account",
                     accounts = state.accounts,
                     selectedId = state.selectedAccountId,
-                    onSelected = viewModel::onAccountSelected
+                    onSelected = viewModel::onAccountSelected,
+                    onAddAccount = onAddAccount
                 )
             } else {
-                // Changed from Row to Column to stack them vertically
                 Column(
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -334,6 +335,7 @@ fun AddTransactionScreen(
                         accounts = state.accounts,
                         selectedId = state.selectedAccountId,
                         onSelected = viewModel::onAccountSelected,
+                        onAddAccount = onAddAccount,
                         modifier = Modifier.fillMaxWidth()
                     )
 
@@ -342,6 +344,7 @@ fun AddTransactionScreen(
                         accounts = state.accounts.filter { it.id != state.selectedAccountId },
                         selectedId = state.toAccountId,
                         onSelected = viewModel::onToAccountSelected,
+                        onAddAccount = onAddAccount,
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
@@ -891,11 +894,17 @@ private fun AccountDropdown(
     accounts: List<com.moneytracker.app.domain.model.Account>,
     selectedId: String?,
     onSelected: (String) -> Unit,
+    onAddAccount: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     var expanded by remember { mutableStateOf(false) }
     val selectedAccount = accounts.find { it.id == selectedId }
-    ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = !expanded }, modifier = modifier) {
+    
+    ExposedDropdownMenuBox(
+        expanded = expanded, 
+        onExpandedChange = { expanded = !expanded }, 
+        modifier = modifier
+    ) {
         OutlinedTextField(
             value = selectedAccount?.name ?: "",
             onValueChange = {},
@@ -916,25 +925,63 @@ private fun AccountDropdown(
             shape = RoundedCornerShape(12.dp),
             colors = textFieldColors()
         )
+        
         ExposedDropdownMenu(
             expanded = expanded, 
             onDismissRequest = { expanded = false },
             modifier = Modifier.background(MaterialTheme.colorScheme.surface)
         ) {
-            accounts.forEach { account ->
-                DropdownMenuItem(
-                    text = { Text(account.name, color = MaterialTheme.colorScheme.onSurface) },
-                    leadingIcon = {
-                        Icon(
-                            imageVector = CategoryIcons.getIcon(account.iconKey),
-                            contentDescription = null,
-                            tint = parseHexColor(account.colorHex),
-                            modifier = Modifier.size(20.dp)
-                        )
-                    },
-                    onClick = { onSelected(account.id); expanded = false }
-                )
+            
+            // Group accounts by their type or custom name
+            val groupedAccounts = accounts.groupBy { account ->
+                if (account.type.name == "CUSTOM" && !account.customTypeName.isNullOrBlank()) {
+                    account.customTypeName!!
+                } else {
+                    account.type.name.lowercase().replaceFirstChar { it.uppercase() }
+                }
             }
+
+            // Display headers and accounts
+            groupedAccounts.forEach { (groupName, groupAccounts) ->
+                Text(
+                    text = groupName,
+                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(start = 16.dp, top = 12.dp, bottom = 4.dp)
+                )
+                
+                groupAccounts.forEach { account ->
+                    DropdownMenuItem(
+                        text = { Text(account.name, color = MaterialTheme.colorScheme.onSurface) },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = CategoryIcons.getIcon(account.iconKey),
+                                contentDescription = null,
+                                tint = parseHexColor(account.colorHex),
+                                modifier = Modifier.size(20.dp)
+                            )
+                        },
+                        onClick = { onSelected(account.id); expanded = false }
+                    )
+                }
+            }
+            
+            Divider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.5.dp)
+            DropdownMenuItem(
+                text = { Text("Create New Account", color = MaterialTheme.colorScheme.primary) },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Filled.Add,
+                        contentDescription = "Add Account",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                },
+                onClick = { 
+                    expanded = false
+                    onAddAccount() 
+                }
+            )
         }
     }
 }
