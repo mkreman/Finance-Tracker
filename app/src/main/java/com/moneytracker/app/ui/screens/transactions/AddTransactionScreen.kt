@@ -7,6 +7,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -781,7 +782,17 @@ private fun AddCategoryDialog(
     var name by remember(initialName) { mutableStateOf(initialName) }
     var selectedIcon by remember(initialIconKey) { mutableStateOf(initialIconKey) }
     
-    val availableIcons = listOf("restaurant", "directions_car", "shopping_bag", "movie", "medical_services", "school", "receipt", "home", "two_wheeler", "pets", "people", "work", "laptop", "trending_up", "card_giftcard", "wallet", "store", "phone_android", "savings", "payments")
+    // Expanded list of icons requested
+    val availableIcons = listOf(
+        "restaurant", "fastfood", "local_cafe", "directions_car", "directions_transit",
+        "directions_bike", "flight", "local_gas_station", "shopping_bag", "local_grocery_store",
+        "movie", "sports_esports", "palette", "medical_services", "local_hospital",
+        "local_pharmacy", "fitness_center", "spa", "school", "child_care", "receipt",
+        "home", "build", "two_wheeler", "pets", "people", "work", "laptop", "computer",
+        "music_note", "weekend", "trending_up", "card_giftcard", "wallet", "store",
+        "phone_android", "savings", "payments", "more_horiz"
+    )
+    
     val availableColors = listOf("#FF5722", "#2196F3", "#9C27B0", "#E91E63", "#4CAF50", "#3F51B5", "#FF9800", "#795548", "#607D8B", "#00BCD4")
     
     var selectedColor by remember(initialColorHex) { mutableStateOf(initialColorHex ?: availableColors.first()) }
@@ -803,12 +814,20 @@ private fun AddCategoryDialog(
                     shape = RoundedCornerShape(12.dp)
                 )
                 
-                // Icon Picker
+                // Icon Picker - Now a 2-row horizontal scrollable list!
                 Text("Select Icon", style = MaterialTheme.typography.titleSmall)
-                val iconRows = availableIcons.chunked(5)
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                
+                val halfSize = (availableIcons.size + 1) / 2
+                val iconRows = availableIcons.chunked(halfSize)
+                
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
                     iconRows.forEach { row ->
-                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             row.forEach { iconKey ->
                                 val isSelected = iconKey == selectedIcon
                                 Box(
@@ -820,10 +839,14 @@ private fun AddCategoryDialog(
                                         .clickable { selectedIcon = iconKey },
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    Icon(CategoryIcons.getIcon(iconKey), iconKey, tint = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(22.dp))
+                                    Icon(
+                                        CategoryIcons.getIcon(iconKey), 
+                                        iconKey, 
+                                        tint = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant, 
+                                        modifier = Modifier.size(22.dp)
+                                    )
                                 }
                             }
-                            repeat(5 - row.size) { Spacer(modifier = Modifier.size(44.dp)) }
                         }
                     }
                 }
