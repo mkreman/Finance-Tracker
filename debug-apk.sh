@@ -1,0 +1,1 @@
+clear && ./gradlew assembleDebug && adb install -r /mnt/win/Users/MkReman/Gdrive/projects/Finance-Tracker/app/build/outputs/apk/debug/app-debug.apk
