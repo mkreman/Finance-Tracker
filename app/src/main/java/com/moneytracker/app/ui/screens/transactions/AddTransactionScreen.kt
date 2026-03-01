@@ -324,16 +324,17 @@ fun AddTransactionScreen(
                     onSelected = viewModel::onAccountSelected
                 )
             } else {
-                Row(
+                // Changed from Row to Column to stack them vertically
+                Column(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     AccountDropdown(
                         label = "From Account",
                         accounts = state.accounts,
                         selectedId = state.selectedAccountId,
                         onSelected = viewModel::onAccountSelected,
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.fillMaxWidth()
                     )
 
                     AccountDropdown(
@@ -341,7 +342,7 @@ fun AddTransactionScreen(
                         accounts = state.accounts.filter { it.id != state.selectedAccountId },
                         selectedId = state.toAccountId,
                         onSelected = viewModel::onToAccountSelected,
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.fillMaxWidth()
                     )
                 }
             }
@@ -883,7 +884,6 @@ private fun SplitRow(
     }
 }
 
-// FIX: Updated to include leadingIcon showing the account's set icon and color
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun AccountDropdown(
