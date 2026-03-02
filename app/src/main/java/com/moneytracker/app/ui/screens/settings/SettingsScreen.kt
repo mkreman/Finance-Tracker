@@ -603,7 +603,7 @@ fun SettingsScreen(
         SettingsItem(
             icon = Icons.Filled.Info,
             title = "Version",
-            subtitle = "1.0.0",
+            subtitle = "1.1.0",
             iconTint = MaterialTheme.colorScheme.onSurfaceVariant,
             onClick = { showVersionHistory = true }
         )
@@ -808,6 +808,26 @@ private fun VersionHistoryDialog(onDismiss: () -> Unit) {
                     .fillMaxWidth()
                     .verticalScroll(rememberScrollState())
             ) {
+                VersionItem(
+                    version = "1.1.0",
+                    features = listOf(
+                        "Feature: Show account's color and icon in add transaction.",
+                        "Feature: Added edit option to categories.",
+                        "Feature: In transfer dashboard, added filter options for 'from' and 'to' accounts.",
+                        "Feature: Show accounts in the transaction selection box matching the order of the Accounts section.",
+                        "Feature: Added option to create an account directly in the selection box, organized by account type.",
+                        "Feature: Tapping the active bottom navigation tab now scrolls the view to the top.",
+                        "Feature: Added more icons for custom category options in a horizontally scrollable list.",
+                        "Security: While enabling biometric lock, ask to authenticate first.",
+                        "Security: Hide app content in the recent apps screen for privacy.",
+                        "Improvement: Opening a category from the dashboard now defaults to the current month's entries.",
+                        "Improvement: Account section now defaults to showing the current month's entries.",
+                        "Fixed: Initial balance of accounts now correctly supports decimals.",
+                        "Fixed: Creating a budget while viewing a different month now saves it to that specific month.",
+                        "Fixed: Removed the visual gap on top of the budget entries page."
+                    )
+                )
+
                 VersionItem(
                     version = "1.0.0",
                     features = listOf(

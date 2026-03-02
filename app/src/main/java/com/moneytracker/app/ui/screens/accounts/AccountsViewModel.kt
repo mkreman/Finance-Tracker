@@ -9,6 +9,7 @@ import com.moneytracker.app.domain.model.Account
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import java.util.Collections
 import javax.inject.Inject
 
 data class AccountsState(
@@ -17,7 +18,6 @@ data class AccountsState(
     val bankAccounts: List<Account> = emptyList(),
     val investmentAccounts: List<Account> = emptyList(),
     val peopleAccounts: List<Account> = emptyList(),
-    // customSections holds grouped custom account types by their customTypeName
     val customSections: List<CustomSection> = emptyList(),
     val inactiveAccounts: List<Account> = emptyList(),
     val totalBalance: Double = 0.0,
@@ -28,8 +28,8 @@ data class AccountsState(
     val bankTotal: Double = 0.0,
     val investmentTotal: Double = 0.0,
     val peopleTotal: Double = 0.0,
-    val peoplePositiveTotal: Double = 0.0, // Loaned
-    val peopleNegativeTotal: Double = 0.0, // Borrowed
+    val peoplePositiveTotal: Double = 0.0,
+    val peopleNegativeTotal: Double = 0.0,
     val customTotal: Double = 0.0,
     val isLoading: Boolean = true,
     val cashExpanded: Boolean = true,
@@ -37,7 +37,9 @@ data class AccountsState(
     val bankExpanded: Boolean = true,
     val investmentExpanded: Boolean = true,
     val peopleExpanded: Boolean = true,
-    val customExpanded: Boolean = true
+    val customExpanded: Boolean = true,
+    val accountOrder: List<String> = emptyList(), 
+    val displayOrder: List<String> = emptyList() // The dynamically calculated actual layout order
 )
 
 data class CustomSection(
@@ -61,39 +63,49 @@ class AccountsViewModel @Inject constructor(
         loadInactiveAccounts()
         loadTotals()
         observeSectionPreferences()
+        observeAccountOrder()
+    }
+
+    private fun computeDisplayOrder(savedOrder: List<String>, customSections: List<CustomSection>): List<String> {
+        val standardKeys = listOf("CASH", "WALLET", "BANK", "INVESTMENT", "PEOPLE")
+        val customKeys = customSections.map { "CUSTOM:${it.name}" }
+        val validKeys = standardKeys + customKeys
+
+        val filtered = savedOrder.filter { it in validKeys }.toMutableList()
+        val missing = validKeys.filter { it !in filtered }
+        filtered.addAll(missing)
+        return filtered
+    }
+
+    private fun observeAccountOrder() {
+        viewModelScope.launch {
+            userPreferences.accountTypeOrder.collect { order ->
+                _state.update { it.copy(
+                    accountOrder = order,
+                    displayOrder = computeDisplayOrder(order, it.customSections)
+                ) }
+            }
+        }
+    }
+
+    fun moveSection(index: Int, direction: Int) {
+        val currentOrder = _state.value.displayOrder.toMutableList()
+        if (direction == -1 && index > 0) { // UP
+            Collections.swap(currentOrder, index, index - 1)
+            viewModelScope.launch { userPreferences.setAccountTypeOrder(currentOrder) }
+        } else if (direction == 1 && index < currentOrder.size - 1) { // DOWN
+            Collections.swap(currentOrder, index, index + 1)
+            viewModelScope.launch { userPreferences.setAccountTypeOrder(currentOrder) }
+        }
     }
 
     private fun observeSectionPreferences() {
-        viewModelScope.launch {
-            userPreferences.expandedCash.collect { expanded ->
-                _state.update { it.copy(cashExpanded = expanded) }
-            }
-        }
-        viewModelScope.launch {
-            userPreferences.expandedWallet.collect { expanded ->
-                _state.update { it.copy(walletExpanded = expanded) }
-            }
-        }
-        viewModelScope.launch {
-            userPreferences.expandedBank.collect { expanded ->
-                _state.update { it.copy(bankExpanded = expanded) }
-            }
-        }
-        viewModelScope.launch {
-            userPreferences.expandedInvestment.collect { expanded ->
-                _state.update { it.copy(investmentExpanded = expanded) }
-            }
-        }
-        viewModelScope.launch {
-            userPreferences.expandedPeople.collect { expanded ->
-                _state.update { it.copy(peopleExpanded = expanded) }
-            }
-        }
-        viewModelScope.launch {
-            userPreferences.expandedCustom.collect { expanded ->
-                _state.update { it.copy(customExpanded = expanded) }
-            }
-        }
+        viewModelScope.launch { userPreferences.expandedCash.collect { expanded -> _state.update { it.copy(cashExpanded = expanded) } } }
+        viewModelScope.launch { userPreferences.expandedWallet.collect { expanded -> _state.update { it.copy(walletExpanded = expanded) } } }
+        viewModelScope.launch { userPreferences.expandedBank.collect { expanded -> _state.update { it.copy(bankExpanded = expanded) } } }
+        viewModelScope.launch { userPreferences.expandedInvestment.collect { expanded -> _state.update { it.copy(investmentExpanded = expanded) } } }
+        viewModelScope.launch { userPreferences.expandedPeople.collect { expanded -> _state.update { it.copy(peopleExpanded = expanded) } } }
+        viewModelScope.launch { userPreferences.expandedCustom.collect { expanded -> _state.update { it.copy(customExpanded = expanded) } } }
     }
 
     fun setSectionExpanded(type: AccountType, expanded: Boolean) {
@@ -128,10 +140,8 @@ class AccountsViewModel @Inject constructor(
                 val peopleNegativeTotal = peopleAccounts.filter { it.currentBalance < 0 }.sumOf { it.currentBalance }
                 val customTotal = customAccounts.sumOf { it.currentBalance }
 
-                // Group custom accounts by their customTypeName (use "Custom" when blank)
                 val grouped = customAccounts.groupBy { it.customTypeName?.takeIf { it.isNotBlank() } ?: "Custom" }
                 val customSections = grouped.map { (name, list) ->
-                    // read saved expanded state for this custom group
                     val expanded = try {
                         userPreferences.expandedForCustom(name).first()
                     } catch (e: Exception) {
@@ -153,6 +163,7 @@ class AccountsViewModel @Inject constructor(
                         investmentAccounts = investmentAccounts,
                         peopleAccounts = peopleAccounts,
                         customSections = customSections,
+                        displayOrder = computeDisplayOrder(it.accountOrder, customSections),
                         totalBalance = accounts.sumOf { a -> a.currentBalance },
                         cashTotal = cashTotal,
                         walletTotal = walletTotal,
@@ -171,11 +182,9 @@ class AccountsViewModel @Inject constructor(
 
     fun toggleCustomSection(name: String) {
         viewModelScope.launch {
-            // find current expanded state
             val current = _state.value.customSections.find { it.name == name }?.expanded ?: true
             val next = !current
             userPreferences.setExpandedForCustom(name, next)
-            // update in-memory state
             _state.update { st ->
                 st.copy(customSections = st.customSections.map {
                     if (it.name == name) it.copy(expanded = next) else it
@@ -206,20 +215,14 @@ class AccountsViewModel @Inject constructor(
     }
 
     fun deleteAccount(id: String) {
-        viewModelScope.launch {
-            accountRepository.hardDeleteAccount(id)
-        }
+        viewModelScope.launch { accountRepository.hardDeleteAccount(id) }
     }
 
     fun deactivateAccount(id: String) {
-        viewModelScope.launch {
-            accountRepository.deactivateAccount(id)
-        }
+        viewModelScope.launch { accountRepository.deactivateAccount(id) }
     }
 
     fun activateAccount(id: String) {
-        viewModelScope.launch {
-            accountRepository.activateAccount(id)
-        }
+        viewModelScope.launch { accountRepository.activateAccount(id) }
     }
 }

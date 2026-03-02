@@ -10,14 +10,18 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowDownward
+import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Sort
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -44,7 +48,9 @@ fun AccountsScreen(
     val scrollState = rememberScrollState()
     val reselectFlow = LocalBottomTabReselect.current
 
-    // FIX: Listen for reselect events to scroll to top
+    var showDeleteDialog by remember { mutableStateOf<Account?>(null) }
+    var showReorderDialog by remember { mutableStateOf(false) }
+
     LaunchedEffect(Unit) {
         reselectFlow.collect { route ->
             if (route == Screen.Accounts.route) {
@@ -52,8 +58,6 @@ fun AccountsScreen(
             }
         }
     }
-
-    var showDeleteDialog by remember { mutableStateOf<Account?>(null) }
 
     if (showDeleteDialog != null) {
         AlertDialog(
@@ -83,6 +87,14 @@ fun AccountsScreen(
         )
     }
 
+    if (showReorderDialog) {
+        ReorderDialog(
+            order = state.displayOrder, // Bind to dynamically computed effective display order
+            onMove = viewModel::moveSection,
+            onDismiss = { showReorderDialog = false }
+        )
+    }
+
     Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         Column(
             modifier = Modifier
@@ -91,12 +103,22 @@ fun AccountsScreen(
         ) {
             Spacer(modifier = Modifier.height(16.dp))
 
-            Text(
-                text = "Accounts",
-                style = MaterialTheme.typography.headlineMedium,
-                color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.padding(horizontal = 16.dp)
-            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Accounts",
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                IconButton(onClick = { showReorderDialog = true }) {
+                    Icon(Icons.Filled.Sort, contentDescription = "Rearrange Sections", tint = MaterialTheme.colorScheme.onSurface)
+                }
+            }
 
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -157,96 +179,102 @@ fun AccountsScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Cash Section
-            if (state.cashAccounts.isNotEmpty()) {
-                AccountSection(
-                    title = "Cash",
-                    accounts = state.cashAccounts,
-                    sum = state.cashTotal,
-                    expanded = state.cashExpanded,
-                    onToggle = { viewModel.setSectionExpanded(AccountType.CASH, !state.cashExpanded) },
-                    onAccountClick = onAccountClick,
-                    onEditAccount = onEditAccount,
-                    onDeleteAccount = { showDeleteDialog = it },
-                    onDeactivateAccount = { viewModel.deactivateAccount(it.id) }
-                )
-            }
-
-            // Wallet Section
-            if (state.walletAccounts.isNotEmpty()) {
-                AccountSection(
-                    title = "Wallet",
-                    accounts = state.walletAccounts,
-                    sum = state.walletTotal,
-                    expanded = state.walletExpanded,
-                    onToggle = { viewModel.setSectionExpanded(AccountType.WALLET, !state.walletExpanded) },
-                    onAccountClick = onAccountClick,
-                    onEditAccount = onEditAccount,
-                    onDeleteAccount = { showDeleteDialog = it },
-                    onDeactivateAccount = { viewModel.deactivateAccount(it.id) }
-                )
-            }
-
-            // Bank Section
-            if (state.bankAccounts.isNotEmpty()) {
-                AccountSection(
-                    title = "Bank Accounts",
-                    accounts = state.bankAccounts,
-                    sum = state.bankTotal,
-                    expanded = state.bankExpanded,
-                    onToggle = { viewModel.setSectionExpanded(AccountType.BANK, !state.bankExpanded) },
-                    onAccountClick = onAccountClick,
-                    onEditAccount = onEditAccount,
-                    onDeleteAccount = { showDeleteDialog = it },
-                    onDeactivateAccount = { viewModel.deactivateAccount(it.id) }
-                )
-            }
-
-            // Investment Section
-            if (state.investmentAccounts.isNotEmpty()) {
-                AccountSection(
-                    title = "Investments",
-                    accounts = state.investmentAccounts,
-                    sum = state.investmentTotal,
-                    expanded = state.investmentExpanded,
-                    onToggle = { viewModel.setSectionExpanded(AccountType.INVESTMENT, !state.investmentExpanded) },
-                    onAccountClick = onAccountClick,
-                    onEditAccount = onEditAccount,
-                    onDeleteAccount = { showDeleteDialog = it },
-                    onDeactivateAccount = { viewModel.deactivateAccount(it.id) }
-                )
-            }
-
-            // People Section (Loan/Borrow)
-            if (state.peopleAccounts.isNotEmpty()) {
-                AccountSection(
-                    title = "People",
-                    accounts = state.peopleAccounts,
-                    sumPositive = state.peoplePositiveTotal,
-                    sumNegative = state.peopleNegativeTotal,
-                    expanded = state.peopleExpanded,
-                    onToggle = { viewModel.setSectionExpanded(AccountType.PEOPLE, !state.peopleExpanded) },
-                    onAccountClick = onAccountClick,
-                    onEditAccount = onEditAccount,
-                    onDeleteAccount = { showDeleteDialog = it },
-                    onDeactivateAccount = { viewModel.deactivateAccount(it.id) }
-                )
-            }
-
-            // Custom Accounts Sections (grouped by custom type name)
-            if (state.customSections.isNotEmpty()) {
-                state.customSections.forEach { section ->
-                    AccountSection(
-                        title = section.name,
-                        accounts = section.accounts,
-                        sum = section.total,
-                        expanded = section.expanded,
-                        onToggle = { viewModel.toggleCustomSection(section.name) },
-                        onAccountClick = onAccountClick,
-                        onEditAccount = onEditAccount,
-                        onDeleteAccount = { showDeleteDialog = it },
-                        onDeactivateAccount = { viewModel.deactivateAccount(it.id) }
-                    )
+            // Dynamic section ordering
+            state.displayOrder.forEach { type ->
+                when {
+                    type == "CASH" -> {
+                        if (state.cashAccounts.isNotEmpty()) {
+                            AccountSection(
+                                title = "Cash",
+                                accounts = state.cashAccounts,
+                                sum = state.cashTotal,
+                                expanded = state.cashExpanded,
+                                onToggle = { viewModel.setSectionExpanded(AccountType.CASH, !state.cashExpanded) },
+                                onAccountClick = onAccountClick,
+                                onEditAccount = onEditAccount,
+                                onDeleteAccount = { showDeleteDialog = it },
+                                onDeactivateAccount = { viewModel.deactivateAccount(it.id) }
+                            )
+                        }
+                    }
+                    type == "WALLET" -> {
+                        if (state.walletAccounts.isNotEmpty()) {
+                            AccountSection(
+                                title = "Wallet",
+                                accounts = state.walletAccounts,
+                                sum = state.walletTotal,
+                                expanded = state.walletExpanded,
+                                onToggle = { viewModel.setSectionExpanded(AccountType.WALLET, !state.walletExpanded) },
+                                onAccountClick = onAccountClick,
+                                onEditAccount = onEditAccount,
+                                onDeleteAccount = { showDeleteDialog = it },
+                                onDeactivateAccount = { viewModel.deactivateAccount(it.id) }
+                            )
+                        }
+                    }
+                    type == "BANK" -> {
+                        if (state.bankAccounts.isNotEmpty()) {
+                            AccountSection(
+                                title = "Bank Accounts",
+                                accounts = state.bankAccounts,
+                                sum = state.bankTotal,
+                                expanded = state.bankExpanded,
+                                onToggle = { viewModel.setSectionExpanded(AccountType.BANK, !state.bankExpanded) },
+                                onAccountClick = onAccountClick,
+                                onEditAccount = onEditAccount,
+                                onDeleteAccount = { showDeleteDialog = it },
+                                onDeactivateAccount = { viewModel.deactivateAccount(it.id) }
+                            )
+                        }
+                    }
+                    type == "INVESTMENT" -> {
+                        if (state.investmentAccounts.isNotEmpty()) {
+                            AccountSection(
+                                title = "Investments",
+                                accounts = state.investmentAccounts,
+                                sum = state.investmentTotal,
+                                expanded = state.investmentExpanded,
+                                onToggle = { viewModel.setSectionExpanded(AccountType.INVESTMENT, !state.investmentExpanded) },
+                                onAccountClick = onAccountClick,
+                                onEditAccount = onEditAccount,
+                                onDeleteAccount = { showDeleteDialog = it },
+                                onDeactivateAccount = { viewModel.deactivateAccount(it.id) }
+                            )
+                        }
+                    }
+                    type == "PEOPLE" -> {
+                        if (state.peopleAccounts.isNotEmpty()) {
+                            AccountSection(
+                                title = "People",
+                                accounts = state.peopleAccounts,
+                                sumPositive = state.peoplePositiveTotal,
+                                sumNegative = state.peopleNegativeTotal,
+                                expanded = state.peopleExpanded,
+                                onToggle = { viewModel.setSectionExpanded(AccountType.PEOPLE, !state.peopleExpanded) },
+                                onAccountClick = onAccountClick,
+                                onEditAccount = onEditAccount,
+                                onDeleteAccount = { showDeleteDialog = it },
+                                onDeactivateAccount = { viewModel.deactivateAccount(it.id) }
+                            )
+                        }
+                    }
+                    type.startsWith("CUSTOM:") -> {
+                        val customName = type.removePrefix("CUSTOM:")
+                        val section = state.customSections.find { it.name == customName }
+                        if (section != null) {
+                            AccountSection(
+                                title = section.name,
+                                accounts = section.accounts,
+                                sum = section.total,
+                                expanded = section.expanded,
+                                onToggle = { viewModel.toggleCustomSection(section.name) },
+                                onAccountClick = onAccountClick,
+                                onEditAccount = onEditAccount,
+                                onDeleteAccount = { showDeleteDialog = it },
+                                onDeactivateAccount = { viewModel.deactivateAccount(it.id) }
+                            )
+                        }
+                    }
                 }
             }
 
@@ -310,6 +338,62 @@ fun AccountsScreen(
 }
 
 @Composable
+fun ReorderDialog(
+    order: List<String>,
+    onMove: (Int, Int) -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Rearrange Account Types", color = MaterialTheme.colorScheme.onSurface) },
+        text = {
+            Column {
+                order.forEachIndexed { index, type ->
+                    val label = when {
+                        type == "CASH" -> "Cash"
+                        type == "WALLET" -> "Wallet"
+                        type == "BANK" -> "Bank Accounts"
+                        type == "INVESTMENT" -> "Investments"
+                        type == "PEOPLE" -> "People (Loan/Borrow)"
+                        type.startsWith("CUSTOM:") -> type.removePrefix("CUSTOM:")
+                        else -> type.lowercase().replaceFirstChar { it.uppercase() }
+                    }
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(label, modifier = Modifier.weight(1f), color = MaterialTheme.colorScheme.onSurface)
+                        IconButton(onClick = { onMove(index, -1) }, enabled = index > 0) {
+                            Icon(
+                                Icons.Filled.ArrowUpward,
+                                contentDescription = "Move Up",
+                                tint = if (index > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                            )
+                        }
+                        IconButton(onClick = { onMove(index, 1) }, enabled = index < order.size - 1) {
+                            Icon(
+                                Icons.Filled.ArrowDownward,
+                                contentDescription = "Move Down",
+                                tint = if (index < order.size - 1) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Done")
+            }
+        },
+        containerColor = MaterialTheme.colorScheme.surface,
+        shape = RoundedCornerShape(16.dp)
+    )
+}
+
+@Composable
 private fun AccountSection(
     title: String,
     accounts: List<Account>,
@@ -324,11 +408,19 @@ private fun AccountSection(
     onDeactivateAccount: (Account) -> Unit
 ) {
     val currency = LocalCurrencySymbol.current
+
+    // Make the header dynamic so it acts as a prominent bar when collapsed
+    val bgColor = if (!expanded) MaterialTheme.colorScheme.surfaceVariant else Color.Transparent
+    val paddingH = if (!expanded) 16.dp else 0.dp
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 4.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(bgColor)
             .clickable { onToggle() }
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+            .padding(horizontal = paddingH, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
@@ -344,14 +436,16 @@ private fun AccountSection(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.padding(end = 8.dp)
             ) {
+                // FIX: Changed from bodySmall to titleMedium
                 Text(
-                    text = "Loaned: $currency${formatAmount(sumPositive)}",
-                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                    text = "+$currency${formatAmount(sumPositive)}",
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
                     color = MaterialTheme.colorScheme.tertiary
                 )
+                // FIX: Changed from bodySmall to titleMedium
                 Text(
-                    text = "Borrowed: $currency${formatAmount(kotlin.math.abs(sumNegative))}",
-                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                    text = "-$currency${formatAmount(kotlin.math.abs(sumNegative))}",
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
                     color = MaterialTheme.colorScheme.error
                 )
             }
@@ -389,7 +483,9 @@ private fun AccountSection(
         }
     }
 
-    Spacer(modifier = Modifier.height(16.dp))
+    if (expanded) {
+        Spacer(modifier = Modifier.height(16.dp))
+    }
 }
 
 @Composable

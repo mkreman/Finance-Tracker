@@ -35,6 +35,10 @@ class UserPreferences @Inject constructor(
         val EXPANDED_CUSTOM = booleanPreferencesKey("expanded_custom")
         val NOTIFICATION_PROMPTED = booleanPreferencesKey("notification_prompted")
         val DEFAULT_NOTIFY_FOR_RECURRING_ENTRIES = booleanPreferencesKey("default_notify_for_recurring_entries")
+        val ACCOUNT_TYPE_ORDER = stringPreferencesKey("account_type_order")
+
+        // Removed "CUSTOM" from default because custom types are now handled dynamically
+        val defaultAccountOrder = listOf("WALLET", "BANK", "INVESTMENT", "PEOPLE")
 
         /**
          * Supported currencies with their symbols.
@@ -139,10 +143,15 @@ class UserPreferences @Inject constructor(
         it[DEFAULT_NOTIFY_FOR_RECURRING_ENTRIES] ?: true
     }
 
-    /**
-     * Return a Flow<Boolean> for a custom type's expanded state.
-     * Key is namespaced by the custom type name to persist per-custom-type state.
-     */
+    val accountTypeOrder: Flow<List<String>> = dataStore.data.map { prefs ->
+        val orderStr = prefs[ACCOUNT_TYPE_ORDER]
+        if (orderStr.isNullOrBlank()) {
+            defaultAccountOrder
+        } else {
+            orderStr.split(",")
+        }
+    }
+
     fun expandedForCustom(name: String): Flow<Boolean> =
         dataStore.data.map { prefs ->
             val key = booleanPreferencesKey("expanded_custom_" + name)
@@ -254,6 +263,12 @@ class UserPreferences @Inject constructor(
     suspend fun setDefaultNotifyForRecurringEntries(enabled: Boolean) {
         dataStore.edit { prefs ->
             prefs[DEFAULT_NOTIFY_FOR_RECURRING_ENTRIES] = enabled
+        }
+    }
+
+    suspend fun setAccountTypeOrder(order: List<String>) {
+        dataStore.edit { prefs ->
+            prefs[ACCOUNT_TYPE_ORDER] = order.joinToString(",")
         }
     }
 }
