@@ -4,12 +4,14 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.widget.Toast
+import androidx.core.app.RemoteInput
 import com.moneytracker.app.data.local.UserPreferences
 import com.moneytracker.app.data.local.database.entities.SyncStatus
 import com.moneytracker.app.data.local.database.entities.TransactionEntity
 import com.moneytracker.app.data.local.database.entities.TransactionSplitEntity
 import com.moneytracker.app.data.local.database.entities.TransactionType
 import com.moneytracker.app.data.local.repository.AccountRepository
+import com.moneytracker.app.data.local.repository.CategoryRecommendationRepository
 import com.moneytracker.app.data.local.repository.CategoryRepository
 import com.moneytracker.app.data.local.repository.TransactionRepository
 import dagger.hilt.android.AndroidEntryPoint
@@ -26,6 +28,7 @@ class TransactionSuggestionActionReceiver : BroadcastReceiver() {
     @Inject lateinit var transactionRepository: TransactionRepository
     @Inject lateinit var accountRepository: AccountRepository
     @Inject lateinit var categoryRepository: CategoryRepository
+    @Inject lateinit var categoryRecommendationRepository: CategoryRecommendationRepository
     @Inject lateinit var userPreferences: UserPreferences
 
     override fun onReceive(context: Context, intent: Intent) {
@@ -36,22 +39,31 @@ class TransactionSuggestionActionReceiver : BroadcastReceiver() {
                 BankAlertSuggestionNotifier.cancel(context, suggestionId)
             }
 
-            BankAlertSuggestionNotifier.ACTION_SAVE_SUGGESTION -> {
+            BankAlertSuggestionNotifier.ACTION_SAVE_SUGGESTION, 
+            BankAlertSuggestionNotifier.ACTION_SAVE_WITH_CATEGORY -> {
                 val typeName = intent.getStringExtra(BankAlertSuggestionNotifier.EXTRA_TYPE)
                 val amount = intent.getDoubleExtra(BankAlertSuggestionNotifier.EXTRA_AMOUNT, 0.0)
                 val payee = intent.getStringExtra(BankAlertSuggestionNotifier.EXTRA_PAYEE).orEmpty().ifBlank { "Transaction" }
                 val note = intent.getStringExtra(BankAlertSuggestionNotifier.EXTRA_NOTE)
-
+                
                 val type = runCatching { TransactionType.valueOf(typeName ?: "") }.getOrNull()
                 if (type == null || amount <= 0.0) {
                     Toast.makeText(context, "Unable to save suggestion", Toast.LENGTH_SHORT).show()
                     return
                 }
 
+                val suggestedCatId = intent.getStringExtra(BankAlertSuggestionNotifier.EXTRA_SUGGESTED_CAT_ID)
+                
+                var categoryReply: String? = null
+                if (intent.action == BankAlertSuggestionNotifier.ACTION_SAVE_WITH_CATEGORY) {
+                    val remoteInput = RemoteInput.getResultsFromIntent(intent)
+                    categoryReply = remoteInput?.getCharSequence(BankAlertSuggestionNotifier.EXTRA_CATEGORY_REPLY)?.toString()
+                }
+
                 val pendingResult = goAsync()
                 CoroutineScope(Dispatchers.IO).launch {
                     try {
-                        saveSuggestedTransaction(type, amount, payee, note)
+                        saveSuggestedTransaction(type, amount, payee, note, suggestedCatId, categoryReply)
                         BankAlertSuggestionNotifier.cancel(context, suggestionId)
                         CoroutineScope(Dispatchers.Main).launch {
                             Toast.makeText(context, "Transaction saved", Toast.LENGTH_SHORT).show()
@@ -72,7 +84,9 @@ class TransactionSuggestionActionReceiver : BroadcastReceiver() {
         type: TransactionType,
         amount: Double,
         payee: String,
-        note: String?
+        note: String?,
+        suggestedCatId: String?,
+        categoryReply: String?
     ) {
         val accounts = accountRepository.getAllAccountsOnce()
         if (accounts.isEmpty()) return
@@ -81,10 +95,29 @@ class TransactionSuggestionActionReceiver : BroadcastReceiver() {
         val selectedAccount = accounts.find { it.id == defaultAccountId } ?: accounts.first()
 
         val categories = categoryRepository.getCategoriesByType(type).first()
-        // Look for AutoDetected first, fallback to Other, then fallback to the first available
-        val selectedCategory = categories.firstOrNull { it.name.equals("AutoDetected", ignoreCase = true) }
-            ?: categories.firstOrNull { it.name.equals("Other", ignoreCase = true) }
-            ?: categories.firstOrNull()
+        var selectedCategory: com.moneytracker.app.domain.model.Category? = null
+
+        // 1. Try resolving user's direct text reply
+        if (!categoryReply.isNullOrBlank()) {
+            selectedCategory = categories.firstOrNull { it.name.equals(categoryReply.trim(), ignoreCase = true) }
+        }
+        
+        // 2. Try the smart recommendation ID if one was provided and no valid reply was typed
+        if (selectedCategory == null && suggestedCatId != null) {
+            selectedCategory = categories.firstOrNull { it.id == suggestedCatId }
+        }
+
+        // 3. Fallbacks
+        if (selectedCategory == null) {
+            selectedCategory = categories.firstOrNull { it.name.equals("AutoDetected", ignoreCase = true) }
+                ?: categories.firstOrNull { it.name.equals("Other", ignoreCase = true) }
+                ?: categories.firstOrNull()
+        }
+
+        // 4. Update the recommendation engine!
+        if (selectedCategory != null) {
+            categoryRecommendationRepository.upsertRecommendation(payee, selectedCategory.id)
+        }
 
         val transactionId = UUID.randomUUID().toString()
         val now = System.currentTimeMillis()
