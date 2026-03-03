@@ -209,6 +209,7 @@ class MainActivity : FragmentActivity() {
                         val suggestionNote = currentIntent?.getStringExtra("suggestion_note")
                         val suggestionPayee = currentIntent?.getStringExtra("suggestion_payee")
                         val suggestionId = currentIntent?.getStringExtra("extra_suggestion_id")
+                        val suggestedCatId = currentIntent?.getStringExtra("suggested_cat_id") // Extracted!
 
                         if (suggestionId != null) {
                             com.moneytracker.app.notifications.BankAlertSuggestionNotifier.cancel(this@MainActivity, suggestionId)
@@ -221,7 +222,8 @@ class MainActivity : FragmentActivity() {
                                     amount = suggestionAmount,
                                     note = suggestionNote,
                                     payee = suggestionPayee,
-                                    fromWidget = true 
+                                    fromWidget = true,
+                                    suggestedCategoryId = suggestedCatId // Passed!
                                 )
                             )
                             currentIntent?.removeExtra("transaction_type")
@@ -229,6 +231,7 @@ class MainActivity : FragmentActivity() {
                             currentIntent?.removeExtra("suggestion_note")
                             currentIntent?.removeExtra("suggestion_payee")
                             currentIntent?.removeExtra("extra_suggestion_id")
+                            currentIntent?.removeExtra("suggested_cat_id")
                         }
                     }
 

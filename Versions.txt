@@ -170,7 +170,8 @@ Version 1.1.0
 Version 1.2.0
 	- Make a prominent bar for the collapsed accounts
 	- Ability to rearrange the order of account type
-
+	- Make a database for category auto recommendations for transactions. Put a cab on the size of the database for example, 5 MB check how many records can be stored in 5 MB data base? If the number of records exceed 5 MB then remove the records which are less used. That's why the number of times the record used should also be there in the database. If I wish to update using edit button in the notification the current suggestion it should be replaced in the database as well and next time the updated category should be used.
+	- Add atm Withdrawn for auto-detection
 Done  
 ___________________________________________________________________________________________________
 
@@ -179,13 +180,18 @@ ________________________________________________________________________________
 
 	?- Add tags to account SBI (saving, for SIPs), show tag filters on top in account view 
 
-	- Make a database for category recommendations for auto transactions Put a cab on the size of the database for example, 5 MB check how many records can be stored in 5 MB data base? If the number of records exceed 5 MB then remove the records which are less used. That's why the number of times the record used should also be there in the database. If I wish to update using edit button in the notification the current suggestion it should be replaced in the database as well and next time the updated category should be used.
+
 	
 
 - Create a new section in the setting name notification and move the current recurring notification setting in that section and create one more setting for adding entries for the day while it is toggle on give user notification to add entry at 7:00 p.m. everyday.
 - Give user a notification when A particular budget transaction goes out of budget
-- Great! The database works, I have a few suggestions,
-	- return to save edit, discard options 
-	- when There is no suggestion and users select edit whatever category user selects should get saved into the database 
-	- when there is a suggestion, a user select save then the entry should be made, but if user selects edit then suggested categories should be auto selected and if user changes it then the new categories should be replaced into the database.
-	
+
+- Create a new section in the setting name notification and move the current recurring notification setting in that section and create one more setting for adding entries for the day while it is toggle on give user notification to add entry at 7:00 p.m. everyday.
+- Give user a notification when A particular budget transaction goes out of budget
+
+- Move the add button to the top for account and budget sections.
+Keep the add button on all pages for adding transaction
+
+- Check recent export there is some problem with gift category
+
+- If the app is opened from recent apps within 5 sec, don't ask for authentication. If the app is opened freshly from anywhere then authentication is required

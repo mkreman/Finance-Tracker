@@ -26,19 +26,14 @@ class BankSmsReceiver : BroadcastReceiver() {
         val messages = Telephony.Sms.Intents.getMessagesFromIntent(intent)
         if (messages.isNullOrEmpty()) return
 
-        // Combine multipart messages
         val fullMessage = messages.joinToString(separator = "") { it.messageBody ?: "" }
-        
-        // Let the parser decide if this is a valid transaction message, completely
-        // removing the overly-strict sender ID filter that was blocking real bank alerts.
         val parsed = BankAlertParser.parse(fullMessage) ?: return
 
-        // Process the database lookup asynchronously so we don't block the main thread
         val pendingResult = goAsync()
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                // Fetch smart recommendation
-                val catId = categoryRecommendationRepo.getRecommendation(parsed.payee)
+                // Fetch smart recommendation passing both payee AND transaction type
+                val catId = categoryRecommendationRepo.getRecommendation(parsed.payee, parsed.type)
                 if (catId != null) {
                     val category = categoryRepo.getCategoryById(catId)
                     if (category != null) {
@@ -46,14 +41,10 @@ class BankSmsReceiver : BroadcastReceiver() {
                         parsed.suggestedCategoryName = category.name
                     }
                 }
-                
-                // Show the notification with the suggested category (if found)
                 BankAlertSuggestionNotifier.show(context, parsed)
-                
             } catch (e: Exception) {
                 Log.e("BankSmsReceiver", "Error processing SMS for suggestions", e)
             } finally {
-                // Must call finish() to tell Android the receiver is done
                 pendingResult.finish()
             }
         }

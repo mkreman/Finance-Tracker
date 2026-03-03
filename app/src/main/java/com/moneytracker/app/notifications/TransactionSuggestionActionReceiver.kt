@@ -4,7 +4,6 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.widget.Toast
-import androidx.core.app.RemoteInput
 import com.moneytracker.app.data.local.UserPreferences
 import com.moneytracker.app.data.local.database.entities.SyncStatus
 import com.moneytracker.app.data.local.database.entities.TransactionEntity
@@ -39,12 +38,12 @@ class TransactionSuggestionActionReceiver : BroadcastReceiver() {
                 BankAlertSuggestionNotifier.cancel(context, suggestionId)
             }
 
-            BankAlertSuggestionNotifier.ACTION_SAVE_SUGGESTION, 
-            BankAlertSuggestionNotifier.ACTION_SAVE_WITH_CATEGORY -> {
+            BankAlertSuggestionNotifier.ACTION_SAVE_SUGGESTION -> {
                 val typeName = intent.getStringExtra(BankAlertSuggestionNotifier.EXTRA_TYPE)
                 val amount = intent.getDoubleExtra(BankAlertSuggestionNotifier.EXTRA_AMOUNT, 0.0)
                 val payee = intent.getStringExtra(BankAlertSuggestionNotifier.EXTRA_PAYEE).orEmpty().ifBlank { "Transaction" }
                 val note = intent.getStringExtra(BankAlertSuggestionNotifier.EXTRA_NOTE)
+                val suggestedCatId = intent.getStringExtra(BankAlertSuggestionNotifier.EXTRA_SUGGESTED_CAT_ID)
                 
                 val type = runCatching { TransactionType.valueOf(typeName ?: "") }.getOrNull()
                 if (type == null || amount <= 0.0) {
@@ -52,18 +51,10 @@ class TransactionSuggestionActionReceiver : BroadcastReceiver() {
                     return
                 }
 
-                val suggestedCatId = intent.getStringExtra(BankAlertSuggestionNotifier.EXTRA_SUGGESTED_CAT_ID)
-                
-                var categoryReply: String? = null
-                if (intent.action == BankAlertSuggestionNotifier.ACTION_SAVE_WITH_CATEGORY) {
-                    val remoteInput = RemoteInput.getResultsFromIntent(intent)
-                    categoryReply = remoteInput?.getCharSequence(BankAlertSuggestionNotifier.EXTRA_CATEGORY_REPLY)?.toString()
-                }
-
                 val pendingResult = goAsync()
                 CoroutineScope(Dispatchers.IO).launch {
                     try {
-                        saveSuggestedTransaction(type, amount, payee, note, suggestedCatId, categoryReply)
+                        saveSuggestedTransaction(type, amount, payee, note, suggestedCatId)
                         BankAlertSuggestionNotifier.cancel(context, suggestionId)
                         CoroutineScope(Dispatchers.Main).launch {
                             Toast.makeText(context, "Transaction saved", Toast.LENGTH_SHORT).show()
@@ -85,8 +76,7 @@ class TransactionSuggestionActionReceiver : BroadcastReceiver() {
         amount: Double,
         payee: String,
         note: String?,
-        suggestedCatId: String?,
-        categoryReply: String?
+        suggestedCatId: String?
     ) {
         val accounts = accountRepository.getAllAccountsOnce()
         if (accounts.isEmpty()) return
@@ -97,26 +87,21 @@ class TransactionSuggestionActionReceiver : BroadcastReceiver() {
         val categories = categoryRepository.getCategoriesByType(type).first()
         var selectedCategory: com.moneytracker.app.domain.model.Category? = null
 
-        // 1. Try resolving user's direct text reply
-        if (!categoryReply.isNullOrBlank()) {
-            selectedCategory = categories.firstOrNull { it.name.equals(categoryReply.trim(), ignoreCase = true) }
-        }
-        
-        // 2. Try the smart recommendation ID if one was provided and no valid reply was typed
-        if (selectedCategory == null && suggestedCatId != null) {
+        // 1. Try the smart recommendation ID if one was provided
+        if (suggestedCatId != null) {
             selectedCategory = categories.firstOrNull { it.id == suggestedCatId }
         }
 
-        // 3. Fallbacks
+        // 2. Fallbacks
         if (selectedCategory == null) {
             selectedCategory = categories.firstOrNull { it.name.equals("AutoDetected", ignoreCase = true) }
                 ?: categories.firstOrNull { it.name.equals("Other", ignoreCase = true) }
                 ?: categories.firstOrNull()
         }
 
-        // 4. Update the recommendation engine!
+        // 3. Update the recommendation engine!
         if (selectedCategory != null) {
-            categoryRecommendationRepository.upsertRecommendation(payee, selectedCategory.id)
+            categoryRecommendationRepository.upsertRecommendation(payee, type, selectedCategory.id)
         }
 
         val transactionId = UUID.randomUUID().toString()

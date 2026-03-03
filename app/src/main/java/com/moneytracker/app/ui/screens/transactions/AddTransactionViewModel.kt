@@ -11,6 +11,7 @@ import com.moneytracker.app.data.local.database.entities.TransactionType
 import com.moneytracker.app.data.local.database.entities.RecurringUnit
 import com.moneytracker.app.data.local.database.entities.AccountType
 import com.moneytracker.app.data.local.repository.AccountRepository
+import com.moneytracker.app.data.local.repository.CategoryRecommendationRepository
 import com.moneytracker.app.data.local.repository.CategoryRepository
 import com.moneytracker.app.data.local.repository.TransactionRepository
 import com.moneytracker.app.data.recurring.RecurringTransactionManager
@@ -27,6 +28,7 @@ class AddTransactionViewModel @Inject constructor(
     private val transactionRepository: TransactionRepository,
     private val accountRepository: AccountRepository,
     private val categoryRepository: CategoryRepository,
+    private val categoryRecommendationRepository: CategoryRecommendationRepository,
     private val userPreferences: UserPreferences,
     private val recurringTransactionManager: RecurringTransactionManager,
     savedStateHandle: SavedStateHandle
@@ -41,7 +43,6 @@ class AddTransactionViewModel @Inject constructor(
     private val _state = MutableStateFlow(AddTransactionState())
     val state: StateFlow<AddTransactionState> = _state.asStateFlow()
 
-    // One-shot navigation event to avoid crash on re-entry
     private val _navigateBack = Channel<Unit>(Channel.BUFFERED)
     val navigateBack = _navigateBack.receiveAsFlow()
 
@@ -50,6 +51,7 @@ class AddTransactionViewModel @Inject constructor(
     private val initialAmount: String? = savedStateHandle.get<String>("amount")
     private val initialNote: String? = savedStateHandle.get<String>("note")
     private val initialPayee: String? = savedStateHandle.get<String>("payee")
+    private val suggestedCategoryId: String? = savedStateHandle.get<String>("suggestedCategoryId")
 
     init {
         loadData()
@@ -66,15 +68,10 @@ class AddTransactionViewModel @Inject constructor(
             _state.update { state ->
                 val amountValue = initialAmount?.takeIf { it.isNotBlank() }
                 
-                // Use initialNote directly. Since the parser already includes 
-                // the payee in the note, we avoid duplicating it.
-                val startingNote = initialNote?.takeIf { it.isNotBlank() } 
-                    ?: initialPayee?.takeIf { it.isNotBlank() } 
-                    ?: state.note
-
                 state.copy(
                     amount = amountValue ?: state.amount,
-                    note = startingNote
+                    note = initialNote ?: state.note,
+                    payee = initialPayee ?: state.payee
                 )
             }
         }
@@ -87,7 +84,6 @@ class AddTransactionViewModel @Inject constructor(
                 transactionRepository.getTransactionById(parentId)
             }
             val recurrenceSource = if (transaction.isRecurring) transaction else parentRecurring
-            // Determine if this is multi-tag (same amount per category = totalAmount) vs true split
             val isMultiTag = transaction.splits.size > 1 &&
                     transaction.splits.all { kotlin.math.abs(it.amount - transaction.totalAmount) < 0.01 }
             val isSplit = transaction.splits.size > 1 && !isMultiTag
@@ -101,6 +97,7 @@ class AddTransactionViewModel @Inject constructor(
                     selectedAccountId = transaction.accountId,
                     toAccountId = transaction.toAccountId,
                     note = transaction.note ?: "",
+                    payee = transaction.payee, // Preserve payee
                     date = transaction.date,
                     isSplitMode = isSplit,
                     parentRecurringId = transaction.parentRecurringId,
@@ -132,11 +129,9 @@ class AddTransactionViewModel @Inject constructor(
 
     private fun loadData() {
         viewModelScope.launch {
-            // Get default account preference
             val defaultAccountId = userPreferences.defaultAccountId.first()
 
             accountRepository.getAllAccounts().collect { accounts ->
-                // Sort accounts matching the Accounts Screen order
                 val sortedAccounts = accounts.sortedWith(compareBy<com.moneytracker.app.domain.model.Account> { 
                     when (it.type) {
                         AccountType.CASH -> 0
@@ -175,7 +170,25 @@ class AddTransactionViewModel @Inject constructor(
                 categoryRepository.getCategoriesByType(
                     if (type == TransactionType.TRANSFER) TransactionType.EXPENSE else type
                 ).collect { categories ->
-                    _state.update { it.copy(categories = categories) }
+                    _state.update { state ->
+                        var newSelectedIds = state.selectedCategoryIds
+                        var newSplits = state.splits
+                        
+                        // Auto-select the smart suggested category!
+                        if (suggestedCategoryId != null && newSelectedIds.isEmpty() && !state.isEditMode) {
+                            val cat = categories.find { it.id == suggestedCategoryId }
+                            if (cat != null) {
+                                newSelectedIds = setOf(cat.id)
+                                newSplits = listOf(SplitState(categoryId = cat.id, categoryName = cat.name, amount = state.amount))
+                            }
+                        }
+
+                        state.copy(
+                            categories = categories,
+                            selectedCategoryIds = newSelectedIds,
+                            splits = newSplits
+                        )
+                    }
                 }
             }
         }
@@ -411,10 +424,13 @@ class AddTransactionViewModel @Inject constructor(
                 val isSeriesChildEntry = currentState.parentRecurringId != null
                 val shouldPersistRecurringOnThisEntry = currentState.isRecurring && !isSeriesChildEntry
 
+                // If payee is blank (manual entry without a typed payee), use the primary category name
+                val finalPayee = currentState.payee.ifBlank { currentState.splits.firstOrNull()?.categoryName ?: "Transaction" }
+
                 val transaction = TransactionEntity(
                     id = transactionId,
                     accountId = currentState.selectedAccountId!!,
-                    payee = currentState.splits.firstOrNull()?.categoryName ?: "Transaction",
+                    payee = finalPayee,
                     note = currentState.note.ifBlank { null },
                     date = currentState.date,
                     totalAmount = currentState.totalAmount,
@@ -495,6 +511,17 @@ class AddTransactionViewModel @Inject constructor(
                         recurringTransactionManager.checkNow()
                     }
                 }
+
+                // Train the recommendation algorithm!
+                // If a real payee exists, and a valid category is selected, upsert it using Payee + Type.
+                if (currentState.payee.isNotBlank() && splits.isNotEmpty()) {
+                    categoryRecommendationRepository.upsertRecommendation(
+                        currentState.payee, 
+                        currentState.type, 
+                        splits.first().categoryId
+                    )
+                }
+
                 _state.update { it.copy(isSaving = false) }
                 _navigateBack.trySend(Unit)
             } catch (e: Exception) {

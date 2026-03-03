@@ -13,7 +13,6 @@ import android.text.SpannableStringBuilder
 import android.text.Spanned
 import android.text.style.ForegroundColorSpan
 import androidx.core.app.NotificationCompat
-import androidx.core.app.RemoteInput
 import com.moneytracker.app.MainActivity
 import com.moneytracker.app.R
 import com.moneytracker.app.data.local.database.entities.TransactionType
@@ -22,7 +21,6 @@ import com.moneytracker.app.util.ParsedBankAlert
 object BankAlertSuggestionNotifier {
 
     const val ACTION_SAVE_SUGGESTION = "com.moneytracker.app.action.SAVE_SUGGESTION"
-    const val ACTION_SAVE_WITH_CATEGORY = "com.moneytracker.app.action.SAVE_WITH_CATEGORY"
     const val ACTION_DISCARD_SUGGESTION = "com.moneytracker.app.action.DISCARD_SUGGESTION"
 
     const val EXTRA_SUGGESTION_ID = "extra_suggestion_id"
@@ -30,7 +28,6 @@ object BankAlertSuggestionNotifier {
     const val EXTRA_AMOUNT = "extra_amount"
     const val EXTRA_PAYEE = "extra_payee"
     const val EXTRA_NOTE = "extra_note"
-    const val EXTRA_CATEGORY_REPLY = "extra_category_reply"
     const val EXTRA_SUGGESTED_CAT_ID = "extra_suggested_cat_id"
 
     private const val CHANNEL_ID = "bank_alert_suggestions"
@@ -49,6 +46,7 @@ object BankAlertSuggestionNotifier {
             putExtra("suggestion_note", suggestion.note)
             putExtra("suggestion_payee", suggestion.payee)
             putExtra(EXTRA_SUGGESTION_ID, suggestion.suggestionId)
+            putExtra("suggested_cat_id", suggestion.suggestedCategoryId)
         }
         val editPendingIntent = PendingIntent.getActivity(
             context, notificationId, editIntent,
@@ -70,30 +68,7 @@ object BankAlertSuggestionNotifier {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        // 3. Direct Reply (Categorize in Background)
-        val remoteInput = RemoteInput.Builder(EXTRA_CATEGORY_REPLY)
-            .setLabel("Reply with Category (e.g. Food)")
-            .build()
-            
-        val replyIntent = Intent(context, TransactionSuggestionActionReceiver::class.java).apply {
-            action = ACTION_SAVE_WITH_CATEGORY
-            putExtra(EXTRA_SUGGESTION_ID, suggestion.suggestionId)
-            putExtra(EXTRA_TYPE, suggestion.type.name)
-            putExtra(EXTRA_AMOUNT, suggestion.amount)
-            putExtra(EXTRA_PAYEE, suggestion.payee)
-            putExtra(EXTRA_NOTE, suggestion.note)
-        }
-        val replyPendingIntent = PendingIntent.getBroadcast(
-            context, notificationId + 3, replyIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
-        )
-        val replyAction = NotificationCompat.Action.Builder(
-            R.drawable.ic_notification, 
-            "Categorize & Save", 
-            replyPendingIntent
-        ).addRemoteInput(remoteInput).build()
-
-        // 4. Discard
+        // 3. Discard
         val discardIntent = Intent(context, TransactionSuggestionActionReceiver::class.java).apply {
             action = ACTION_DISCARD_SUGGESTION
             putExtra(EXTRA_SUGGESTION_ID, suggestion.suggestionId)
@@ -103,8 +78,13 @@ object BankAlertSuggestionNotifier {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val catText = suggestion.suggestedCategoryName?.let { " [$it]" } ?: ""
-        val title = if (suggestion.type.name == "EXPENSE") "Suggested Expense$catText" else "Suggested Income$catText"
+        // --- FORMATTING THE CONTENT ---
+        
+        val title = when (suggestion.type) {
+            TransactionType.EXPENSE -> "Expense Detected"
+            TransactionType.INCOME -> "Income Detected"
+            TransactionType.TRANSFER -> "Transfer Detected"
+        }
         
         val amountText = "₹${"%.2f".format(suggestion.amount)}"
         val amountColor = when (suggestion.type) {
@@ -112,16 +92,41 @@ object BankAlertSuggestionNotifier {
             TransactionType.INCOME -> Color.parseColor("#2E7D32")
             TransactionType.TRANSFER -> Color.parseColor("#2196F3")
         }
-        val content = "${suggestion.payee}: $amountText"
-        val contentText = SpannableString(content).apply {
-            val amountStart = content.length - amountText.length
-            setSpan(ForegroundColorSpan(amountColor), amountStart, content.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-        }
-        val expandedText = SpannableStringBuilder("$content\n${suggestion.note}").apply {
-            val amountStart = indexOf(amountText)
+
+        val directionPrefix = if (suggestion.type == TransactionType.INCOME) "From" else "To"
+        val categoryName = suggestion.suggestedCategoryName ?: "AutoDetected"
+
+        // Short text (When notification is collapsed) - Category in 2nd place, No Note
+        val shortText = "$amountText | Cat: $categoryName | $directionPrefix: ${suggestion.payee}"
+        val contentText = SpannableString(shortText).apply {
+            val amountStart = shortText.indexOf(amountText)
             if (amountStart >= 0) {
                 setSpan(ForegroundColorSpan(amountColor), amountStart, amountStart + amountText.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
             }
+        }
+
+        // Expanded text (When user pulls down on the notification) - Category in 2nd place, No Note
+        val expandedText = SpannableStringBuilder().apply {
+            append("Amount: ")
+            val amountStart = length
+            append(amountText)
+            setSpan(ForegroundColorSpan(amountColor), amountStart, length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            append("\n")
+            
+            append("Category: $categoryName\n")
+            append("$directionPrefix: ${suggestion.payee}")
+        }
+
+        // --- COLORED BUTTONS ---
+        
+        val saveActionText = SpannableString("Save").apply {
+            setSpan(ForegroundColorSpan(Color.parseColor("#2E7D32")), 0, length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE) // Green
+        }
+        val editActionText = SpannableString("Edit").apply {
+            setSpan(ForegroundColorSpan(Color.parseColor("#1976D2")), 0, length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE) // Blue
+        }
+        val discardActionText = SpannableString("Discard").apply {
+            setSpan(ForegroundColorSpan(Color.parseColor("#D32F2F")), 0, length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE) // Red
         }
 
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
@@ -132,10 +137,10 @@ object BankAlertSuggestionNotifier {
             .setStyle(NotificationCompat.BigTextStyle().bigText(expandedText))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
-            .setContentIntent(editPendingIntent)
-            .addAction(R.drawable.ic_notification, "Save", savePendingIntent)
-            .addAction(replyAction)
-            .addAction(R.drawable.ic_notification, "Discard", discardPendingIntent)
+            .setContentIntent(editPendingIntent) // Tapping the body acts like "Edit"
+            .addAction(R.drawable.ic_notification, saveActionText, savePendingIntent)
+            .addAction(R.drawable.ic_notification, editActionText, editPendingIntent)
+            .addAction(R.drawable.ic_notification, discardActionText, discardPendingIntent)
             .build()
 
         manager.notify(notificationId, notification)

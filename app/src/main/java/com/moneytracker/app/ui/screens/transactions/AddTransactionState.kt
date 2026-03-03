@@ -8,6 +8,7 @@ import com.moneytracker.app.domain.model.Category
 data class AddTransactionState(
     val amount: String = "",
     val note: String = "",
+    val payee: String = "", // Used to store the payee for learning algorithms
     val date: Long = System.currentTimeMillis(),
     val type: TransactionType = TransactionType.EXPENSE,
     val selectedAccountId: String? = null,

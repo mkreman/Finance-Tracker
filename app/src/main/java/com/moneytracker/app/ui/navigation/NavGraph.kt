@@ -130,6 +130,11 @@ fun NavGraph(navController: NavHostController) {
                 navArgument("fromWidget") {
                     type = NavType.BoolType
                     defaultValue = false
+                },
+                navArgument("suggestedCategoryId") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
                 }
             )
         ) { backStackEntry ->
