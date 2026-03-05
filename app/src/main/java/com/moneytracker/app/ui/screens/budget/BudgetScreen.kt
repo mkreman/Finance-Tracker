@@ -26,6 +26,7 @@ import java.util.Calendar
 @Composable
 fun BudgetScreen(
     onAddBudget: (Int, Int) -> Unit,
+    onAddTransaction: () -> Unit,
     onBudgetClick: (String, String) -> Unit = { _, _ -> },
     onEditBudget: (String, String, String, Double, Int, Int) -> Unit = { _, _, _, _, _, _ -> },
     viewModel: BudgetViewModel = hiltViewModel()
@@ -37,7 +38,6 @@ fun BudgetScreen(
     val scrollState = rememberScrollState()
     val reselectFlow = LocalBottomTabReselect.current
 
-    // FIX: Listen for reselect events to scroll to top
     LaunchedEffect(Unit) {
         reselectFlow.collect { route ->
             if (route == Screen.Budget.route) {
@@ -79,12 +79,26 @@ fun BudgetScreen(
         ) {
             Spacer(modifier = Modifier.height(16.dp))
 
-            Text(
-                text = "Budget",
-                style = MaterialTheme.typography.headlineMedium,
-                color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.padding(horizontal = 16.dp)
-            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Budget",
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                IconButton(onClick = {
+                    val m = currentMonth.get(Calendar.MONTH) + 1
+                    val y = currentMonth.get(Calendar.YEAR)
+                    onAddBudget(m, y)
+                }) {
+                    Icon(Icons.Filled.Add, contentDescription = "Add Budget", tint = MaterialTheme.colorScheme.onSurface)
+                }
+            }
 
             Spacer(modifier = Modifier.height(12.dp))
 
@@ -196,20 +210,16 @@ fun BudgetScreen(
             Spacer(modifier = Modifier.height(100.dp))
         }
 
-        // FAB
+        // FAB is now for Add Transaction
         FloatingActionButton(
-            onClick = {
-                val m = currentMonth.get(Calendar.MONTH) + 1
-                val y = currentMonth.get(Calendar.YEAR)
-                onAddBudget(m, y)
-            },
+            onClick = onAddTransaction,
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(end = 16.dp, bottom = 96.dp),
-            containerColor = MaterialTheme.colorScheme.primary,
+            containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.85f),
             contentColor = MaterialTheme.colorScheme.onPrimary
         ) {
-            Icon(Icons.Filled.Add, contentDescription = "Add Budget")
+            Icon(Icons.Filled.Add, contentDescription = "Add Transaction")
         }
     }
 }

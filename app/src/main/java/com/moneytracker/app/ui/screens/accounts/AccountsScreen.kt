@@ -38,6 +38,7 @@ import com.moneytracker.app.ui.navigation.Screen
 @Composable
 fun AccountsScreen(
     onAddAccount: () -> Unit,
+    onAddTransaction: () -> Unit,
     onAccountClick: (String, String) -> Unit,
     onEditAccount: (String) -> Unit,
     viewModel: AccountsViewModel = hiltViewModel()
@@ -89,7 +90,7 @@ fun AccountsScreen(
 
     if (showReorderDialog) {
         ReorderDialog(
-            order = state.displayOrder, // Bind to dynamically computed effective display order
+            order = state.displayOrder,
             onMove = viewModel::moveSection,
             onDismiss = { showReorderDialog = false }
         )
@@ -115,14 +116,19 @@ fun AccountsScreen(
                     style = MaterialTheme.typography.headlineMedium,
                     color = MaterialTheme.colorScheme.onSurface
                 )
-                IconButton(onClick = { showReorderDialog = true }) {
-                    Icon(Icons.Filled.Sort, contentDescription = "Rearrange Sections", tint = MaterialTheme.colorScheme.onSurface)
+                Row {
+                    IconButton(onClick = onAddAccount) {
+                        Icon(Icons.Filled.Add, contentDescription = "Add Account", tint = MaterialTheme.colorScheme.onSurface)
+                    }
+                    IconButton(onClick = { showReorderDialog = true }) {
+                        Icon(Icons.Filled.Sort, contentDescription = "Rearrange Sections", tint = MaterialTheme.colorScheme.onSurface)
+                    }
                 }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Overall Balance Card with Income/Expense/Total
+            // Overall Balance Card
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -179,7 +185,6 @@ fun AccountsScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Dynamic section ordering
             state.displayOrder.forEach { type ->
                 when {
                     type == "CASH" -> {
@@ -278,7 +283,6 @@ fun AccountsScreen(
                 }
             }
 
-            // Inactive Accounts Section
             if (state.inactiveAccounts.isNotEmpty()) {
                 var expanded by remember { mutableStateOf(false) }
 
@@ -323,16 +327,16 @@ fun AccountsScreen(
             Spacer(modifier = Modifier.height(100.dp))
         }
 
-        // FAB
+        // FAB is now for Add Transaction
         FloatingActionButton(
-            onClick = onAddAccount,
+            onClick = onAddTransaction,
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(end = 16.dp, bottom = 96.dp),
-            containerColor = MaterialTheme.colorScheme.primary,
+            containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.85f),
             contentColor = MaterialTheme.colorScheme.onPrimary
         ) {
-            Icon(Icons.Filled.Add, contentDescription = "Add Account")
+            Icon(Icons.Filled.Add, contentDescription = "Add Transaction")
         }
     }
 }
@@ -409,7 +413,6 @@ private fun AccountSection(
 ) {
     val currency = LocalCurrencySymbol.current
 
-    // Make the header dynamic so it acts as a prominent bar when collapsed
     val bgColor = if (!expanded) MaterialTheme.colorScheme.surfaceVariant else Color.Transparent
     val paddingH = if (!expanded) 16.dp else 0.dp
 
@@ -436,13 +439,11 @@ private fun AccountSection(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.padding(end = 8.dp)
             ) {
-                // FIX: Changed from bodySmall to titleMedium
                 Text(
                     text = "+$currency${formatAmount(sumPositive)}",
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
                     color = MaterialTheme.colorScheme.tertiary
                 )
-                // FIX: Changed from bodySmall to titleMedium
                 Text(
                     text = "-$currency${formatAmount(kotlin.math.abs(sumNegative))}",
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),

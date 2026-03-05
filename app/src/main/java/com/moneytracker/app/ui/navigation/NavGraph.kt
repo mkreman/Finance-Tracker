@@ -51,6 +51,9 @@ fun NavGraph(navController: NavHostController) {
                 },
                 onEditTransaction = { transactionId ->
                     navController.navigate(Screen.EditTransaction.createRoute(transactionId))
+                },
+                onAddTransaction = {
+                    navController.navigate(Screen.AddTransaction.createRoute())
                 }
             )
         }
@@ -71,6 +74,9 @@ fun NavGraph(navController: NavHostController) {
                 onAddAccount = {
                     navController.navigate(Screen.AddAccount.route)
                 },
+                onAddTransaction = {
+                    navController.navigate(Screen.AddTransaction.createRoute())
+                },
                 onAccountClick = { accountId, accountName ->
                     navController.navigate(
                         Screen.AccountTransactions.createRoute(accountId, accountName)
@@ -86,6 +92,9 @@ fun NavGraph(navController: NavHostController) {
             BudgetScreen(
                 onAddBudget = { month, year ->
                     navController.navigate(Screen.AddBudget.createRoute(month, year))
+                },
+                onAddTransaction = {
+                    navController.navigate(Screen.AddTransaction.createRoute())
                 },
                 onBudgetClick = { categoryId, categoryName ->
                     navController.navigate(
@@ -144,7 +153,6 @@ fun NavGraph(navController: NavHostController) {
             AddTransactionScreen(
                 onNavigateBack = {
                     if (fromWidget) {
-                        // Correctly finish the underlying activity
                         context.getActivity()?.finish()
                     } else {
                         if (!navController.popBackStack(Screen.Transactions.route, inclusive = false)) {
@@ -154,14 +162,12 @@ fun NavGraph(navController: NavHostController) {
                         }
                     }
                 },
-                // FIX: Support jumping straight to adding a new account
                 onAddAccount = {
                     navController.navigate(Screen.AddAccount.route)
                 }
             )
         }
 
-        // Add Budget
         composable(
             route = Screen.AddBudget.route,
             arguments = listOf(
@@ -174,7 +180,6 @@ fun NavGraph(navController: NavHostController) {
             )
         }
 
-        // Edit Budget
         composable(
             route = Screen.EditBudget.route,
             arguments = listOf(
@@ -197,7 +202,6 @@ fun NavGraph(navController: NavHostController) {
             )
         }
 
-        // Edit Account
         composable(
             route = Screen.EditAccount.route,
             arguments = listOf(navArgument("accountId") { type = NavType.StringType })
@@ -207,7 +211,6 @@ fun NavGraph(navController: NavHostController) {
             )
         }
 
-        // Account Transactions
         composable(
             route = Screen.AccountTransactions.route,
             arguments = listOf(
@@ -223,7 +226,6 @@ fun NavGraph(navController: NavHostController) {
             )
         }
 
-        // Edit Transaction
         composable(
             route = Screen.EditTransaction.route,
             arguments = listOf(navArgument("transactionId") { type = NavType.StringType })
@@ -239,7 +241,6 @@ fun NavGraph(navController: NavHostController) {
             )
         }
 
-        // Category Transactions
         composable(
             route = Screen.CategoryTransactions.route,
             arguments = listOf(
@@ -256,7 +257,6 @@ fun NavGraph(navController: NavHostController) {
             )
         }
 
-        // Budget Transactions
         composable(
             route = Screen.BudgetTransactions.route,
             arguments = listOf(
