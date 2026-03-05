@@ -7,6 +7,8 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.BitmapFactory
 import android.graphics.Color
+import android.media.AudioAttributes
+import android.media.RingtoneManager
 import android.os.Build
 import android.text.SpannableString
 import android.text.SpannableStringBuilder
@@ -164,17 +166,24 @@ class RecurringTransactionWorker @AssistedInject constructor(
 
     private fun showNotification(transaction: TransactionEntity) {
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        val channelId = "recurring_transactions"
+        val channelId = "recurring_transactions_v2"
         val channelName = "Recurring Transactions"
+        val defaultSoundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
 
         // Create notification channel for Android O and above
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 channelId,
                 channelName,
-                NotificationManager.IMPORTANCE_DEFAULT
+                NotificationManager.IMPORTANCE_HIGH
             ).apply {
                 description = "Notifications for recurring transactions"
+                setSound(
+                    defaultSoundUri,
+                    AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+                        .build()
+                )
             }
             notificationManager.createNotificationChannel(channel)
         }
@@ -231,7 +240,8 @@ class RecurringTransactionWorker @AssistedInject constructor(
             .setContentTitle("Recurring Transaction Added")
             .setContentText(contentText)
             .setStyle(NotificationCompat.BigTextStyle().bigText(expandedSpannable))
-            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setSound(defaultSoundUri)
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
             .build()

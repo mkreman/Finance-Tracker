@@ -8,7 +8,7 @@ import android.content.pm.PackageManager
 import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
-import android.view.WindowManager // FIX: Added to support FLAG_SECURE
+import android.view.WindowManager
 import android.widget.Toast
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
@@ -78,6 +78,11 @@ class MainActivity : FragmentActivity() {
     
     private val intentState = MutableStateFlow<Intent?>(null)
 
+    companion object {
+        private const val QUICK_BYPASS_WINDOW_MS = 5000L
+        private var lastAppBackgroundAtMs: Long = 0L
+    }
+
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
@@ -94,7 +99,6 @@ class MainActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
-        // FIX: Add FLAG_SECURE to prevent screenshots and hide app content in the Android "Recents" screen
         window.setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE)
         
         intentState.value = intent
@@ -124,12 +128,20 @@ class MainActivity : FragmentActivity() {
             var isAuthenticating by remember { mutableStateOf(false) }
             var showPasscodeScreen by remember { mutableStateOf(false) }
             
-            val triggerAuth = {
-                val isWidgetLaunch = currentIntent?.getStringExtra("transaction_type") != null
-                
-                if (isWidgetLaunch) {
+            // Timer to track when the app was pushed to the background
+            var backgroundTime by remember { mutableStateOf(0L) }
+            
+            val triggerAuth = trigger@{
+                val isWidgetTransactionLaunch = currentIntent?.getStringExtra("transaction_type") != null
+                val withinQuickBypassWindow = lastAppBackgroundAtMs > 0L &&
+                    System.currentTimeMillis() - lastAppBackgroundAtMs <= QUICK_BYPASS_WINDOW_MS
+
+                if (isWidgetTransactionLaunch || withinQuickBypassWindow) {
                     isAuthenticated = true
-                } else if (!isAuthenticated && !isAuthenticating && biometricEnabled != null && passcodeEnabled != null) {
+                    return@trigger
+                }
+
+                if (!isAuthenticated && !isAuthenticating && biometricEnabled != null && passcodeEnabled != null) {
                     if (biometricEnabled == true || passcodeEnabled == true) {
                         isAuthenticating = true
                         if (biometricEnabled == true && biometricAuthManager.canAuthenticate(this@MainActivity)) {
@@ -171,8 +183,11 @@ class MainActivity : FragmentActivity() {
                     if (event == Lifecycle.Event.ON_STOP) {
                         if (!this@MainActivity.isChangingConfigurations && !isAuthenticating) {
                             isAuthenticated = false
+                            backgroundTime = System.currentTimeMillis() // Record exact background time
+                            lastAppBackgroundAtMs = backgroundTime
                         }
                     } else if (event == Lifecycle.Event.ON_RESUME) {
+                        backgroundTime = 0L // Reset timer
                         triggerAuth()
                     }
                 }
@@ -209,13 +224,24 @@ class MainActivity : FragmentActivity() {
                         val suggestionNote = currentIntent?.getStringExtra("suggestion_note")
                         val suggestionPayee = currentIntent?.getStringExtra("suggestion_payee")
                         val suggestionId = currentIntent?.getStringExtra("extra_suggestion_id")
-                        val suggestedCatId = currentIntent?.getStringExtra("suggested_cat_id") // Extracted!
+                        val suggestedCatId = currentIntent?.getStringExtra("suggested_cat_id")
+                        val openBudgetCategoryId = currentIntent?.getStringExtra("open_budget_category_id")
+                        val openBudgetCategoryName = currentIntent?.getStringExtra("open_budget_category_name")
 
                         if (suggestionId != null) {
                             com.moneytracker.app.notifications.BankAlertSuggestionNotifier.cancel(this@MainActivity, suggestionId)
                         }
                         
-                        if (transactionType != null) {
+                        if (openBudgetCategoryId != null && openBudgetCategoryName != null) {
+                            navController.navigate(
+                                Screen.BudgetTransactions.createRoute(
+                                    categoryId = openBudgetCategoryId,
+                                    categoryName = openBudgetCategoryName
+                                )
+                            )
+                            currentIntent?.removeExtra("open_budget_category_id")
+                            currentIntent?.removeExtra("open_budget_category_name")
+                        } else if (transactionType != null) {
                             navController.navigate(
                                 Screen.AddTransaction.createRoute(
                                     type = transactionType,
@@ -223,7 +249,7 @@ class MainActivity : FragmentActivity() {
                                     note = suggestionNote,
                                     payee = suggestionPayee,
                                     fromWidget = true,
-                                    suggestedCategoryId = suggestedCatId // Passed!
+                                    suggestedCategoryId = suggestedCatId
                                 )
                             )
                             currentIntent?.removeExtra("transaction_type")

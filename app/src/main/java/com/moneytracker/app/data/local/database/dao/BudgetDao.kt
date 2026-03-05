@@ -22,6 +22,7 @@ interface BudgetDao {
             c.colorHex as categoryColor,
             c.iconKey as categoryIcon,
             b.limitAmount as limitAmount,
+            b.sortOrder as sortOrder,
             COALESCE(
                 (SELECT SUM(s.amount) 
                  FROM transaction_splits s
@@ -35,7 +36,7 @@ interface BudgetDao {
         FROM budgets b
         JOIN categories c ON b.categoryId = c.id
         WHERE b.month = :month AND b.year = :year
-        ORDER BY c.name ASC
+        ORDER BY b.sortOrder ASC, c.name ASC
     """)
     fun getBudgetsWithSpending(
         month: Int,
@@ -43,6 +44,9 @@ interface BudgetDao {
         startDate: Long,
         endDate: Long
     ): Flow<List<BudgetWithSpending>>
+
+    @Query("SELECT COALESCE(MAX(sortOrder), -1) FROM budgets WHERE month = :month AND year = :year")
+    suspend fun getMaxSortOrderForMonth(month: Int, year: Int): Int
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertBudget(budget: BudgetEntity)
@@ -52,6 +56,9 @@ interface BudgetDao {
 
     @Query("DELETE FROM budgets WHERE id = :id")
     suspend fun deleteBudget(id: String)
+
+    @Query("UPDATE budgets SET sortOrder = :sortOrder, modifiedAt = :modifiedAt WHERE id = :id")
+    suspend fun updateBudgetSortOrder(id: String, sortOrder: Int, modifiedAt: Long)
 
     @Query("SELECT * FROM budgets WHERE categoryId = :categoryId AND month = :month AND year = :year")
     suspend fun getBudgetForCategory(categoryId: String, month: Int, year: Int): BudgetEntity?

@@ -29,6 +29,7 @@ class TransactionSuggestionActionReceiver : BroadcastReceiver() {
     @Inject lateinit var categoryRepository: CategoryRepository
     @Inject lateinit var categoryRecommendationRepository: CategoryRecommendationRepository
     @Inject lateinit var userPreferences: UserPreferences
+    @Inject lateinit var budgetAlertManager: BudgetAlertManager
 
     override fun onReceive(context: Context, intent: Intent) {
         val suggestionId = intent.getStringExtra(BankAlertSuggestionNotifier.EXTRA_SUGGESTION_ID)
@@ -142,5 +143,10 @@ class TransactionSuggestionActionReceiver : BroadcastReceiver() {
         }
 
         transactionRepository.saveTransaction(transaction, splits)
+
+        // Check budget and notify if exceeded!
+        if (type == TransactionType.EXPENSE && selectedCategory != null) {
+            budgetAlertManager.checkBudgets(now, mapOf(selectedCategory.id to selectedCategory.name))
+        }
     }
 }

@@ -53,5 +53,6 @@ data class BudgetWithSpending(
     val categoryColor: String,
     val categoryIcon: String,
     val limitAmount: Double,
+    val sortOrder: Int,
     val spentAmount: Double
 )

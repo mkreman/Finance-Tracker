@@ -7,6 +7,8 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.BitmapFactory
 import android.graphics.Color
+import android.media.AudioAttributes
+import android.media.RingtoneManager
 import android.os.Build
 import android.text.SpannableString
 import android.text.SpannableStringBuilder
@@ -30,10 +32,11 @@ object BankAlertSuggestionNotifier {
     const val EXTRA_NOTE = "extra_note"
     const val EXTRA_SUGGESTED_CAT_ID = "extra_suggested_cat_id"
 
-    private const val CHANNEL_ID = "bank_alert_suggestions"
+    private const val CHANNEL_ID = "bank_alert_suggestions_v2"
 
     fun show(context: Context, suggestion: ParsedBankAlert) {
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val defaultSoundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
         ensureChannel(manager)
 
         val notificationId = suggestion.suggestionId.hashCode()
@@ -136,6 +139,7 @@ object BankAlertSuggestionNotifier {
             .setContentText(contentText)
             .setStyle(NotificationCompat.BigTextStyle().bigText(expandedText))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setSound(defaultSoundUri)
             .setAutoCancel(true)
             .setContentIntent(editPendingIntent) // Tapping the body acts like "Edit"
             .addAction(R.drawable.ic_notification, saveActionText, savePendingIntent)
@@ -154,12 +158,19 @@ object BankAlertSuggestionNotifier {
 
     private fun ensureChannel(manager: NotificationManager) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val defaultSoundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
             val channel = NotificationChannel(
                 CHANNEL_ID,
                 "Bank Alert Suggestions",
                 NotificationManager.IMPORTANCE_HIGH
             ).apply {
                 description = "Suggestions from detected bank debit/credit messages"
+                setSound(
+                    defaultSoundUri,
+                    AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+                        .build()
+                )
             }
             manager.createNotificationChannel(channel)
         }

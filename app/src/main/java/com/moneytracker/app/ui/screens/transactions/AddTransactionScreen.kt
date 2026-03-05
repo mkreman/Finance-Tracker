@@ -305,12 +305,7 @@ fun AddTransactionScreen(
             if (state.type != TransactionType.TRANSFER) {
                 CategorySplitSection(
                     state = state,
-                    onCategorySelected = viewModel::onCategorySelected,
                     onCategoryToggled = viewModel::toggleCategory,
-                    onSplitAmountChange = viewModel::onSplitAmountChange,
-                    onToggleSplit = viewModel::toggleSplitMode,
-                    onAddSplit = viewModel::addSplit,
-                    onRemoveSplit = viewModel::removeSplit,
                     onAddCategory = viewModel::addCategory,
                     onEditCategory = viewModel::editCategory,
                     onDeleteCategory = viewModel::deleteCategory
@@ -521,12 +516,7 @@ fun AddTransactionScreen(
 @Composable
 private fun CategorySplitSection(
     state: AddTransactionState,
-    onCategorySelected: (Int, String, String) -> Unit,
     onCategoryToggled: (String, String) -> Unit,
-    onSplitAmountChange: (Int, String) -> Unit,
-    onToggleSplit: () -> Unit,
-    onAddSplit: () -> Unit,
-    onRemoveSplit: (Int) -> Unit,
     onAddCategory: (String, String, String) -> Unit,
     onEditCategory: (String, String, String, String) -> Unit,
     onDeleteCategory: (String) -> Unit
@@ -540,42 +530,31 @@ private fun CategorySplitSection(
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
+            horizontalArrangement = Arrangement.Start,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                if (state.isSplitMode) "Split Categories" else "Category",
+                "Category",
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            TextButton(onClick = onToggleSplit) {
-                Text(if (state.isSplitMode) "Single" else "Split")
-            }
         }
 
-        if (state.isSplitMode) {
-            state.splits.forEachIndexed { index, split ->
-                SplitRow(
-                    split = split,
-                    categories = state.categories,
-                    showAmount = true,
-                    showRemove = state.splits.size > 1,
-                    onCategorySelected = { id, name -> onCategorySelected(index, id, name) },
-                    onAmountChange = { onSplitAmountChange(index, it) },
-                    onRemove = { onRemoveSplit(index) }
-                )
-            }
-        } else {
-            CategoryGrid(
-                categories = state.categories,
-                selectedIds = state.selectedCategoryIds,
-                onCategoryToggled = onCategoryToggled,
-                onAddCategory = onAddCategory,
-                onEditCategory = onEditCategory,
-                onDeleteCategory = onDeleteCategory
-            )
-        }
+        CategoryGrid(
+            categories = state.categories,
+            selectedIds = state.selectedCategoryIds,
+            onCategoryToggled = onCategoryToggled,
+            onAddCategory = onAddCategory,
+            onEditCategory = onEditCategory,
+            onDeleteCategory = onDeleteCategory
+        )
     }
+}
+
+private sealed class CategoryGridSlot {
+    data class Item(val category: Category) : CategoryGridSlot()
+    object Add : CategoryGridSlot()
+    object Empty : CategoryGridSlot()
 }
 
 @Composable
@@ -595,79 +574,90 @@ private fun CategoryGrid(
     var categoryToEdit by remember { mutableStateOf<Category?>(null) }
     var categoryToDelete by remember { mutableStateOf<Category?>(null) }
 
-    val displayCategories = categories
-    val fullRows = displayCategories.chunked(4)
-    val lastRow = fullRows.lastOrNull()
-    val needsExtraRow = lastRow == null || lastRow.size == 4
+    val displayCategories = categories.sortedBy { it.name.lowercase() }
+    val slots = remember(displayCategories) {
+        val all = displayCategories.map { CategoryGridSlot.Item(it) }.toMutableList<CategoryGridSlot>()
+        all.add(CategoryGridSlot.Add)
+        all
+    }
+
+    val columns = remember(slots) {
+        slots.chunked(3).map { column ->
+            if (column.size == 3) column else column + List(3 - column.size) { CategoryGridSlot.Empty }
+        }
+    }
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        fullRows.forEachIndexed { rowIndex, rowItems ->
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                rowItems.forEach { category ->
-                    val isSelected = category.id in selectedIds
-                    val catColor = parseHexColor(category.colorHex)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            columns.forEach { column ->
+                Column(
+                    modifier = Modifier.width(78.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    column.forEach { slot ->
+                        when (slot) {
+                            is CategoryGridSlot.Item -> {
+                                val category = slot.category
+                                val isSelected = category.id in selectedIds
+                                val catColor = parseHexColor(category.colorHex)
 
-                    Column(
-                        modifier = Modifier
-                            .weight(1f)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(if (isSelected) catColor.copy(alpha = 0.1f) else Color.Transparent)
-                            .pointerInput(category.id) {
-                                detectTapGestures(
-                                    onTap = {
-                                        focusManager.clearFocus()
-                                        onCategoryToggled(category.id, category.name)
-                                    },
-                                    onLongPress = {
-                                        focusManager.clearFocus()
-                                        categoryActionDialog = category
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(if (isSelected) catColor.copy(alpha = 0.1f) else Color.Transparent)
+                                        .pointerInput(category.id) {
+                                            detectTapGestures(
+                                                onTap = {
+                                                    focusManager.clearFocus()
+                                                    onCategoryToggled(category.id, category.name)
+                                                },
+                                                onLongPress = {
+                                                    focusManager.clearFocus()
+                                                    categoryActionDialog = category
+                                                }
+                                            )
+                                        }
+                                        .padding(vertical = 8.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(44.dp)
+                                            .clip(CircleShape)
+                                            .background(catColor.copy(alpha = 0.15f)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = CategoryIcons.getIcon(category.iconKey),
+                                            contentDescription = category.name,
+                                            tint = catColor,
+                                            modifier = Modifier.size(22.dp)
+                                        )
                                     }
-                                )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        category.name,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        textAlign = TextAlign.Center
+                                    )
+                                }
                             }
-                            .padding(vertical = 8.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(44.dp)
-                                .clip(CircleShape)
-                                .background(catColor.copy(alpha = 0.15f)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = CategoryIcons.getIcon(category.iconKey),
-                                contentDescription = category.name,
-                                tint = catColor,
-                                modifier = Modifier.size(22.dp)
+                            CategoryGridSlot.Add -> AddNewCategoryButton(
+                                modifier = Modifier.fillMaxWidth(),
+                                onClick = { showAddCategoryDialog = true }
                             )
+                            CategoryGridSlot.Empty -> Spacer(modifier = Modifier.height(68.dp))
                         }
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            category.name,
-                            style = MaterialTheme.typography.labelSmall,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            textAlign = TextAlign.Center
-                        )
                     }
                 }
-                
-                if (rowIndex == fullRows.lastIndex && !needsExtraRow) {
-                    AddNewCategoryButton(modifier = Modifier.weight(1f), onClick = { showAddCategoryDialog = true })
-                    repeat(3 - rowItems.size) { Spacer(modifier = Modifier.weight(1f)) }
-                } else {
-                    repeat(4 - rowItems.size) { Spacer(modifier = Modifier.weight(1f)) }
-                }
-            }
-        }
-
-        if (needsExtraRow) {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                AddNewCategoryButton(modifier = Modifier.weight(1f), onClick = { showAddCategoryDialog = true })
-                repeat(3) { Spacer(modifier = Modifier.weight(1f)) }
             }
         }
     }

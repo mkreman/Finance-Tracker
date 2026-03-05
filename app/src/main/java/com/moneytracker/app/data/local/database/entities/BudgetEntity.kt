@@ -21,6 +21,7 @@ data class BudgetEntity(
     @PrimaryKey val id: String,
     val categoryId: String,
     val limitAmount: Double,
+    val sortOrder: Int = 0,
     val month: Int,     // 1-12
     val year: Int,      // e.g., 2026
     val createdAt: Long = System.currentTimeMillis(),

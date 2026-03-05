@@ -1,12 +1,17 @@
 package com.moneytracker.app.ui.screens.budget
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.draggable
+import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Sort
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -15,6 +20,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.moneytracker.app.domain.model.Budget
 import com.moneytracker.app.ui.components.BudgetProgressBar
 import com.moneytracker.app.ui.components.LocalCurrencySymbol
 import com.moneytracker.app.ui.components.MonthSelector
@@ -27,7 +33,7 @@ import java.util.Calendar
 fun BudgetScreen(
     onAddBudget: (Int, Int) -> Unit,
     onAddTransaction: () -> Unit,
-    onBudgetClick: (String, String) -> Unit = { _, _ -> },
+    onBudgetClick: (String, String, Int, Int) -> Unit = { _, _, _, _ -> },
     onEditBudget: (String, String, String, Double, Int, Int) -> Unit = { _, _, _, _, _, _ -> },
     viewModel: BudgetViewModel = hiltViewModel()
 ) {
@@ -47,6 +53,7 @@ fun BudgetScreen(
     }
 
     var showDeleteDialog by remember { mutableStateOf<String?>(null) }
+    var showReorderDialog by remember { mutableStateOf(false) }
 
     if (showDeleteDialog != null) {
         AlertDialog(
@@ -71,6 +78,14 @@ fun BudgetScreen(
         )
     }
 
+    if (showReorderDialog) {
+        BudgetReorderDialog(
+            budgets = state.budgets,
+            onMove = viewModel::moveBudget,
+            onDismiss = { showReorderDialog = false }
+        )
+    }
+
     Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         Column(
             modifier = Modifier
@@ -91,12 +106,35 @@ fun BudgetScreen(
                     style = MaterialTheme.typography.headlineMedium,
                     color = MaterialTheme.colorScheme.onSurface
                 )
-                IconButton(onClick = {
-                    val m = currentMonth.get(Calendar.MONTH) + 1
-                    val y = currentMonth.get(Calendar.YEAR)
-                    onAddBudget(m, y)
-                }) {
-                    Icon(Icons.Filled.Add, contentDescription = "Add Budget", tint = MaterialTheme.colorScheme.onSurface)
+
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilledIconButton(
+                        onClick = { showReorderDialog = true },
+                        modifier = Modifier.size(width = 56.dp, height = 35.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = IconButtonDefaults.filledIconButtonColors(
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            contentColor = MaterialTheme.colorScheme.secondary
+                        )
+                    ) {
+                        Icon(Icons.Filled.Sort, contentDescription = "Rearrange Budgets", modifier = Modifier.size(20.dp))
+                    }
+
+                    FilledIconButton(
+                        onClick = {
+                            val m = currentMonth.get(Calendar.MONTH) + 1
+                            val y = currentMonth.get(Calendar.YEAR)
+                            onAddBudget(m, y)
+                        },
+                        modifier = Modifier.size(width = 56.dp, height = 35.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = IconButtonDefaults.filledIconButtonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        )
+                    ) {
+                        Icon(Icons.Filled.Add, contentDescription = "Add Budget", modifier = Modifier.size(20.dp))
+                    }
                 }
             }
 
@@ -172,9 +210,11 @@ fun BudgetScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     state.budgets.forEach { budget ->
+                        val month = currentMonth.get(Calendar.MONTH) + 1
+                        val year = currentMonth.get(Calendar.YEAR)
                         BudgetProgressBar(
                             budget = budget,
-                            onClick = { onBudgetClick(budget.categoryId, budget.categoryName) },
+                            onClick = { onBudgetClick(budget.categoryId, budget.categoryName, month, year) },
                             onEdit = { 
                                 val m = currentMonth.get(Calendar.MONTH) + 1
                                 val y = currentMonth.get(Calendar.YEAR)
@@ -221,5 +261,89 @@ fun BudgetScreen(
         ) {
             Icon(Icons.Filled.Add, contentDescription = "Add Transaction")
         }
+    }
+}
+
+@Composable
+private fun BudgetReorderDialog(
+    budgets: List<Budget>,
+    onMove: (Int, Int) -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Rearrange Budgets", color = MaterialTheme.colorScheme.onSurface) },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 360.dp)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                budgets.forEachIndexed { index, budget ->
+                    var dragY by remember(budgets, index) { mutableStateOf(0f) }
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 52.dp)
+                            .padding(vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            budget.categoryName,
+                            modifier = Modifier.weight(1f),
+                            color = MaterialTheme.colorScheme.onSurface,
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        FourDotDragHandle(
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier
+                                .size(30.dp)
+                                .draggable(
+                                    orientation = Orientation.Vertical,
+                                    state = rememberDraggableState { delta ->
+                                        dragY += delta
+                                    },
+                                    onDragStopped = {
+                                        if (dragY > 18f && index < budgets.size - 1) {
+                                            onMove(index, 1)
+                                        } else if (dragY < -18f && index > 0) {
+                                            onMove(index, -1)
+                                        }
+                                        dragY = 0f
+                                    }
+                                )
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Done")
+            }
+        },
+        containerColor = MaterialTheme.colorScheme.surface,
+        shape = RoundedCornerShape(16.dp)
+    )
+}
+
+@Composable
+private fun FourDotDragHandle(
+    modifier: Modifier = Modifier,
+    tint: androidx.compose.ui.graphics.Color
+) {
+    Canvas(modifier = modifier) {
+        val radius = size.minDimension * 0.10f
+        val x1 = size.width * 0.35f
+        val x2 = size.width * 0.65f
+        val y1 = size.height * 0.35f
+        val y2 = size.height * 0.65f
+
+        drawCircle(color = tint, radius = radius, center = androidx.compose.ui.geometry.Offset(x1, y1))
+        drawCircle(color = tint, radius = radius, center = androidx.compose.ui.geometry.Offset(x2, y1))
+        drawCircle(color = tint, radius = radius, center = androidx.compose.ui.geometry.Offset(x1, y2))
+        drawCircle(color = tint, radius = radius, center = androidx.compose.ui.geometry.Offset(x2, y2))
     }
 }

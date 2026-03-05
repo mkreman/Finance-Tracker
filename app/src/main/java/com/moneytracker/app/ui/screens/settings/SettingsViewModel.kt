@@ -37,7 +37,9 @@ data class SettingsState(
     val biometricEnabled: Boolean = false,
     val passcodeEnabled: Boolean = false,
     val defaultNotifyForRecurringEntries: Boolean = true,
-    val themeMode: Int = 0 // 0=system,1=light,2=dark
+    val themeMode: Int = 0, // 0=system,1=light,2=dark
+    val dailyReminderEnabled: Boolean = false,
+    val budgetAlertsEnabled: Boolean = true,
 )
 
 @HiltViewModel
@@ -68,6 +70,16 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch { userPreferences.passcode.collect { passcode -> currentPasscode = passcode } }
         viewModelScope.launch { userPreferences.themeMode.collect { mode -> _state.update { it.copy(themeMode = mode) } } }
         viewModelScope.launch { userPreferences.defaultNotifyForRecurringEntries.collect { enabled -> _state.update { it.copy(defaultNotifyForRecurringEntries = enabled) } } }
+        viewModelScope.launch {
+            userPreferences.dailyReminderEnabled.collect { enabled ->
+                _state.update { it.copy(dailyReminderEnabled = enabled) }
+            }
+        }
+        viewModelScope.launch {
+            userPreferences.budgetAlertsEnabled.collect { enabled ->
+                _state.update { it.copy(budgetAlertsEnabled = enabled) }
+            }
+        }
     }
 
     fun setBiometricEnabled(enabled: Boolean) = viewModelScope.launch { userPreferences.setBiometricEnabled(enabled) }
@@ -388,6 +400,22 @@ class SettingsViewModel @Inject constructor(
             } catch (e: Exception) {
                 _state.update { it.copy(importMessage = "Import failed: ${e.message}") }
             }
+        }
+    }
+    fun setDailyReminderEnabled(context: android.content.Context, enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferences.setDailyReminderEnabled(enabled)
+            if (enabled) {
+                com.moneytracker.app.notifications.NotificationScheduler.scheduleDailyReminder(context)
+            } else {
+                com.moneytracker.app.notifications.NotificationScheduler.cancelDailyReminder(context)
+            }
+        }
+    }
+
+    fun setBudgetAlertsEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferences.setBudgetAlertsEnabled(enabled)
         }
     }
 }

@@ -31,6 +31,7 @@ class AddTransactionViewModel @Inject constructor(
     private val categoryRecommendationRepository: CategoryRecommendationRepository,
     private val userPreferences: UserPreferences,
     private val recurringTransactionManager: RecurringTransactionManager,
+    private val budgetAlertManager: com.moneytracker.app.notifications.BudgetAlertManager, // ADDED HERE
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -84,9 +85,7 @@ class AddTransactionViewModel @Inject constructor(
                 transactionRepository.getTransactionById(parentId)
             }
             val recurrenceSource = if (transaction.isRecurring) transaction else parentRecurring
-            val isMultiTag = transaction.splits.size > 1 &&
-                    transaction.splits.all { kotlin.math.abs(it.amount - transaction.totalAmount) < 0.01 }
-            val isSplit = transaction.splits.size > 1 && !isMultiTag
+                val primarySplit = transaction.splits.firstOrNull()
 
             _state.update { state ->
                 state.copy(
@@ -99,29 +98,24 @@ class AddTransactionViewModel @Inject constructor(
                     note = transaction.note ?: "",
                     payee = transaction.payee, // Preserve payee
                     date = transaction.date,
-                    isSplitMode = isSplit,
+                    isSplitMode = false,
                     parentRecurringId = transaction.parentRecurringId,
                     isRecurring = recurrenceSource?.isRecurring ?: false,
                     recurringInterval = recurrenceSource?.recurringInterval?.toString() ?: "1",
                     recurringUnit = recurrenceSource?.recurringUnit ?: RecurringUnit.MONTH,
                     recurringEndDate = recurrenceSource?.recurringEndDate,
                     notifyForRecurringEntries = recurrenceSource?.notifyForRecurringEntries ?: transaction.notifyForRecurringEntries,
-                    selectedCategoryIds = if (!isSplit) {
-                        transaction.splits.mapNotNull { it.categoryId.takeIf { id -> id.isNotEmpty() } }.toSet()
-                    } else {
-                        emptySet()
-                    },
-                    splits = if (transaction.splits.isEmpty()) {
-                        listOf(SplitState())
-                    } else {
-                        transaction.splits.map { split ->
-                            SplitState(
-                                categoryId = split.categoryId,
-                                categoryName = split.categoryName,
-                                amount = toEditableAmount(split.amount)
-                            )
-                        }
-                    }
+                    selectedCategoryIds = primarySplit?.categoryId
+                        ?.takeIf { it.isNotBlank() }
+                        ?.let { setOf(it) }
+                        ?: emptySet(),
+                    splits = listOf(
+                        SplitState(
+                            categoryId = primarySplit?.categoryId,
+                            categoryName = primarySplit?.categoryName.orEmpty(),
+                            amount = toEditableAmount(transaction.totalAmount)
+                        )
+                    )
                 )
             }
         }
@@ -170,13 +164,14 @@ class AddTransactionViewModel @Inject constructor(
                 categoryRepository.getCategoriesByType(
                     if (type == TransactionType.TRANSFER) TransactionType.EXPENSE else type
                 ).collect { categories ->
+                    val sortedCategories = categories.sortedBy { it.name.lowercase() }
                     _state.update { state ->
                         var newSelectedIds = state.selectedCategoryIds
                         var newSplits = state.splits
                         
                         // Auto-select the smart suggested category!
                         if (suggestedCategoryId != null && newSelectedIds.isEmpty() && !state.isEditMode) {
-                            val cat = categories.find { it.id == suggestedCategoryId }
+                            val cat = sortedCategories.find { it.id == suggestedCategoryId }
                             if (cat != null) {
                                 newSelectedIds = setOf(cat.id)
                                 newSplits = listOf(SplitState(categoryId = cat.id, categoryName = cat.name, amount = state.amount))
@@ -184,7 +179,7 @@ class AddTransactionViewModel @Inject constructor(
                         }
 
                         state.copy(
-                            categories = categories,
+                            categories = sortedCategories,
                             selectedCategoryIds = newSelectedIds,
                             splits = newSplits
                         )
@@ -209,25 +204,21 @@ class AddTransactionViewModel @Inject constructor(
 
     fun toggleCategory(categoryId: String, categoryName: String) {
         _state.update { state ->
-            val newIds = state.selectedCategoryIds.toMutableSet()
-            if (categoryId in newIds) {
-                newIds.remove(categoryId)
+            val isDeselect = categoryId in state.selectedCategoryIds
+            val newIds = if (isDeselect) emptySet() else setOf(categoryId)
+            val newSplits = if (isDeselect) {
+                listOf(SplitState(amount = state.amount))
             } else {
-                newIds.add(categoryId)
-            }
-            val newSplits = if (newIds.isEmpty()) {
-                listOf(SplitState())
-            } else {
-                newIds.map { id ->
-                    val name = state.categories.find { it.id == id }?.name ?: categoryName
+                listOf(
                     SplitState(
-                        categoryId = id,
-                        categoryName = name,
+                        categoryId = categoryId,
+                        categoryName = state.categories.find { it.id == categoryId }?.name ?: categoryName,
                         amount = state.amount
                     )
-                }
+                )
             }
             state.copy(
+                isSplitMode = false,
                 selectedCategoryIds = newIds,
                 splits = newSplits
             )
@@ -520,6 +511,14 @@ class AddTransactionViewModel @Inject constructor(
                         currentState.type, 
                         splits.first().categoryId
                     )
+                }
+
+                // Check budgets and notify if exceeded!
+                if (currentState.type == TransactionType.EXPENSE) {
+                    val categoryMap = currentState.splits
+                        .filter { it.categoryId != null && (it.amount.toDoubleOrNull() ?: 0.0) > 0.0 }
+                        .associate { it.categoryId!! to it.categoryName }
+                    budgetAlertManager.checkBudgets(currentState.date, categoryMap)
                 }
 
                 _state.update { it.copy(isSaving = false) }

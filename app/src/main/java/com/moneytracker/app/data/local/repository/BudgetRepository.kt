@@ -28,6 +28,7 @@ class BudgetRepository @Inject constructor(
                     categoryColor = bws.categoryColor,
                     categoryIcon = bws.categoryIcon,
                     limitAmount = bws.limitAmount,
+                    sortOrder = bws.sortOrder,
                     spentAmount = bws.spentAmount
                 )
             }
@@ -43,15 +44,24 @@ class BudgetRepository @Inject constructor(
                 )
             )
         } else {
+            val nextSortOrder = budgetDao.getMaxSortOrderForMonth(month, year) + 1
             budgetDao.insertBudget(
                 BudgetEntity(
                     id = UUID.randomUUID().toString(),
                     categoryId = categoryId,
                     limitAmount = limitAmount,
+                    sortOrder = nextSortOrder,
                     month = month,
                     year = year
                 )
             )
+        }
+    }
+
+    suspend fun updateBudgetOrder(orderedBudgetIds: List<String>) {
+        val now = System.currentTimeMillis()
+        orderedBudgetIds.forEachIndexed { index, budgetId ->
+            budgetDao.updateBudgetSortOrder(budgetId, index, now)
         }
     }
 

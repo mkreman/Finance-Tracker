@@ -7,6 +7,7 @@ data class Budget(
     val categoryColor: String,
     val categoryIcon: String,
     val limitAmount: Double,
+    val sortOrder: Int,
     val spentAmount: Double
 ) {
     val progress: Float

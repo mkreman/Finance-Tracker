@@ -31,7 +31,7 @@ import java.util.*
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen(
-    onCategoryClick: (String, String, String) -> Unit = { _, _, _ -> },
+    onCategoryClick: (String, String, String, Int, Int) -> Unit = { _, _, _, _, _ -> },
     onEditTransaction: (String) -> Unit = {},
     onAddTransaction: () -> Unit = {},
     viewModel: DashboardViewModel = hiltViewModel()
@@ -203,6 +203,8 @@ fun DashboardScreen(
                     ClickableLegend(
                         data = chartData,
                         type = if (state.selectedOverview == OverviewType.INCOME) "INCOME" else "EXPENSE",
+                        month = currentMonth.get(Calendar.MONTH) + 1,
+                        year = currentMonth.get(Calendar.YEAR),
                         onCategoryClick = onCategoryClick
                     )
                 } else {
@@ -300,7 +302,9 @@ private fun AccountFilterDropdown(
 private fun ClickableLegend(
     data: List<ChartData>,
     type: String,
-    onCategoryClick: (String, String, String) -> Unit
+    month: Int,
+    year: Int,
+    onCategoryClick: (String, String, String, Int, Int) -> Unit
 ) {
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -311,7 +315,7 @@ private fun ClickableLegend(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable {
-                        onCategoryClick(item.categoryId, item.categoryName, type)
+                        onCategoryClick(item.categoryId, item.categoryName, type, month, year)
                     }
                     .padding(horizontal = 16.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically

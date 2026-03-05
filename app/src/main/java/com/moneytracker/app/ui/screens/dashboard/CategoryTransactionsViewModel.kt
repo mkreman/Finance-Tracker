@@ -26,9 +26,18 @@ class CategoryTransactionsViewModel @Inject constructor(
     val categoryId: String = savedStateHandle.get<String>("categoryId") ?: ""
     val categoryName: String = savedStateHandle.get<String>("categoryName") ?: "Category"
     val type: String = savedStateHandle.get<String>("type") ?: "EXPENSE"
+    private val initialMonth: Int? = savedStateHandle.get<String>("month")?.toIntOrNull()
+    private val initialYear: Int? = savedStateHandle.get<String>("year")?.toIntOrNull()
+
+    private val initialCalendar: Calendar = Calendar.getInstance().apply {
+        if (initialMonth != null && initialYear != null) {
+            set(Calendar.MONTH, initialMonth - 1)
+            set(Calendar.YEAR, initialYear)
+        }
+    }
 
     // Null represents "All Time". By default, start on the current month.
-    private val _currentMonth = MutableStateFlow<Calendar?>(Calendar.getInstance())
+    private val _currentMonth = MutableStateFlow<Calendar?>(initialCalendar)
     val currentMonth: StateFlow<Calendar?> = _currentMonth.asStateFlow()
 
     fun previousMonth() {

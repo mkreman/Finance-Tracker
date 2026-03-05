@@ -122,17 +122,29 @@ sealed class Screen(
     }
 
     object CategoryTransactions : Screen(
-        route = "category_transactions/{categoryId}/{categoryName}/{type}",
+        route = "category_transactions/{categoryId}/{categoryName}/{type}?month={month}&year={year}",
         title = "Category Transactions"
     ) {
-        fun createRoute(categoryId: String, categoryName: String, type: String) = "category_transactions/$categoryId/$categoryName/$type"
+        fun createRoute(categoryId: String, categoryName: String, type: String, month: Int? = null, year: Int? = null): String {
+            val base = "category_transactions/$categoryId/$categoryName/$type"
+            val parts = mutableListOf<String>()
+            if (month != null) parts.add("month=$month")
+            if (year != null) parts.add("year=$year")
+            return if (parts.isEmpty()) base else "$base?${parts.joinToString("&")}" 
+        }
     }
 
     object BudgetTransactions : Screen(
-        route = "budget_transactions/{categoryId}/{categoryName}",
+        route = "budget_transactions/{categoryId}/{categoryName}?month={month}&year={year}",
         title = "Budget Transactions"
     ) {
-        fun createRoute(categoryId: String, categoryName: String) = "budget_transactions/$categoryId/$categoryName"
+        fun createRoute(categoryId: String, categoryName: String, month: Int? = null, year: Int? = null): String {
+            val base = "budget_transactions/$categoryId/$categoryName"
+            val parts = mutableListOf<String>()
+            if (month != null) parts.add("month=$month")
+            if (year != null) parts.add("year=$year")
+            return if (parts.isEmpty()) base else "$base?${parts.joinToString("&")}" 
+        }
     }
 
     companion object {

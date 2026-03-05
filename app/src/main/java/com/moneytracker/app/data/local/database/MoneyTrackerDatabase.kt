@@ -9,6 +9,7 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.moneytracker.app.data.local.database.converters.Converters
 import com.moneytracker.app.data.local.database.dao.AccountDao
+import com.moneytracker.app.data.local.database.dao.BudgetAlertDao
 import com.moneytracker.app.data.local.database.dao.BudgetDao
 import com.moneytracker.app.data.local.database.dao.CategoryDao
 import com.moneytracker.app.data.local.database.dao.CategoryRecommendationDao
@@ -25,7 +26,7 @@ import java.util.UUID
         BudgetEntity::class,
         CategoryRecommendationEntity::class // Added new entity
     ],
-    version = 8, // Bumped to 8
+    version = 9, // Bumped to 9
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -36,36 +37,37 @@ abstract class MoneyTrackerDatabase : RoomDatabase() {
     abstract fun transactionDao(): TransactionDao
     abstract fun budgetDao(): BudgetDao
     abstract fun categoryRecommendationDao(): CategoryRecommendationDao
+    abstract fun budgetAlertDao(): BudgetAlertDao
 
     companion object {
         const val DATABASE_NAME = "money_tracker_db"
 
         private val MIGRATION_4_5 = object : Migration(4, 5) {
-            override fun migrate(database: SupportSQLiteDatabase) {
-                database.execSQL("ALTER TABLE transactions ADD COLUMN isRecurring INTEGER NOT NULL DEFAULT 0")
-                database.execSQL("ALTER TABLE transactions ADD COLUMN recurringInterval INTEGER")
-                database.execSQL("ALTER TABLE transactions ADD COLUMN recurringUnit TEXT")
-                database.execSQL("ALTER TABLE transactions ADD COLUMN recurringEndDate INTEGER")
-                database.execSQL("ALTER TABLE transactions ADD COLUMN parentRecurringId TEXT")
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE transactions ADD COLUMN isRecurring INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE transactions ADD COLUMN recurringInterval INTEGER")
+                db.execSQL("ALTER TABLE transactions ADD COLUMN recurringUnit TEXT")
+                db.execSQL("ALTER TABLE transactions ADD COLUMN recurringEndDate INTEGER")
+                db.execSQL("ALTER TABLE transactions ADD COLUMN parentRecurringId TEXT")
             }
         }
 
         private val MIGRATION_5_6 = object : Migration(5, 6) {
-            override fun migrate(database: SupportSQLiteDatabase) {
-                database.execSQL("ALTER TABLE accounts ADD COLUMN customTypeName TEXT")
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE accounts ADD COLUMN customTypeName TEXT")
             }
         }
 
         private val MIGRATION_6_7 = object : Migration(6, 7) {
-            override fun migrate(database: SupportSQLiteDatabase) {
-                database.execSQL("ALTER TABLE transactions ADD COLUMN notifyForRecurringEntries INTEGER NOT NULL DEFAULT 1")
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE transactions ADD COLUMN notifyForRecurringEntries INTEGER NOT NULL DEFAULT 1")
             }
         }
 
         // Added Migration for Category Recommendations
         private val MIGRATION_7_8 = object : Migration(7, 8) {
-            override fun migrate(database: SupportSQLiteDatabase) {
-                database.execSQL("""
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""
                     CREATE TABLE IF NOT EXISTS `category_recommendations` (
                         `payeePattern` TEXT NOT NULL,
                         `categoryId` TEXT NOT NULL,
@@ -74,6 +76,12 @@ abstract class MoneyTrackerDatabase : RoomDatabase() {
                         PRIMARY KEY(`payeePattern`)
                     )
                 """)
+            }
+        }
+
+        private val MIGRATION_8_9 = object : Migration(8, 9) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE budgets ADD COLUMN sortOrder INTEGER NOT NULL DEFAULT 0")
             }
         }
 
@@ -103,7 +111,7 @@ abstract class MoneyTrackerDatabase : RoomDatabase() {
                         }
                     }
                 })
-                .addMigrations(MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
+                .addMigrations(MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9)
                 .fallbackToDestructiveMigration()
                 .build()
         }

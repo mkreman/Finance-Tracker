@@ -3,6 +3,7 @@ package com.moneytracker.app.di
 import android.content.Context
 import com.moneytracker.app.data.local.database.MoneyTrackerDatabase
 import com.moneytracker.app.data.local.database.dao.AccountDao
+import com.moneytracker.app.data.local.database.dao.BudgetAlertDao
 import com.moneytracker.app.data.local.database.dao.BudgetDao
 import com.moneytracker.app.data.local.database.dao.CategoryDao
 import com.moneytracker.app.data.local.database.dao.CategoryRecommendationDao
@@ -47,5 +48,10 @@ object DatabaseModule {
     @Provides
     fun provideCategoryRecommendationDao(database: MoneyTrackerDatabase): CategoryRecommendationDao {
         return database.categoryRecommendationDao()
+    }
+
+    @Provides
+    fun provideBudgetAlertDao(database: MoneyTrackerDatabase): BudgetAlertDao {
+        return database.budgetAlertDao()
     }
 }

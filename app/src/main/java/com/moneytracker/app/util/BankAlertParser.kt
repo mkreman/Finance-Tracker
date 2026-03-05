@@ -8,7 +8,7 @@ data class ParsedBankAlert(
     val type: TransactionType,
     val amount: Double,
     val payee: String,
-    val note: String, // Kept for database compatibility, but hidden in notification
+    val note: String, 
     val rawText: String,
     val timestamp: Long,
     var suggestedCategoryId: String? = null,
@@ -48,12 +48,31 @@ object BankAlertParser {
 
         val payee = extractPayee(cleaned, type)
         
+        // Build the note string
+        val noteBuilder = buildString {
+            if (type == TransactionType.EXPENSE) {
+                if (normalized.contains("withdrawn") || normalized.contains("withdrawal")) {
+                    append("ATM Withdrawal: $payee (Auto-detected)")
+                } else {
+                    append("Paid to: $payee (Auto-detected)")
+                }
+            } else {
+                append("Received from: $payee (Auto-detected)")
+            }
+            
+            val refMatch = Regex("""(?i)\bref\s+([A-Z0-9]+)""").find(cleaned)?.groupValues?.getOrNull(1)
+            if (!refMatch.isNullOrBlank()) {
+                append(" • Ref ")
+                append(refMatch)
+            }
+        }
+
         return ParsedBankAlert(
             suggestionId = UUID.randomUUID().toString(),
             type = type,
             amount = amount,
             payee = payee,
-            note = "", // Sent as blank so it doesn't clutter the app UI later
+            note = noteBuilder, // FIX: Restored the actual note string here so it saves to the DB!
             rawText = rawMessage,
             timestamp = System.currentTimeMillis()
         )

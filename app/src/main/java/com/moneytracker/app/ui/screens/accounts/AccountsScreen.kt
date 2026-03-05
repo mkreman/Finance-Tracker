@@ -1,17 +1,19 @@
 package com.moneytracker.app.ui.screens.accounts
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.draggable
+import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowDownward
-import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.MoreVert
@@ -116,12 +118,32 @@ fun AccountsScreen(
                     style = MaterialTheme.typography.headlineMedium,
                     color = MaterialTheme.colorScheme.onSurface
                 )
-                Row {
-                    IconButton(onClick = onAddAccount) {
-                        Icon(Icons.Filled.Add, contentDescription = "Add Account", tint = MaterialTheme.colorScheme.onSurface)
+                
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    // Sort Button (Styled like the soft-colored Delete button)
+                    FilledIconButton(
+                        onClick = { showReorderDialog = true },
+                        modifier = Modifier.size(width = 56.dp, height = 35.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = IconButtonDefaults.filledIconButtonColors(
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            contentColor = MaterialTheme.colorScheme.secondary
+                        )
+                    ) {
+                        Icon(Icons.Filled.Sort, contentDescription = "Rearrange Sections", modifier = Modifier.size(20.dp))
                     }
-                    IconButton(onClick = { showReorderDialog = true }) {
-                        Icon(Icons.Filled.Sort, contentDescription = "Rearrange Sections", tint = MaterialTheme.colorScheme.onSurface)
+                    
+                    // Add Account Button (Styled like the solid Save/Done button)
+                    FilledIconButton(
+                        onClick = onAddAccount,
+                        modifier = Modifier.size(width = 56.dp, height = 35.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = IconButtonDefaults.filledIconButtonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        )
+                    ) {
+                        Icon(Icons.Filled.Add, contentDescription = "Add Account", modifier = Modifier.size(20.dp))
                     }
                 }
             }
@@ -351,8 +373,15 @@ fun ReorderDialog(
         onDismissRequest = onDismiss,
         title = { Text("Rearrange Account Types", color = MaterialTheme.colorScheme.onSurface) },
         text = {
-            Column {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 360.dp)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
                 order.forEachIndexed { index, type ->
+                    var dragY by remember(order, index) { mutableStateOf(0f) }
                     val label = when {
                         type == "CASH" -> "Cash"
                         type == "WALLET" -> "Wallet"
@@ -365,24 +394,35 @@ fun ReorderDialog(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 4.dp),
+                            .heightIn(min = 52.dp)
+                            .padding(vertical = 6.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(label, modifier = Modifier.weight(1f), color = MaterialTheme.colorScheme.onSurface)
-                        IconButton(onClick = { onMove(index, -1) }, enabled = index > 0) {
-                            Icon(
-                                Icons.Filled.ArrowUpward,
-                                contentDescription = "Move Up",
-                                tint = if (index > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                            )
-                        }
-                        IconButton(onClick = { onMove(index, 1) }, enabled = index < order.size - 1) {
-                            Icon(
-                                Icons.Filled.ArrowDownward,
-                                contentDescription = "Move Down",
-                                tint = if (index < order.size - 1) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                            )
-                        }
+                        Text(
+                            label,
+                            modifier = Modifier.weight(1f),
+                            color = MaterialTheme.colorScheme.onSurface,
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        FourDotDragHandle(
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier
+                                .size(30.dp)
+                                .draggable(
+                                    orientation = Orientation.Vertical,
+                                    state = rememberDraggableState { delta ->
+                                        dragY += delta
+                                    },
+                                    onDragStopped = {
+                                        if (dragY > 18f && index < order.size - 1) {
+                                            onMove(index, 1)
+                                        } else if (dragY < -18f && index > 0) {
+                                            onMove(index, -1)
+                                        }
+                                        dragY = 0f
+                                    }
+                                )
+                        )
                     }
                 }
             }
@@ -395,6 +435,25 @@ fun ReorderDialog(
         containerColor = MaterialTheme.colorScheme.surface,
         shape = RoundedCornerShape(16.dp)
     )
+}
+
+@Composable
+private fun FourDotDragHandle(
+    modifier: Modifier = Modifier,
+    tint: androidx.compose.ui.graphics.Color
+) {
+    Canvas(modifier = modifier) {
+        val radius = size.minDimension * 0.10f
+        val x1 = size.width * 0.35f
+        val x2 = size.width * 0.65f
+        val y1 = size.height * 0.35f
+        val y2 = size.height * 0.65f
+
+        drawCircle(color = tint, radius = radius, center = androidx.compose.ui.geometry.Offset(x1, y1))
+        drawCircle(color = tint, radius = radius, center = androidx.compose.ui.geometry.Offset(x2, y1))
+        drawCircle(color = tint, radius = radius, center = androidx.compose.ui.geometry.Offset(x1, y2))
+        drawCircle(color = tint, radius = radius, center = androidx.compose.ui.geometry.Offset(x2, y2))
+    }
 }
 
 @Composable

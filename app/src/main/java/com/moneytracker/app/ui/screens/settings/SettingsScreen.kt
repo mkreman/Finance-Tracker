@@ -253,15 +253,6 @@ fun SettingsScreen(
             onClick = { showAccountPicker = true }
         )
 
-        SettingsToggleItem(
-            icon = Icons.Filled.NotificationsActive,
-            title = "Default recurring notification",
-            subtitle = "Applied when creating new recurring entries",
-            iconTint = MaterialTheme.colorScheme.secondary,
-            isChecked = state.defaultNotifyForRecurringEntries,
-            onCheckedChange = viewModel::setDefaultNotifyForRecurringEntries
-        )
-
         if (showAccountPicker) {
             AlertDialog(
                 onDismissRequest = { showAccountPicker = false },
@@ -315,6 +306,38 @@ fun SettingsScreen(
                 shape = RoundedCornerShape(16.dp)
             )
         }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // --- NEW NOTIFICATIONS SECTION ---
+        SettingsSectionHeader("Notifications")
+
+        SettingsToggleItem(
+            icon = Icons.Filled.AccessTime,
+            title = "Daily Reminder",
+            subtitle = "Reminds you to add entries at 7:00 PM",
+            iconTint = MaterialTheme.colorScheme.primary,
+            isChecked = state.dailyReminderEnabled,
+            onCheckedChange = { viewModel.setDailyReminderEnabled(context, it) }
+        )
+
+        SettingsToggleItem(
+            icon = Icons.Filled.WarningAmber,
+            title = "Over Budget Alert",
+            subtitle = "Notify when you exceed a category limit",
+            iconTint = MaterialTheme.colorScheme.error,
+            isChecked = state.budgetAlertsEnabled,
+            onCheckedChange = viewModel::setBudgetAlertsEnabled
+        )
+
+        SettingsToggleItem(
+            icon = Icons.Filled.NotificationsActive,
+            title = "Recurring Notification",
+            subtitle = "Applied by default when creating recurring entries",
+            iconTint = MaterialTheme.colorScheme.secondary,
+            isChecked = state.defaultNotifyForRecurringEntries,
+            onCheckedChange = viewModel::setDefaultNotifyForRecurringEntries
+        )
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -603,7 +626,7 @@ fun SettingsScreen(
         SettingsItem(
             icon = Icons.Filled.Info,
             title = "Version",
-            subtitle = "1.1.0",
+            subtitle = "1.2.0",
             iconTint = MaterialTheme.colorScheme.onSurfaceVariant,
             onClick = { showVersionHistory = true }
         )
@@ -809,6 +832,38 @@ private fun VersionHistoryDialog(onDismiss: () -> Unit) {
                     .verticalScroll(rememberScrollState())
             ) {
                 VersionItem(
+                    version = "1.2.0",
+                    features = listOf(
+                        "Feature: Added a prominent bar for collapsed account sections.",
+                        "Feature: Added ability to rearrange the order of account types.",
+                        "Feature: Added category auto-recommendation storage with usage tracking and capped retention.",
+                        "Feature: Added ATM withdrawal detection in auto-detection flow.",
+                        "Feature: Added 5-second authentication bypass when reopening the app quickly.",
+                        "Feature: Added a Notifications section in Settings.",
+                        "Feature: Added daily reminder notification at 7:00 PM with toggle support.",
+                        "Feature: Added budget over-limit alert notifications.",
+                        "Feature: Moved recurring notification preference into Notifications settings.",
+                        "Feature: Moved Add button to the top in Account and Budget sections.",
+                        "Feature: Added option to rearrange budget order from the Budget screen.",
+                        "Feature: Kept add-transaction action available across all pages.",
+                        "Feature: Budget detail page now shows a summary card with limit, spent, and remaining/exceeded amounts.",
+                        "Feature: Added month selector to the budget detail page for browsing different months.",
+                        "Feature: Added drag-handle (6-dot) reordering for account and budget order dialogs.",
+                        "Improvement: Opening a budget detail now keeps the selected month from Budget screen.",
+                        "Improvement: Category selection in Add Transaction is now single-select.",
+                        "Improvement: Category list in Add Transaction now uses a 3-row horizontally scrollable layout.",
+                        "Improvement: Categories in Add Transaction are sorted alphabetically.",
+                        "Improvement: Opening a dashboard category detail now keeps the selected month from Dashboard.",
+                        "Improvement: Notes are skipped only for notification suggestions, not for transaction entries.",
+                        "Improvement: Budget detail page clearly shows exceeded amount when over budget.",
+                        "Fixed: Category detail summary panel now uses the same rounded boundary style as other summary panels.",
+                        "Fixed: Tapping a budget alert notification now opens the matching budget summary page.",
+                        "Fixed: Notification channels now use default sound and improved visibility behavior.",
+                        "Fixed: Replaced deprecated Divider with HorizontalDivider in version history."
+                    )
+                )
+
+                VersionItem(
                     version = "1.1.0",
                     features = listOf(
                         "Feature: Show account's color and icon in add transaction.",
@@ -1007,7 +1062,7 @@ private fun VersionItem(version: String, features: List<String>) {
             }
         }
         Spacer(modifier = Modifier.height(8.dp))
-        Divider(
+        HorizontalDivider(
             color = MaterialTheme.colorScheme.surfaceVariant,
             thickness = 1.dp
         )

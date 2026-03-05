@@ -8,6 +8,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.util.*
+import java.util.Collections
 import javax.inject.Inject
 
 data class BudgetState(
@@ -50,6 +51,21 @@ class BudgetViewModel @Inject constructor(
         }
     }
 
+    fun moveBudget(index: Int, direction: Int) {
+        val current = _state.value.budgets
+        if (current.isEmpty()) return
+
+        val targetIndex = index + direction
+        if (targetIndex !in current.indices) return
+
+        val reordered = current.map { it.id }.toMutableList()
+        Collections.swap(reordered, index, targetIndex)
+
+        viewModelScope.launch {
+            budgetRepository.updateBudgetOrder(reordered)
+        }
+    }
+
     private fun observeBudgets() {
         viewModelScope.launch {
             _currentMonth.collectLatest { calendar ->
@@ -59,14 +75,11 @@ class BudgetViewModel @Inject constructor(
 
                 budgetRepository.getBudgetsWithSpending(month, year, startDate, endDate)
                     .collect { budgets ->
-                        // FIX: Sort the budgets descending by their limit amount
-                        val sortedBudgets = budgets.sortedByDescending { it.limitAmount }
-                        
                         _state.update {
                             it.copy(
-                                budgets = sortedBudgets,
-                                totalBudget = sortedBudgets.sumOf { b -> b.limitAmount },
-                                totalSpent = sortedBudgets.sumOf { b -> b.spentAmount },
+                                budgets = budgets,
+                                totalBudget = budgets.sumOf { b -> b.limitAmount },
+                                totalSpent = budgets.sumOf { b -> b.spentAmount },
                                 isLoading = false
                             )
                         }

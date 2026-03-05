@@ -44,9 +44,9 @@ fun NavGraph(navController: NavHostController) {
     ) {
         composable(Screen.Dashboard.route) {
             DashboardScreen(
-                onCategoryClick = { categoryId, categoryName, type ->
+                onCategoryClick = { categoryId, categoryName, type, month, year ->
                     navController.navigate(
-                        Screen.CategoryTransactions.createRoute(categoryId, categoryName, type)
+                        Screen.CategoryTransactions.createRoute(categoryId, categoryName, type, month, year)
                     )
                 },
                 onEditTransaction = { transactionId ->
@@ -96,9 +96,9 @@ fun NavGraph(navController: NavHostController) {
                 onAddTransaction = {
                     navController.navigate(Screen.AddTransaction.createRoute())
                 },
-                onBudgetClick = { categoryId, categoryName ->
+                onBudgetClick = { categoryId, categoryName, month, year ->
                     navController.navigate(
-                        Screen.BudgetTransactions.createRoute(categoryId, categoryName)
+                        Screen.BudgetTransactions.createRoute(categoryId, categoryName, month, year)
                     )
                 },
                 onEditBudget = { budgetId, categoryId, categoryName, limitAmount, month, year ->
@@ -246,7 +246,9 @@ fun NavGraph(navController: NavHostController) {
             arguments = listOf(
                 navArgument("categoryId") { type = NavType.StringType },
                 navArgument("categoryName") { type = NavType.StringType },
-                navArgument("type") { type = NavType.StringType }
+                navArgument("type") { type = NavType.StringType },
+                navArgument("month") { type = NavType.StringType; nullable = true; defaultValue = null },
+                navArgument("year") { type = NavType.StringType; nullable = true; defaultValue = null }
             )
         ) {
             CategoryTransactionsScreen(
@@ -261,7 +263,9 @@ fun NavGraph(navController: NavHostController) {
             route = Screen.BudgetTransactions.route,
             arguments = listOf(
                 navArgument("categoryId") { type = NavType.StringType },
-                navArgument("categoryName") { type = NavType.StringType }
+                navArgument("categoryName") { type = NavType.StringType },
+                navArgument("month") { type = NavType.StringType; nullable = true; defaultValue = null },
+                navArgument("year") { type = NavType.StringType; nullable = true; defaultValue = null }
             )
         ) {
             BudgetTransactionsScreen(
