@@ -35,6 +35,19 @@ class AddTransactionViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
+    private fun decodeReceiptUris(serialized: String?): List<String> {
+        return serialized
+            ?.split("\n")
+            ?.map { it.trim() }
+            ?.filter { it.isNotBlank() }
+            ?: emptyList()
+    }
+
+    private fun encodeReceiptUris(uris: List<String>): String? {
+        val cleaned = uris.map { it.trim() }.filter { it.isNotBlank() }
+        return if (cleaned.isEmpty()) null else cleaned.joinToString("\n")
+    }
+
     private fun toEditableAmount(value: Double): String {
         return BigDecimal.valueOf(value)
             .stripTrailingZeros()
@@ -105,6 +118,7 @@ class AddTransactionViewModel @Inject constructor(
                     recurringUnit = recurrenceSource?.recurringUnit ?: RecurringUnit.MONTH,
                     recurringEndDate = recurrenceSource?.recurringEndDate,
                     notifyForRecurringEntries = recurrenceSource?.notifyForRecurringEntries ?: transaction.notifyForRecurringEntries,
+                    receiptUris = decodeReceiptUris(transaction.receiptUri),
                     selectedCategoryIds = primarySplit?.categoryId
                         ?.takeIf { it.isNotBlank() }
                         ?.let { setOf(it) }
@@ -393,6 +407,21 @@ class AddTransactionViewModel @Inject constructor(
         _state.update { it.copy(notifyForRecurringEntries = enabled) }
     }
 
+    fun addReceiptUri(uri: String) {
+        _state.update { state ->
+            if (uri.isBlank() || uri in state.receiptUris) state
+            else state.copy(receiptUris = state.receiptUris + uri)
+        }
+    }
+
+    fun removeReceiptUri(uri: String) {
+        _state.update { state -> state.copy(receiptUris = state.receiptUris.filterNot { it == uri }) }
+    }
+
+    fun clearAllReceipts() {
+        _state.update { it.copy(receiptUris = emptyList()) }
+    }
+
     fun saveTransaction() {
         val currentState = _state.value
         if (currentState.isSaving) return
@@ -435,7 +464,8 @@ class AddTransactionViewModel @Inject constructor(
                     recurringUnit = if (shouldPersistRecurringOnThisEntry) currentState.recurringUnit else null,
                     recurringEndDate = if (shouldPersistRecurringOnThisEntry) currentState.recurringEndDate else null,
                     parentRecurringId = currentState.parentRecurringId ?: existingTransaction?.parentRecurringId,
-                    notifyForRecurringEntries = if (shouldPersistRecurringOnThisEntry) currentState.notifyForRecurringEntries else true
+                    notifyForRecurringEntries = if (shouldPersistRecurringOnThisEntry) currentState.notifyForRecurringEntries else true,
+                    receiptUri = encodeReceiptUris(currentState.receiptUris)
                 )
 
                 val splits = if (currentState.type == TransactionType.TRANSFER) {

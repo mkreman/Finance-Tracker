@@ -41,7 +41,7 @@ class UserPreferences @Inject constructor(
         val DAILY_REMINDER_ENABLED = booleanPreferencesKey("daily_reminder_enabled")
         val BUDGET_ALERTS_ENABLED = booleanPreferencesKey("budget_alerts_enabled")
 
-        val defaultAccountOrder = listOf("CASH", "WALLET", "BANK", "INVESTMENT", "PEOPLE")
+        val defaultAccountOrder = listOf("WALLET", "BANK", "INVESTMENT", "PEOPLE")
 
         data class CurrencyInfo(val code: String, val symbol: String, val name: String)
 

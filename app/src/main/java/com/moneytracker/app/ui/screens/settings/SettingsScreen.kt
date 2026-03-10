@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.moneytracker.app.data.local.UserPreferences
 import com.moneytracker.app.ui.components.CategoryIcons
+import com.moneytracker.app.ui.components.MonthSelector
 import com.moneytracker.app.ui.components.parseHexColor
 import java.util.Calendar
 
@@ -46,6 +47,9 @@ fun SettingsScreen(
     val context = LocalContext.current
     var showVersionHistory by remember { mutableStateOf(false) }
     var showAbout by remember { mutableStateOf(false) }
+    var showMonthlyExportDialog by remember { mutableStateOf(false) }
+    var monthlyExportFormat by remember { mutableStateOf("CSV") }
+    var selectedExportMonth by remember { mutableStateOf(Calendar.getInstance()) }
 
     val exportLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("application/json")
@@ -57,6 +61,29 @@ fun SettingsScreen(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri ->
         uri?.let { viewModel.importData(context, it) }
+    }
+
+    var pendingCsvMonthYear by remember { mutableStateOf<Pair<Int, Int>?>(null) }
+    var pendingPdfMonthYear by remember { mutableStateOf<Pair<Int, Int>?>(null) }
+
+    val csvExportLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("text/csv")
+    ) { uri ->
+        val monthYear = pendingCsvMonthYear
+        if (uri != null && monthYear != null) {
+            viewModel.exportMonthlyCsv(context, uri, monthYear.first, monthYear.second)
+        }
+        pendingCsvMonthYear = null
+    }
+
+    val pdfExportLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("application/pdf")
+    ) { uri ->
+        val monthYear = pendingPdfMonthYear
+        if (uri != null && monthYear != null) {
+            viewModel.exportMonthlyPdf(context, uri, monthYear.first, monthYear.second)
+        }
+        pendingPdfMonthYear = null
     }
 
     LaunchedEffect(state.exportMessage) {
@@ -569,6 +596,30 @@ fun SettingsScreen(
         )
 
         SettingsItem(
+            icon = Icons.Filled.TableChart,
+            title = "Export Monthly CSV",
+            subtitle = "Readable in Excel/Google Sheets",
+            iconTint = MaterialTheme.colorScheme.secondary,
+            onClick = {
+                monthlyExportFormat = "CSV"
+                selectedExportMonth = Calendar.getInstance()
+                showMonthlyExportDialog = true
+            }
+        )
+
+        SettingsItem(
+            icon = Icons.Filled.PictureAsPdf,
+            title = "Export Monthly PDF",
+            subtitle = "Clean report for sharing/taxes",
+            iconTint = MaterialTheme.colorScheme.tertiary,
+            onClick = {
+                monthlyExportFormat = "PDF"
+                selectedExportMonth = Calendar.getInstance()
+                showMonthlyExportDialog = true
+            }
+        )
+
+        SettingsItem(
             icon = Icons.Filled.FileUpload,
             title = "Import Data",
             subtitle = "Import from JSON",
@@ -610,6 +661,67 @@ fun SettingsScreen(
                 },
                 dismissButton = {
                     TextButton(onClick = { showResetDialog = false }) {
+                        Text("Cancel", color = MaterialTheme.colorScheme.onSurface)
+                    }
+                },
+                containerColor = MaterialTheme.colorScheme.surface,
+                shape = RoundedCornerShape(16.dp)
+            )
+        }
+
+        if (showMonthlyExportDialog) {
+            AlertDialog(
+                onDismissRequest = { showMonthlyExportDialog = false },
+                title = {
+                    Text(
+                        text = "Select Month to Export",
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                },
+                text = {
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        MonthSelector(
+                            currentMonth = selectedExportMonth,
+                            onPreviousMonth = {
+                                selectedExportMonth = (selectedExportMonth.clone() as Calendar).apply { add(Calendar.MONTH, -1) }
+                            },
+                            onNextMonth = {
+                                selectedExportMonth = (selectedExportMonth.clone() as Calendar).apply { add(Calendar.MONTH, 1) }
+                            }
+                        )
+                        Text(
+                            text = if (monthlyExportFormat == "CSV")
+                                "CSV includes TIME, TYPE, AMOUNT, CATEGORY, ACCOUNT, NOTES"
+                            else
+                                "PDF includes TIME, TYPE, AMOUNT, CATEGORY, ACCOUNT, NOTES",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                },
+                confirmButton = {
+                    Button(onClick = {
+                        val month = selectedExportMonth.get(Calendar.MONTH) + 1
+                        val year = selectedExportMonth.get(Calendar.YEAR)
+                        val stamp = String.format(java.util.Locale.US, "%04d_%02d", year, month)
+                        if (monthlyExportFormat == "CSV") {
+                            pendingCsvMonthYear = month to year
+                            csvExportLauncher.launch("MoneyTracker_Report_$stamp.csv")
+                        } else {
+                            pendingPdfMonthYear = month to year
+                            pdfExportLauncher.launch("MoneyTracker_Report_$stamp.pdf")
+                        }
+                        showMonthlyExportDialog = false
+                    }) {
+                        Text("Export")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showMonthlyExportDialog = false }) {
                         Text("Cancel", color = MaterialTheme.colorScheme.onSurface)
                     }
                 },
@@ -846,9 +958,11 @@ private fun VersionHistoryDialog(onDismiss: () -> Unit) {
                         "Feature: Moved Add button to the top in Account and Budget sections.",
                         "Feature: Added option to rearrange budget order from the Budget screen.",
                         "Feature: Kept add-transaction action available across all pages.",
+                        "Feature: Added monthly export options for CSV (Excel/Sheets) and PDF reports.",
+                        "Feature: Added receipt/image attachments for transactions (capture photo or upload invoice).",
                         "Feature: Budget detail page now shows a summary card with limit, spent, and remaining/exceeded amounts.",
                         "Feature: Added month selector to the budget detail page for browsing different months.",
-                        "Feature: Added drag-handle (6-dot) reordering for account and budget order dialogs.",
+                        "Feature: Added drag-handle (4-dot) reordering for account and budget order dialogs.",
                         "Improvement: Opening a budget detail now keeps the selected month from Budget screen.",
                         "Improvement: Category selection in Add Transaction is now single-select.",
                         "Improvement: Category list in Add Transaction now uses a 3-row horizontally scrollable layout.",

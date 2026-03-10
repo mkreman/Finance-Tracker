@@ -28,7 +28,8 @@ data class AddTransactionState(
     val recurringInterval: String = "1",
     val recurringUnit: RecurringUnit = RecurringUnit.MONTH,
     val recurringEndDate: Long? = null,
-    val notifyForRecurringEntries: Boolean = true
+    val notifyForRecurringEntries: Boolean = true,
+    val receiptUris: List<String> = emptyList()
 ) {
     val totalAmount: Double
         get() = amount.toDoubleOrNull() ?: 0.0

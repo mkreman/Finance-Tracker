@@ -40,7 +40,8 @@ data class TransactionEntity(
     val recurringUnit: RecurringUnit? = null,
     val recurringEndDate: Long? = null,
     val parentRecurringId: String? = null,
-    val notifyForRecurringEntries: Boolean = true
+    val notifyForRecurringEntries: Boolean = true,
+    val receiptUri: String? = null
 )
 
 enum class RecurringUnit {

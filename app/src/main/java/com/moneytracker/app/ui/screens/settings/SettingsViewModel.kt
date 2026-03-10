@@ -1,6 +1,8 @@
 package com.moneytracker.app.ui.screens.settings
 
 import android.content.Context
+import android.graphics.Paint
+import android.graphics.pdf.PdfDocument
 import android.net.Uri
 import androidx.glance.appwidget.updateAll
 import androidx.lifecycle.ViewModel
@@ -23,7 +25,9 @@ import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.BufferedWriter
+import java.io.OutputStream
 import java.io.OutputStreamWriter
+import java.text.SimpleDateFormat
 import java.util.*
 import javax.inject.Inject
 
@@ -111,6 +115,50 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    fun exportMonthlyCsv(context: Context, uri: Uri, month: Int, year: Int) {
+        viewModelScope.launch {
+            try {
+                val rows = buildMonthlyExportRows(month, year)
+                context.contentResolver.openOutputStream(uri)?.use { outputStream ->
+                    BufferedWriter(OutputStreamWriter(outputStream)).use { writer ->
+                        writer.write("TIME,TYPE,AMOUNT,CATEGORY,ACCOUNT,NOTES")
+                        writer.newLine()
+                        rows.forEach { row ->
+                            writer.write(
+                                listOf(
+                                    csvValue(row.time),
+                                    csvValue(row.type),
+                                    csvValue(row.amount),
+                                    csvValue(row.category),
+                                    csvValue(row.account),
+                                    csvValue(row.notes)
+                                ).joinToString(",")
+                            )
+                            writer.newLine()
+                        }
+                    }
+                }
+                _state.update { it.copy(exportMessage = "CSV exported: ${rows.size} transactions") }
+            } catch (e: Exception) {
+                _state.update { it.copy(exportMessage = "CSV export failed: ${e.message}") }
+            }
+        }
+    }
+
+    fun exportMonthlyPdf(context: Context, uri: Uri, month: Int, year: Int) {
+        viewModelScope.launch {
+            try {
+                val rows = buildMonthlyExportRows(month, year)
+                context.contentResolver.openOutputStream(uri)?.use { outputStream ->
+                    writeMonthlyPdf(outputStream, rows, month, year)
+                }
+                _state.update { it.copy(exportMessage = "PDF exported: ${rows.size} transactions") }
+            } catch (e: Exception) {
+                _state.update { it.copy(exportMessage = "PDF export failed: ${e.message}") }
+            }
+        }
+    }
+
     // ==========================================
     // EXPORT JSON
     // ==========================================
@@ -165,6 +213,7 @@ class SettingsViewModel @Inject constructor(
                         put("totalAmount", txn.totalAmount)
                         put("note", txn.note ?: "")
                         put("payee", txn.payee)
+                        put("receiptUri", txn.receiptUri ?: "")
                         
                         put("fromAccountName", accountMap[txn.accountId]?.name ?: "Unknown")
                         if (txn.type == TransactionType.TRANSFER) {
@@ -198,6 +247,159 @@ class SettingsViewModel @Inject constructor(
                 _state.update { it.copy(exportMessage = "Export failed: ${e.message}") }
             }
         }
+    }
+
+    private data class MonthlyExportRow(
+        val time: String,
+        val type: String,
+        val amount: String,
+        val category: String,
+        val account: String,
+        val notes: String
+    )
+
+    private suspend fun buildMonthlyExportRows(month: Int, year: Int): List<MonthlyExportRow> {
+        val transactions = transactionRepository.getAllTransactionsRaw()
+        val accounts = accountRepository.getAllAccountsOnce()
+        val accountMap = accounts.associateBy { it.id }
+        val categories = categoryRepository.getAllCategories().firstOrNull().orEmpty()
+        val categoryMap = categories.associateBy { it.id }
+
+        val start = Calendar.getInstance().apply {
+            set(Calendar.YEAR, year)
+            set(Calendar.MONTH, month - 1)
+            set(Calendar.DAY_OF_MONTH, 1)
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }.timeInMillis
+
+        val end = Calendar.getInstance().apply {
+            set(Calendar.YEAR, year)
+            set(Calendar.MONTH, month - 1)
+            set(Calendar.DAY_OF_MONTH, getActualMaximum(Calendar.DAY_OF_MONTH))
+            set(Calendar.HOUR_OF_DAY, 23)
+            set(Calendar.MINUTE, 59)
+            set(Calendar.SECOND, 59)
+            set(Calendar.MILLISECOND, 999)
+        }.timeInMillis
+
+        val timeFormat = SimpleDateFormat("MMM dd, yyyy hh:mm a", Locale.getDefault())
+
+        return transactions
+            .asSequence()
+            .filter { it.transaction.date in start..end }
+            .sortedBy { it.transaction.date }
+            .map { txnWithSplits ->
+                val txn = txnWithSplits.transaction
+
+                val typeText = when (txn.type) {
+                    TransactionType.INCOME -> "(+) Income"
+                    TransactionType.EXPENSE -> "(-) Expense"
+                    TransactionType.TRANSFER -> "(*) Transfer"
+                }
+
+                val categoryText = when (txn.type) {
+                    TransactionType.TRANSFER -> "-"
+                    else -> txnWithSplits.splits
+                        .mapNotNull { split -> categoryMap[split.categoryId]?.name }
+                        .distinct()
+                        .joinToString(" | ")
+                        .ifBlank { "Unknown" }
+                }
+
+                val fromName = accountMap[txn.accountId]?.name ?: "Unknown"
+                val accountText = if (txn.type == TransactionType.TRANSFER) {
+                    val toName = txn.toAccountId?.let { accountMap[it]?.name } ?: "Unknown"
+                    "$fromName->$toName"
+                } else {
+                    fromName
+                }
+
+                MonthlyExportRow(
+                    time = timeFormat.format(Date(txn.date)),
+                    type = typeText,
+                    amount = String.format(Locale.US, "%.2f", txn.totalAmount),
+                    category = categoryText,
+                    account = accountText,
+                    notes = txn.note.orEmpty()
+                )
+            }
+            .toList()
+    }
+
+    private fun csvValue(value: String): String {
+        val escaped = value.replace("\"", "\"\"")
+        return "\"$escaped\""
+    }
+
+    private fun writeMonthlyPdf(
+        outputStream: OutputStream,
+        rows: List<MonthlyExportRow>,
+        month: Int,
+        year: Int
+    ) {
+        val pdf = PdfDocument()
+        val titlePaint = Paint().apply { textSize = 14f; isFakeBoldText = true }
+        val headerPaint = Paint().apply { textSize = 10f; isFakeBoldText = true }
+        val textPaint = Paint().apply { textSize = 9f }
+
+        val pageWidth = 842
+        val pageHeight = 595
+        val margin = 24
+        val rowHeight = 16
+
+        val monthName = Calendar.getInstance().apply {
+            set(Calendar.MONTH, month - 1)
+        }.getDisplayName(Calendar.MONTH, Calendar.LONG, Locale.getDefault()) ?: "$month"
+
+        val colX = intArrayOf(24, 190, 280, 360, 470, 620)
+
+        var pageNumber = 1
+        var y = margin
+        var page = pdf.startPage(PdfDocument.PageInfo.Builder(pageWidth, pageHeight, pageNumber).create())
+        var canvas = page.canvas
+
+        fun drawHeader() {
+            y = margin
+            canvas.drawText("MoneyTracker Monthly Report - $monthName $year", margin.toFloat(), y.toFloat(), titlePaint)
+            y += 22
+            canvas.drawText("TIME", colX[0].toFloat(), y.toFloat(), headerPaint)
+            canvas.drawText("TYPE", colX[1].toFloat(), y.toFloat(), headerPaint)
+            canvas.drawText("AMOUNT", colX[2].toFloat(), y.toFloat(), headerPaint)
+            canvas.drawText("CATEGORY", colX[3].toFloat(), y.toFloat(), headerPaint)
+            canvas.drawText("ACCOUNT", colX[4].toFloat(), y.toFloat(), headerPaint)
+            canvas.drawText("NOTES", colX[5].toFloat(), y.toFloat(), headerPaint)
+            y += rowHeight
+        }
+
+        fun trimToWidth(value: String, maxChars: Int): String =
+            if (value.length <= maxChars) value else value.take(maxChars - 1) + "…"
+
+        drawHeader()
+
+        rows.forEach { row ->
+            if (y > pageHeight - margin) {
+                pdf.finishPage(page)
+                pageNumber += 1
+                page = pdf.startPage(PdfDocument.PageInfo.Builder(pageWidth, pageHeight, pageNumber).create())
+                canvas = page.canvas
+                drawHeader()
+            }
+
+            canvas.drawText(trimToWidth(row.time, 25), colX[0].toFloat(), y.toFloat(), textPaint)
+            canvas.drawText(trimToWidth(row.type, 12), colX[1].toFloat(), y.toFloat(), textPaint)
+            canvas.drawText(trimToWidth(row.amount, 12), colX[2].toFloat(), y.toFloat(), textPaint)
+            canvas.drawText(trimToWidth(row.category, 18), colX[3].toFloat(), y.toFloat(), textPaint)
+            canvas.drawText(trimToWidth(row.account, 16), colX[4].toFloat(), y.toFloat(), textPaint)
+            canvas.drawText(trimToWidth(row.notes, 28), colX[5].toFloat(), y.toFloat(), textPaint)
+            y += rowHeight
+        }
+
+        pdf.finishPage(page)
+        pdf.writeTo(outputStream)
+        pdf.close()
     }
 
     // ==========================================
@@ -345,6 +547,7 @@ class SettingsViewModel @Inject constructor(
                             toAccountId = toAccountId,
                             payee = txnObj.optString("payee", "Transaction"),
                             note = txnObj.optString("note", "").ifBlank { null },
+                            receiptUri = txnObj.optString("receiptUri", "").ifBlank { null },
                             date = txnObj.getLong("date"),
                             totalAmount = txnObj.getDouble("totalAmount"),
                             type = type,

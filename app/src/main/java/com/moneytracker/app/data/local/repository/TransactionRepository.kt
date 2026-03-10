@@ -256,6 +256,7 @@ class TransactionRepository @Inject constructor(
             recurringEndDate = transaction.recurringEndDate,
             parentRecurringId = transaction.parentRecurringId,
             notifyForRecurringEntries = transaction.notifyForRecurringEntries,
+            receiptUri = transaction.receiptUri,
             toAccountId = transaction.toAccountId,
             toAccountName = toAccount?.name,
             splits = splits.map { split ->

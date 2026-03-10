@@ -26,7 +26,7 @@ import java.util.UUID
         BudgetEntity::class,
         CategoryRecommendationEntity::class // Added new entity
     ],
-    version = 9, // Bumped to 9
+    version = 10, // Bumped to 10
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -85,6 +85,12 @@ abstract class MoneyTrackerDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_9_10 = object : Migration(9, 10) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE transactions ADD COLUMN receiptUri TEXT")
+            }
+        }
+
         fun buildDatabase(context: Context): MoneyTrackerDatabase {
             return Room.databaseBuilder(
                 context.applicationContext,
@@ -111,7 +117,7 @@ abstract class MoneyTrackerDatabase : RoomDatabase() {
                         }
                     }
                 })
-                .addMigrations(MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9)
+                .addMigrations(MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10)
                 .fallbackToDestructiveMigration()
                 .build()
         }

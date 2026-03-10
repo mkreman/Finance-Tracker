@@ -2,7 +2,13 @@ package com.moneytracker.app.ui.screens.transactions
 
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import android.widget.Toast
+import android.widget.ImageView
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -40,12 +46,15 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.core.content.FileProvider
+import androidx.compose.ui.viewinterop.AndroidView
 import com.moneytracker.app.data.local.database.entities.TransactionType
 import com.moneytracker.app.domain.model.Category
 import com.moneytracker.app.ui.components.CategoryIcons
 import com.moneytracker.app.ui.components.LocalCurrencySymbol
 import com.moneytracker.app.ui.components.parseHexColor
 import kotlinx.coroutines.launch
+import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -60,6 +69,30 @@ fun AddTransactionScreen(
     val context = LocalContext.current
     val focusRequester = remember { FocusRequester() }
     val keyboardController = LocalSoftwareKeyboardController.current
+    var pendingCameraUri by remember { mutableStateOf<Uri?>(null) }
+
+    val pickImageLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri != null) {
+            runCatching {
+                context.contentResolver.takePersistableUriPermission(
+                    uri,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION
+                )
+            }
+            viewModel.addReceiptUri(uri.toString())
+        }
+    }
+
+    val cameraLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture()
+    ) { success ->
+        if (success) {
+            pendingCameraUri?.let { viewModel.addReceiptUri(it.toString()) }
+        }
+        pendingCameraUri = null
+    }
 
     LaunchedEffect(Unit) {
         kotlinx.coroutines.delay(300)
@@ -365,8 +398,43 @@ fun AddTransactionScreen(
                 shape = RoundedCornerShape(12.dp),
                 leadingIcon = {
                     Icon(Icons.Filled.Notes, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
+                },
+                trailingIcon = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        IconButton(
+                            onClick = {
+                                val uri = createReceiptImageUri(context)
+                                pendingCameraUri = uri
+                                cameraLauncher.launch(uri)
+                            }
+                        ) {
+                            Icon(
+                                Icons.Filled.PhotoCamera,
+                                contentDescription = "Capture receipt",
+                                tint = if (state.receiptUris.isEmpty()) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary
+                            )
+                        }
+                        IconButton(
+                            onClick = { pickImageLauncher.launch(arrayOf("image/*")) }
+                        ) {
+                            Icon(
+                                Icons.Filled.UploadFile,
+                                contentDescription = "Upload receipt",
+                                tint = if (state.receiptUris.isEmpty()) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
                 }
             )
+
+            if (state.receiptUris.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(12.dp))
+                ReceiptAttachmentsPreviewSection(
+                    receiptUris = state.receiptUris,
+                    onRemove = viewModel::removeReceiptUri,
+                    onClearAll = viewModel::clearAllReceipts
+                )
+            }
 
             Spacer(modifier = Modifier.height(12.dp))
 
@@ -507,6 +575,76 @@ fun AddTransactionScreen(
                 }
             }
             Spacer(modifier = Modifier.height(16.dp))
+        }
+    }
+}
+
+private fun createReceiptImageUri(context: Context): Uri {
+    val directory = File(context.cacheDir, "images").apply { mkdirs() }
+    val file = File(directory, "receipt_${System.currentTimeMillis()}.jpg")
+    return FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+}
+
+@Composable
+private fun ReceiptAttachmentsPreviewSection(
+    receiptUris: List<String>,
+    onRemove: (String) -> Unit,
+    onClearAll: () -> Unit
+) {
+    val parsedUris = receiptUris.mapNotNull { runCatching { Uri.parse(it) }.getOrNull() }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .padding(16.dp)
+    ) {
+        Text(
+            "Receipt / Invoice",
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        if (parsedUris.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                parsedUris.forEach { uri ->
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(150.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(MaterialTheme.colorScheme.surface)
+                    ) {
+                        AndroidView(
+                            factory = { viewContext ->
+                                ImageView(viewContext).apply {
+                                    scaleType = ImageView.ScaleType.CENTER_CROP
+                                }
+                            },
+                            update = { imageView -> imageView.setImageURI(uri) },
+                            modifier = Modifier.fillMaxSize()
+                        )
+
+                        TextButton(
+                            onClick = { onRemove(uri.toString()) },
+                            modifier = Modifier.align(Alignment.TopEnd)
+                        ) {
+                            Icon(Icons.Filled.DeleteOutline, contentDescription = null)
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Remove")
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+            TextButton(onClick = onClearAll) {
+                Icon(Icons.Filled.DeleteOutline, contentDescription = null)
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("Remove all attachments")
+            }
         }
     }
 }

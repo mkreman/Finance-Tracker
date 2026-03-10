@@ -18,6 +18,7 @@ data class Transaction(
     val recurringEndDate: Long? = null,
     val parentRecurringId: String? = null,
     val notifyForRecurringEntries: Boolean = true,
+    val receiptUri: String? = null,
     val toAccountId: String? = null,
     val toAccountName: String? = null,
     val splits: List<TransactionSplit>
