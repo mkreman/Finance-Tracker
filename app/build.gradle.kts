@@ -48,6 +48,7 @@ android {
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            excludes += "META-INF/DEPENDENCIES"
         }
     }
 }
@@ -83,6 +84,12 @@ dependencies {
 
     // WorkManager
     implementation("androidx.work:work-runtime-ktx:2.9.0")
+
+    // Google Sign-In + Drive REST API
+    implementation("com.google.android.gms:play-services-auth:21.2.0")
+    implementation("com.google.api-client:google-api-client-android:2.6.0")
+    implementation("com.google.apis:google-api-services-drive:v3-rev20211107-1.32.1")
+    implementation("com.google.http-client:google-http-client-gson:1.45.0")
 
     // Biometric
     implementation("androidx.biometric:biometric:1.1.0")

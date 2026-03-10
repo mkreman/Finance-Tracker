@@ -8,6 +8,9 @@ import androidx.glance.appwidget.updateAll
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.moneytracker.app.data.local.UserPreferences
+import com.moneytracker.app.data.backup.BackupResult
+import com.moneytracker.app.data.backup.CloudBackupScheduler
+import com.moneytracker.app.data.backup.GoogleDriveBackupService
 import com.moneytracker.app.data.local.database.entities.SyncStatus
 import com.moneytracker.app.data.local.database.entities.TransactionEntity
 import com.moneytracker.app.data.local.database.entities.TransactionSplitEntity
@@ -44,6 +47,8 @@ data class SettingsState(
     val themeMode: Int = 0, // 0=system,1=light,2=dark
     val dailyReminderEnabled: Boolean = false,
     val budgetAlertsEnabled: Boolean = true,
+    val autoCloudBackupEnabled: Boolean = false,
+    val lastCloudBackupTime: Long = 0L,
 )
 
 @HiltViewModel
@@ -52,6 +57,8 @@ class SettingsViewModel @Inject constructor(
     private val accountRepository: AccountRepository,
     private val categoryRepository: CategoryRepository,
     private val budgetRepository: BudgetRepository,
+    private val cloudBackupScheduler: CloudBackupScheduler,
+    private val googleDriveBackupService: GoogleDriveBackupService,
     private val userPreferences: UserPreferences,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
@@ -82,6 +89,16 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             userPreferences.budgetAlertsEnabled.collect { enabled ->
                 _state.update { it.copy(budgetAlertsEnabled = enabled) }
+            }
+        }
+        viewModelScope.launch {
+            userPreferences.autoCloudBackupEnabled.collect { enabled ->
+                _state.update { it.copy(autoCloudBackupEnabled = enabled) }
+            }
+        }
+        viewModelScope.launch {
+            userPreferences.lastCloudBackupTime.collect { timestamp ->
+                _state.update { it.copy(lastCloudBackupTime = timestamp) }
             }
         }
     }
@@ -619,6 +636,39 @@ class SettingsViewModel @Inject constructor(
     fun setBudgetAlertsEnabled(enabled: Boolean) {
         viewModelScope.launch {
             userPreferences.setBudgetAlertsEnabled(enabled)
+        }
+    }
+
+    fun setAutoCloudBackupEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferences.setAutoCloudBackupEnabled(enabled)
+            if (enabled) {
+                cloudBackupScheduler.scheduleDailyBackup()
+            } else {
+                cloudBackupScheduler.cancelDailyBackup()
+            }
+        }
+    }
+
+    fun backupNowToCloud() {
+        viewModelScope.launch {
+            when (val result = googleDriveBackupService.backupNow()) {
+                BackupResult.Success -> _state.update { it.copy(exportMessage = "Cloud backup completed") }
+                BackupResult.NotSignedIn -> _state.update { it.copy(exportMessage = "Google sign-in required for cloud backup") }
+                BackupResult.NoBackupFound -> _state.update { it.copy(exportMessage = "No cloud backup found") }
+                is BackupResult.Error -> _state.update { it.copy(exportMessage = "Cloud backup failed: ${result.message}") }
+            }
+        }
+    }
+
+    fun restoreNowFromCloud() {
+        viewModelScope.launch {
+            when (val result = googleDriveBackupService.restoreLatestBackupFromCloud()) {
+                BackupResult.Success -> _state.update { it.copy(importMessage = "Cloud restore completed") }
+                BackupResult.NotSignedIn -> _state.update { it.copy(importMessage = "Google sign-in required for cloud restore") }
+                BackupResult.NoBackupFound -> _state.update { it.copy(importMessage = "No cloud backup found") }
+                is BackupResult.Error -> _state.update { it.copy(importMessage = "Cloud restore failed: ${result.message}") }
+            }
         }
     }
 }

@@ -1,3 +1,4 @@
 .gradle
 .idea
 app/build
+client_secret_*.json

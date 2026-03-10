@@ -40,6 +40,8 @@ class UserPreferences @Inject constructor(
         // NEW PREFERENCES
         val DAILY_REMINDER_ENABLED = booleanPreferencesKey("daily_reminder_enabled")
         val BUDGET_ALERTS_ENABLED = booleanPreferencesKey("budget_alerts_enabled")
+        val AUTO_CLOUD_BACKUP_ENABLED = booleanPreferencesKey("auto_cloud_backup_enabled")
+        val LAST_CLOUD_BACKUP_TIME = longPreferencesKey("last_cloud_backup_time")
 
         val defaultAccountOrder = listOf("WALLET", "BANK", "INVESTMENT", "PEOPLE")
 
@@ -100,6 +102,8 @@ class UserPreferences @Inject constructor(
     // NEW FLOWS
     val dailyReminderEnabled: Flow<Boolean> = dataStore.data.map { it[DAILY_REMINDER_ENABLED] ?: false }
     val budgetAlertsEnabled: Flow<Boolean> = dataStore.data.map { it[BUDGET_ALERTS_ENABLED] ?: true }
+    val autoCloudBackupEnabled: Flow<Boolean> = dataStore.data.map { it[AUTO_CLOUD_BACKUP_ENABLED] ?: false }
+    val lastCloudBackupTime: Flow<Long> = dataStore.data.map { it[LAST_CLOUD_BACKUP_TIME] ?: 0L }
 
     fun expandedForCustom(name: String): Flow<Boolean> = dataStore.data.map { prefs ->
         prefs[booleanPreferencesKey("expanded_custom_" + name)] ?: true
@@ -153,4 +157,6 @@ class UserPreferences @Inject constructor(
     // NEW SETTERS
     suspend fun setDailyReminderEnabled(enabled: Boolean) { dataStore.edit { it[DAILY_REMINDER_ENABLED] = enabled } }
     suspend fun setBudgetAlertsEnabled(enabled: Boolean) { dataStore.edit { it[BUDGET_ALERTS_ENABLED] = enabled } }
+    suspend fun setAutoCloudBackupEnabled(enabled: Boolean) { dataStore.edit { it[AUTO_CLOUD_BACKUP_ENABLED] = enabled } }
+    suspend fun setLastCloudBackupTime(timestamp: Long) { dataStore.edit { it[LAST_CLOUD_BACKUP_TIME] = timestamp } }
 }

@@ -29,6 +29,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import android.content.Intent
 import android.net.Uri
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.common.api.Scope
+import com.google.api.services.drive.DriveScopes
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
 import androidx.compose.ui.unit.dp
@@ -38,6 +42,15 @@ import com.moneytracker.app.ui.components.CategoryIcons
 import com.moneytracker.app.ui.components.MonthSelector
 import com.moneytracker.app.ui.components.parseHexColor
 import java.util.Calendar
+import java.text.SimpleDateFormat
+import java.util.Locale
+
+private enum class PendingCloudAction {
+    NONE,
+    BACKUP_NOW,
+    RESTORE_NOW,
+    ENABLE_AUTO_BACKUP
+}
 
 @Composable
 fun SettingsScreen(
@@ -50,6 +63,32 @@ fun SettingsScreen(
     var showMonthlyExportDialog by remember { mutableStateOf(false) }
     var monthlyExportFormat by remember { mutableStateOf("CSV") }
     var selectedExportMonth by remember { mutableStateOf(Calendar.getInstance()) }
+    var pendingCloudAction by remember { mutableStateOf(PendingCloudAction.NONE) }
+
+    val gso = remember {
+        GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+            .requestEmail()
+            .requestScopes(Scope(DriveScopes.DRIVE_APPDATA))
+            .build()
+    }
+
+    val cloudSignInLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        runCatching {
+            GoogleSignIn.getSignedInAccountFromIntent(result.data).getResult(com.google.android.gms.common.api.ApiException::class.java)
+        }.onSuccess {
+            when (pendingCloudAction) {
+                PendingCloudAction.BACKUP_NOW -> viewModel.backupNowToCloud()
+                PendingCloudAction.RESTORE_NOW -> viewModel.restoreNowFromCloud()
+                PendingCloudAction.ENABLE_AUTO_BACKUP -> viewModel.setAutoCloudBackupEnabled(true)
+                PendingCloudAction.NONE -> Unit
+            }
+        }.onFailure {
+            Toast.makeText(context, "Google sign-in failed", Toast.LENGTH_SHORT).show()
+        }
+        pendingCloudAction = PendingCloudAction.NONE
+    }
 
     val exportLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("application/json")
@@ -566,21 +605,64 @@ fun SettingsScreen(
         // Data Section
         SettingsSectionHeader("Data & Sync")
 
-        var syncEnabled by remember { mutableStateOf(true) }
+        val hasDriveSignIn = GoogleSignIn.getLastSignedInAccount(context)
+            ?.grantedScopes
+            ?.contains(Scope(DriveScopes.DRIVE_APPDATA)) == true
+
+        val backupSubtitle = if (state.lastCloudBackupTime > 0L) {
+            "Last backup: ${SimpleDateFormat("MMM dd, yyyy hh:mm a", Locale.getDefault()).format(java.util.Date(state.lastCloudBackupTime))}"
+        } else {
+            "Last backup: Never"
+        }
+
         SettingsToggleItem(
             icon = Icons.Filled.CloudSync,
-            title = "Auto Cloud Sync",
-            subtitle = "Sync data across devices",
+            title = "Auto Cloud Backup",
+            subtitle = if (hasDriveSignIn) "Backup to Google Drive daily" else "Sign in to Google to enable",
             iconTint = MaterialTheme.colorScheme.secondary,
-            isChecked = syncEnabled,
-            onCheckedChange = { syncEnabled = it }
+            isChecked = state.autoCloudBackupEnabled,
+            onCheckedChange = { enabled ->
+                if (enabled) {
+                    if (hasDriveSignIn) {
+                        viewModel.setAutoCloudBackupEnabled(true)
+                    } else {
+                        pendingCloudAction = PendingCloudAction.ENABLE_AUTO_BACKUP
+                        cloudSignInLauncher.launch(GoogleSignIn.getClient(context, gso).signInIntent)
+                    }
+                } else {
+                    viewModel.setAutoCloudBackupEnabled(false)
+                }
+            }
         )
 
         SettingsItem(
             icon = Icons.Filled.Backup,
             title = "Backup Now",
-            subtitle = "Last backup: Never",
-            iconTint = MaterialTheme.colorScheme.tertiary
+            subtitle = backupSubtitle,
+            iconTint = MaterialTheme.colorScheme.tertiary,
+            onClick = {
+                if (hasDriveSignIn) {
+                    viewModel.backupNowToCloud()
+                } else {
+                    pendingCloudAction = PendingCloudAction.BACKUP_NOW
+                    cloudSignInLauncher.launch(GoogleSignIn.getClient(context, gso).signInIntent)
+                }
+            }
+        )
+
+        SettingsItem(
+            icon = Icons.Filled.CloudDownload,
+            title = "Restore From Cloud",
+            subtitle = if (hasDriveSignIn) "Download and import latest Drive backup" else "Sign in to Google to restore",
+            iconTint = MaterialTheme.colorScheme.secondary,
+            onClick = {
+                if (hasDriveSignIn) {
+                    viewModel.restoreNowFromCloud()
+                } else {
+                    pendingCloudAction = PendingCloudAction.RESTORE_NOW
+                    cloudSignInLauncher.launch(GoogleSignIn.getClient(context, gso).signInIntent)
+                }
+            }
         )
 
         SettingsItem(
@@ -959,6 +1041,8 @@ private fun VersionHistoryDialog(onDismiss: () -> Unit) {
                         "Feature: Added option to rearrange budget order from the Budget screen.",
                         "Feature: Kept add-transaction action available across all pages.",
                         "Feature: Added monthly export options for CSV (Excel/Sheets) and PDF reports.",
+                        "Feature: Added Google Drive cloud backup with manual Backup Now support.",
+                        "Feature: Added Auto Cloud Backup toggle for daily scheduled backups.",
                         "Feature: Added receipt/image attachments for transactions (capture photo or upload invoice).",
                         "Feature: Budget detail page now shows a summary card with limit, spent, and remaining/exceeded amounts.",
                         "Feature: Added month selector to the budget detail page for browsing different months.",

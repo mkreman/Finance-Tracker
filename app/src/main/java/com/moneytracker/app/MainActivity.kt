@@ -13,6 +13,7 @@ import android.widget.Toast
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -28,10 +29,12 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.Button
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -52,6 +55,12 @@ import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.common.api.Scope
+import com.google.api.services.drive.DriveScopes
+import com.moneytracker.app.data.backup.BackupResult
+import com.moneytracker.app.data.backup.GoogleDriveBackupService
 import com.moneytracker.app.data.local.UserPreferences
 import com.moneytracker.app.ui.components.LocalCurrencySymbol
 import com.moneytracker.app.ui.navigation.BottomNavBar
@@ -74,6 +83,7 @@ import javax.inject.Inject
 class MainActivity : FragmentActivity() {
 
     @Inject lateinit var userPreferences: UserPreferences
+    @Inject lateinit var googleDriveBackupService: GoogleDriveBackupService
     private lateinit var biometricAuthManager: BiometricAuthManager
     
     private val intentState = MutableStateFlow<Intent?>(null)
@@ -123,6 +133,52 @@ class MainActivity : FragmentActivity() {
             val passcodeLockoutLevel by userPreferences.passcodeLockoutLevel.collectAsState(initial = 0)
 
             val currentIntent by intentState.collectAsState()
+            var showCloudRestorePrompt by rememberSaveable { mutableStateOf(false) }
+            var cloudRestorePromptChecked by rememberSaveable { mutableStateOf(false) }
+            var cloudRestoreInProgress by rememberSaveable { mutableStateOf(false) }
+
+            val gso = remember {
+                GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                    .requestEmail()
+                    .requestScopes(Scope(DriveScopes.DRIVE_APPDATA))
+                    .build()
+            }
+
+            val runCloudRestore = {
+                lifecycleScope.launch {
+                    cloudRestoreInProgress = true
+                    when (val result = googleDriveBackupService.restoreLatestBackupFromCloud()) {
+                        BackupResult.Success -> {
+                            showCloudRestorePrompt = false
+                            Toast.makeText(this@MainActivity, "Cloud restore completed", Toast.LENGTH_SHORT).show()
+                        }
+                        BackupResult.NotSignedIn -> {
+                            Toast.makeText(this@MainActivity, "Google sign-in required for cloud restore", Toast.LENGTH_SHORT).show()
+                        }
+                        BackupResult.NoBackupFound -> {
+                            showCloudRestorePrompt = false
+                            Toast.makeText(this@MainActivity, "No cloud backup found", Toast.LENGTH_SHORT).show()
+                        }
+                        is BackupResult.Error -> {
+                            Toast.makeText(this@MainActivity, "Cloud restore failed: ${result.message}", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                    cloudRestoreInProgress = false
+                }
+            }
+
+            val cloudSignInLauncher = rememberLauncherForActivityResult(
+                contract = ActivityResultContracts.StartActivityForResult()
+            ) { result ->
+                runCatching {
+                    GoogleSignIn.getSignedInAccountFromIntent(result.data)
+                        .getResult(com.google.android.gms.common.api.ApiException::class.java)
+                }.onSuccess {
+                    runCloudRestore()
+                }.onFailure {
+                    Toast.makeText(this@MainActivity, "Google sign-in failed", Toast.LENGTH_SHORT).show()
+                }
+            }
 
             var isAuthenticated by rememberSaveable { mutableStateOf(false) }
             var isAuthenticating by remember { mutableStateOf(false) }
@@ -197,6 +253,14 @@ class MainActivity : FragmentActivity() {
             
             LaunchedEffect(biometricEnabled, passcodeEnabled, currentIntent) {
                 triggerAuth()
+            }
+
+            LaunchedEffect(isAuthenticated, cloudRestorePromptChecked) {
+                if (isAuthenticated && !cloudRestorePromptChecked) {
+                    cloudRestorePromptChecked = true
+                    val hasLocalData = googleDriveBackupService.hasAnyLocalData()
+                    showCloudRestorePrompt = !hasLocalData
+                }
             }
 
             val darkTheme = when (themeMode) {
@@ -355,6 +419,46 @@ class MainActivity : FragmentActivity() {
                                     }
                                 }
                             }
+                        }
+
+                        if (showCloudRestorePrompt && isAuthenticated) {
+                            AlertDialog(
+                                onDismissRequest = {
+                                    if (!cloudRestoreInProgress) {
+                                        showCloudRestorePrompt = false
+                                    }
+                                },
+                                title = { Text("Restore From Cloud") },
+                                text = {
+                                    Text("No local data found. Do you want to sign in and restore your backup from Google Drive?")
+                                },
+                                confirmButton = {
+                                    Button(
+                                        enabled = !cloudRestoreInProgress,
+                                        onClick = {
+                                            val account = GoogleSignIn.getLastSignedInAccount(this@MainActivity)
+                                            val hasScope = account?.grantedScopes?.contains(Scope(DriveScopes.DRIVE_APPDATA)) == true
+
+                                            if (account != null && hasScope) {
+                                                runCloudRestore()
+                                            } else {
+                                                val signInClient = GoogleSignIn.getClient(this@MainActivity, gso)
+                                                cloudSignInLauncher.launch(signInClient.signInIntent)
+                                            }
+                                        }
+                                    ) {
+                                        Text(if (cloudRestoreInProgress) "Restoring..." else "Restore")
+                                    }
+                                },
+                                dismissButton = {
+                                    TextButton(
+                                        enabled = !cloudRestoreInProgress,
+                                        onClick = { showCloudRestorePrompt = false }
+                                    ) {
+                                        Text("Skip")
+                                    }
+                                }
+                            )
                         }
                     }
                 }
