@@ -1,9 +1,12 @@
 package com.moneytracker.app.ui.screens.settings
 
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.Paint
 import android.graphics.pdf.PdfDocument
 import android.net.Uri
+import android.util.Base64
 import androidx.glance.appwidget.updateAll
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -13,6 +16,7 @@ import com.moneytracker.app.data.backup.CloudBackupInfo
 import com.moneytracker.app.data.backup.CloudBackupScheduler
 import com.moneytracker.app.data.backup.GoogleDriveBackupService
 import com.moneytracker.app.data.local.database.entities.SyncStatus
+import com.moneytracker.app.data.local.database.entities.RecurringUnit
 import com.moneytracker.app.data.local.database.entities.TransactionEntity
 import com.moneytracker.app.data.local.database.entities.TransactionSplitEntity
 import com.moneytracker.app.data.local.database.entities.TransactionType
@@ -29,6 +33,8 @@ import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.BufferedWriter
+import java.io.ByteArrayOutputStream
+import java.io.File
 import java.io.OutputStream
 import java.io.OutputStreamWriter
 import java.text.SimpleDateFormat
@@ -65,6 +71,12 @@ class SettingsViewModel @Inject constructor(
     private val userPreferences: UserPreferences,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
+
+    companion object {
+        private const val MAX_RECEIPT_FILE_BYTES = 2 * 1024 * 1024
+        private const val MAX_RECEIPT_TOTAL_BYTES = 15 * 1024 * 1024
+        private const val RECEIPT_JPEG_QUALITY = 80
+    }
 
     private val _state = MutableStateFlow(SettingsState())
     val state: StateFlow<SettingsState> = _state.asStateFlow()
@@ -185,6 +197,56 @@ class SettingsViewModel @Inject constructor(
     fun exportData(context: Context, uri: Uri) {
         viewModelScope.launch {
             try {
+                fun decodeReceiptUris(serialized: String?): List<String> {
+                    return serialized
+                        ?.split("\n")
+                        ?.map { it.trim() }
+                        ?.filter { it.isNotBlank() }
+                        ?: emptyList()
+                }
+
+                fun encodeReceiptBlob(receiptUri: String): JSONObject? {
+                    val uriObj = runCatching { Uri.parse(receiptUri) }.getOrNull() ?: return null
+                    val rawBytes = runCatching {
+                        context.contentResolver.openInputStream(uriObj)?.use { it.readBytes() }
+                    }.getOrNull() ?: return null
+                    if (rawBytes.isEmpty()) return null
+
+                    val sourceMimeType = context.contentResolver.getType(uriObj) ?: "application/octet-stream"
+                    val (bytes, mimeType) = if (sourceMimeType.startsWith("image/")) {
+                        val bitmap = runCatching {
+                            BitmapFactory.decodeByteArray(rawBytes, 0, rawBytes.size)
+                        }.getOrNull()
+
+                        if (bitmap != null) {
+                            val output = ByteArrayOutputStream()
+                            val compressed = runCatching {
+                                bitmap.compress(Bitmap.CompressFormat.JPEG, RECEIPT_JPEG_QUALITY, output)
+                            }.getOrDefault(false)
+                            val jpegBytes = if (compressed) output.toByteArray() else ByteArray(0)
+                            bitmap.recycle()
+
+                            if (jpegBytes.isNotEmpty() && jpegBytes.size < rawBytes.size) {
+                                jpegBytes to "image/jpeg"
+                            } else {
+                                rawBytes to sourceMimeType
+                            }
+                        } else {
+                            rawBytes to sourceMimeType
+                        }
+                    } else {
+                        rawBytes to sourceMimeType
+                    }
+
+                    if (bytes.size > MAX_RECEIPT_FILE_BYTES) return null
+
+                    return JSONObject().apply {
+                        put("mimeType", mimeType)
+                        put("dataBase64", Base64.encodeToString(bytes, Base64.NO_WRAP))
+                        put("sizeBytes", bytes.size)
+                    }
+                }
+
                 val transactions = transactionRepository.getAllTransactionsRaw()
                 val accounts = accountRepository.getAllAccountsForBackup()
                 val allBudgets = budgetRepository.getAllBudgets()
@@ -229,6 +291,9 @@ class SettingsViewModel @Inject constructor(
 
                 // 3. Export Transactions
                 val txnsArray = JSONArray()
+                val receiptFilesObj = JSONObject()
+                var totalReceiptBytes = 0
+                var skippedReceiptFiles = 0
                 transactions.forEach { txnWithSplits ->
                     val txn = txnWithSplits.transaction
                     val txnObj = JSONObject().apply {
@@ -238,6 +303,12 @@ class SettingsViewModel @Inject constructor(
                         put("note", txn.note ?: "")
                         put("payee", txn.payee)
                         put("receiptUri", txn.receiptUri ?: "")
+                        put("isRecurring", txn.isRecurring)
+                        put("recurringInterval", txn.recurringInterval)
+                        put("recurringUnit", txn.recurringUnit?.name ?: "")
+                        put("recurringEndDate", txn.recurringEndDate)
+                        put("parentRecurringId", txn.parentRecurringId ?: "")
+                        put("notifyForRecurringEntries", txn.notifyForRecurringEntries)
                         
                         put("fromAccountName", accountMap[txn.accountId]?.name ?: "Unknown")
                         if (txn.type == TransactionType.TRANSFER) {
@@ -254,9 +325,28 @@ class SettingsViewModel @Inject constructor(
                         }
                         put("splits", splitsArray)
                     }
+
+                    // Backup actual receipt file bytes so attachments survive cross-device restore.
+                    decodeReceiptUris(txn.receiptUri).forEach { receiptUri ->
+                        if (!receiptFilesObj.has(receiptUri)) {
+                            encodeReceiptBlob(receiptUri)?.let { receiptBlob ->
+                                val sizeBytes = receiptBlob.optInt("sizeBytes", 0)
+                                if (sizeBytes > 0 && totalReceiptBytes + sizeBytes <= MAX_RECEIPT_TOTAL_BYTES) {
+                                    receiptFilesObj.put(receiptUri, receiptBlob)
+                                    totalReceiptBytes += sizeBytes
+                                } else {
+                                    skippedReceiptFiles++
+                                }
+                            } ?: run {
+                                skippedReceiptFiles++
+                            }
+                        }
+                    }
+
                     txnsArray.put(txnObj)
                 }
                 rootObj.put("transactions", txnsArray)
+                rootObj.put("receiptFiles", receiptFilesObj)
 
                 // Write JSON to file
                 context.contentResolver.openOutputStream(uri)?.use { outputStream ->
@@ -265,7 +355,7 @@ class SettingsViewModel @Inject constructor(
                     }
                 }
                 
-                val msg = "Exported ${accounts.size} accounts, ${allBudgets.size} budgets, and ${transactions.size} transactions"
+                val msg = "Exported ${accounts.size} accounts, ${allBudgets.size} budgets, ${transactions.size} transactions, ${receiptFilesObj.length()} receipts${if (skippedReceiptFiles > 0) " ($skippedReceiptFiles skipped by size limit)" else ""}"
                 _state.update { it.copy(exportMessage = msg) }
             } catch (e: Exception) {
                 _state.update { it.copy(exportMessage = "Export failed: ${e.message}") }
@@ -438,12 +528,62 @@ class SettingsViewModel @Inject constructor(
                 fun categoryKey(name: String, type: TransactionType): Pair<String, TransactionType> =
                     normalizeKey(name) to type
 
+                fun restoreReceiptFile(dataBase64: String, mimeType: String): String? {
+                    val bytes = runCatching { Base64.decode(dataBase64, Base64.DEFAULT) }.getOrNull() ?: return null
+                    if (bytes.isEmpty()) return null
+
+                    val extension = when {
+                        mimeType.contains("jpeg", ignoreCase = true) || mimeType.contains("jpg", ignoreCase = true) -> "jpg"
+                        mimeType.contains("png", ignoreCase = true) -> "png"
+                        mimeType.contains("webp", ignoreCase = true) -> "webp"
+                        mimeType.contains("heic", ignoreCase = true) || mimeType.contains("heif", ignoreCase = true) -> "heic"
+                        mimeType.contains("pdf", ignoreCase = true) -> "pdf"
+                        else -> "bin"
+                    }
+
+                    val directory = File(context.filesDir, "restored_receipts").apply { mkdirs() }
+                    val file = File(directory, "receipt_${UUID.randomUUID()}.$extension")
+                    return runCatching {
+                        file.writeBytes(bytes)
+                        Uri.fromFile(file).toString()
+                    }.getOrNull()
+                }
+
+                fun remapReceiptUris(serialized: String?, restoredMap: Map<String, String>): String? {
+                    val uris = serialized
+                        ?.split("\n")
+                        ?.map { it.trim() }
+                        ?.filter { it.isNotBlank() }
+                        .orEmpty()
+
+                    if (uris.isEmpty()) return null
+
+                    val remapped = uris.map { original -> restoredMap[original] ?: original }
+                    return remapped.joinToString("\n").ifBlank { null }
+                }
+
                 // Read file
                 val jsonString = context.contentResolver.openInputStream(uri)?.use { 
                     it.readBytes().toString(Charsets.UTF_8) 
                 } ?: throw Exception("Could not read file")
 
                 val rootObj = JSONObject(jsonString)
+
+                val restoredReceiptUriMap = mutableMapOf<String, String>()
+                val receiptFilesObj = rootObj.optJSONObject("receiptFiles")
+                if (receiptFilesObj != null) {
+                    val keys = receiptFilesObj.keys()
+                    while (keys.hasNext()) {
+                        val originalUri = keys.next()
+                        val blobObj = receiptFilesObj.optJSONObject(originalUri) ?: continue
+                        val dataBase64 = blobObj.optString("dataBase64", "")
+                        if (dataBase64.isBlank()) continue
+                        val mimeType = blobObj.optString("mimeType", "application/octet-stream")
+                        restoreReceiptFile(dataBase64, mimeType)?.let { localUri ->
+                            restoredReceiptUriMap[originalUri] = localUri
+                        }
+                    }
+                }
 
                 val accounts = accountRepository.getAllAccountsForBackup()
                 val accountByName = accounts.associateBy { normalizeKey(it.name) }.toMutableMap()
@@ -590,10 +730,29 @@ class SettingsViewModel @Inject constructor(
                             toAccountId = toAccountId,
                             payee = txnObj.optString("payee", "Transaction"),
                             note = txnObj.optString("note", "").ifBlank { null },
-                            receiptUri = txnObj.optString("receiptUri", "").ifBlank { null },
+                            receiptUri = remapReceiptUris(
+                                txnObj.optString("receiptUri", "").ifBlank { null },
+                                restoredReceiptUriMap
+                            ),
                             date = txnObj.getLong("date"),
                             totalAmount = txnObj.getDouble("totalAmount"),
                             type = type,
+                            isRecurring = txnObj.optBoolean("isRecurring", false),
+                            recurringInterval = if (txnObj.has("recurringInterval") && !txnObj.isNull("recurringInterval")) {
+                                txnObj.optInt("recurringInterval").takeIf { it > 0 }
+                            } else {
+                                null
+                            },
+                            recurringUnit = txnObj.optString("recurringUnit", "")
+                                .ifBlank { null }
+                                ?.let { value -> runCatching { RecurringUnit.valueOf(value) }.getOrNull() },
+                            recurringEndDate = if (txnObj.has("recurringEndDate") && !txnObj.isNull("recurringEndDate")) {
+                                txnObj.optLong("recurringEndDate")
+                            } else {
+                                null
+                            },
+                            parentRecurringId = txnObj.optString("parentRecurringId", "").ifBlank { null },
+                            notifyForRecurringEntries = txnObj.optBoolean("notifyForRecurringEntries", true),
                             createdAt = System.currentTimeMillis(),
                             modifiedAt = System.currentTimeMillis(),
                             syncStatus = SyncStatus.DIRTY

@@ -58,7 +58,8 @@ data class AddAccountState(
     val isEditMode: Boolean = false,
     val editAccountId: String? = null,
     val isSaving: Boolean = false,
-    val isSaved: Boolean = false
+    val isSaved: Boolean = false,
+    val savedAccountId: String? = null
 )
 
 @HiltViewModel
@@ -141,7 +142,7 @@ class AddAccountViewModel @Inject constructor(
                         it.name.trim().equals(normalizedName, ignoreCase = true)
                 }
 
-            if (current.isEditMode && current.editAccountId != null) {
+            val savedAccountId = if (current.isEditMode && current.editAccountId != null) {
                 accountRepository.updateAccount(
                     Account(
                         id = current.editAccountId,
@@ -154,6 +155,7 @@ class AddAccountViewModel @Inject constructor(
                         iconKey = current.iconKey
                     )
                 )
+                current.editAccountId
             } else if (existingSameName != null) {
                 val balanceDiff = balance - existingSameName.initialBalance
                 accountRepository.saveAccount(
@@ -169,10 +171,12 @@ class AddAccountViewModel @Inject constructor(
                         isDeleted = false
                     )
                 )
+                existingSameName.id
             } else {
+                val newId = UUID.randomUUID().toString()
                 accountRepository.saveAccount(
                     Account(
-                        id = UUID.randomUUID().toString(),
+                        id = newId,
                         name = normalizedName,
                         type = current.type,
                         customTypeName = if (current.type == AccountType.CUSTOM) current.customTypeName else null,
@@ -182,8 +186,9 @@ class AddAccountViewModel @Inject constructor(
                         iconKey = current.iconKey
                     )
                 )
+                newId
             }
-            _state.update { it.copy(isSaving = false, isSaved = true) }
+            _state.update { it.copy(isSaving = false, isSaved = true, savedAccountId = savedAccountId) }
         }
     }
 }
@@ -191,7 +196,7 @@ class AddAccountViewModel @Inject constructor(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddAccountScreen(
-    onNavigateBack: () -> Unit,
+    onNavigateBack: (String?) -> Unit,
     viewModel: AddAccountViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsState()
@@ -199,7 +204,7 @@ fun AddAccountScreen(
     val focusManager = LocalFocusManager.current
 
     LaunchedEffect(state.isSaved) {
-        if (state.isSaved) onNavigateBack()
+        if (state.isSaved) onNavigateBack(state.savedAccountId)
     }
 
     LaunchedEffect(Unit) {
@@ -230,7 +235,7 @@ fun AddAccountScreen(
                 )
             },
             navigationIcon = {
-                IconButton(onClick = onNavigateBack) {
+                IconButton(onClick = { onNavigateBack(null) }) {
                     Icon(Icons.Filled.ArrowBack, "Back", tint = MaterialTheme.colorScheme.onSurface)
                 }
             },

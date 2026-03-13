@@ -45,6 +45,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.core.content.FileProvider
 import androidx.compose.ui.viewinterop.AndroidView
@@ -58,11 +59,16 @@ import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
 
+enum class AccountSelectionTarget { FROM, TO }
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddTransactionScreen(
     onNavigateBack: () -> Unit,
-    onAddAccount: () -> Unit = {},
+    onAddAccount: (AccountSelectionTarget) -> Unit = {},
+    createdAccountId: String? = null,
+    createdAccountTarget: String? = null,
+    onCreatedAccountConsumed: () -> Unit = {},
     viewModel: AddTransactionViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsState()
@@ -98,6 +104,17 @@ fun AddTransactionScreen(
         kotlinx.coroutines.delay(300)
         focusRequester.requestFocus()
         keyboardController?.show()
+    }
+
+    LaunchedEffect(createdAccountId, createdAccountTarget) {
+        if (!createdAccountId.isNullOrBlank()) {
+            if (createdAccountTarget == AccountSelectionTarget.TO.name) {
+                viewModel.onToAccountSelected(createdAccountId)
+            } else {
+                viewModel.onAccountSelected(createdAccountId)
+            }
+            onCreatedAccountConsumed()
+        }
     }
 
     LaunchedEffect(Unit) {
@@ -352,7 +369,7 @@ fun AddTransactionScreen(
                     accounts = state.accounts,
                     selectedId = state.selectedAccountId,
                     onSelected = viewModel::onAccountSelected,
-                    onAddAccount = onAddAccount
+                    onAddAccount = { onAddAccount(AccountSelectionTarget.FROM) }
                 )
             } else {
                 Column(
@@ -364,7 +381,7 @@ fun AddTransactionScreen(
                         accounts = state.accounts,
                         selectedId = state.selectedAccountId,
                         onSelected = viewModel::onAccountSelected,
-                        onAddAccount = onAddAccount,
+                        onAddAccount = { onAddAccount(AccountSelectionTarget.FROM) },
                         modifier = Modifier.fillMaxWidth()
                     )
 
@@ -373,7 +390,7 @@ fun AddTransactionScreen(
                         accounts = state.accounts.filter { it.id != state.selectedAccountId },
                         selectedId = state.toAccountId,
                         onSelected = viewModel::onToAccountSelected,
-                        onAddAccount = onAddAccount,
+                        onAddAccount = { onAddAccount(AccountSelectionTarget.TO) },
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
@@ -592,6 +609,7 @@ private fun ReceiptAttachmentsPreviewSection(
     onClearAll: () -> Unit
 ) {
     val parsedUris = receiptUris.mapNotNull { runCatching { Uri.parse(it) }.getOrNull() }
+    var selectedPreviewUri by remember { mutableStateOf<Uri?>(null) }
 
     Column(
         modifier = Modifier
@@ -616,6 +634,7 @@ private fun ReceiptAttachmentsPreviewSection(
                             .height(150.dp)
                             .clip(RoundedCornerShape(12.dp))
                             .background(MaterialTheme.colorScheme.surface)
+                            .clickable { selectedPreviewUri = uri }
                     ) {
                         AndroidView(
                             factory = { viewContext ->
@@ -644,6 +663,45 @@ private fun ReceiptAttachmentsPreviewSection(
                 Icon(Icons.Filled.DeleteOutline, contentDescription = null)
                 Spacer(modifier = Modifier.width(4.dp))
                 Text("Remove all attachments")
+            }
+        }
+    }
+
+    selectedPreviewUri?.let { previewUri ->
+        Dialog(onDismissRequest = { selectedPreviewUri = null }) {
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = MaterialTheme.colorScheme.surface,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 240.dp, max = 560.dp)
+            ) {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 8.dp, vertical = 4.dp),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        IconButton(onClick = { selectedPreviewUri = null }) {
+                            Icon(Icons.Filled.Close, contentDescription = "Close preview")
+                        }
+                    }
+
+                    AndroidView(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f, fill = false)
+                            .heightIn(min = 220.dp, max = 500.dp),
+                        factory = { viewContext ->
+                            ImageView(viewContext).apply {
+                                adjustViewBounds = true
+                                scaleType = ImageView.ScaleType.FIT_CENTER
+                            }
+                        },
+                        update = { imageView -> imageView.setImageURI(previewUri) }
+                    )
+                }
             }
         }
     }

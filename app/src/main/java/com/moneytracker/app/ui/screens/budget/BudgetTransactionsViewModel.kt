@@ -45,7 +45,7 @@ class BudgetTransactionsViewModel @Inject constructor(
         val year = calendar.get(Calendar.YEAR)
 
         val transactionsFlow = transactionRepository.getTransactionsByCategoryForPeriod(
-            categoryId, startDate, endDate
+            categoryId, "EXPENSE", startDate, endDate
         )
         val budgetFlow = budgetRepository.getBudgetsWithSpending(month, year, startDate, endDate)
             .map { budgets -> budgets.find { it.categoryId == categoryId } }

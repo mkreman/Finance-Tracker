@@ -83,16 +83,37 @@ class TransactionRepository @Inject constructor(
 
     fun getTransactionsByCategoryForPeriod(
         categoryId: String,
+        type: String,
         startDate: Long,
         endDate: Long
     ): Flow<List<TransactionListItem>> =
-        transactionDao.getTransactionsByCategoryForPeriod(categoryId, startDate, endDate).map { list ->
+        transactionDao.getTransactionsByCategoryForPeriod(categoryId, type, startDate, endDate).map { list ->
             toGroupedList(list)
         }
 
     fun getTransferTransactions(startDate: Long, endDate: Long): Flow<List<Transaction>> =
         transactionDao.getTransferTransactionsForPeriod(startDate, endDate).map { list ->
             list.map { it.toDomain() }
+        }
+
+    fun getTransferTransactionsByToAccount(toAccountId: String): Flow<List<TransactionListItem>> =
+        if (toAccountId == UNKNOWN_TRANSFER_TO_ACCOUNT_ID) {
+            transactionDao.getTransferTransactionsToUnknownAccount().map { list -> toGroupedList(list) }
+        } else {
+            transactionDao.getTransferTransactionsToAccount(toAccountId).map { list -> toGroupedList(list) }
+        }
+
+    fun getTransferTransactionsByToAccountForPeriod(
+        toAccountId: String,
+        startDate: Long,
+        endDate: Long
+    ): Flow<List<TransactionListItem>> =
+        if (toAccountId == UNKNOWN_TRANSFER_TO_ACCOUNT_ID) {
+            transactionDao.getTransferTransactionsToUnknownAccountForPeriod(startDate, endDate)
+                .map { list -> toGroupedList(list) }
+        } else {
+            transactionDao.getTransferTransactionsToAccountForPeriod(toAccountId, startDate, endDate)
+                .map { list -> toGroupedList(list) }
         }
 
     fun getCategorySpending(startDate: Long, endDate: Long): Flow<List<ChartData>> =
@@ -286,6 +307,10 @@ class TransactionRepository @Inject constructor(
     suspend fun clearAllTransactions() {
         transactionDao.clearAllTransactions()
         transactionDao.clearAllSplits()
+    }
+
+    companion object {
+        const val UNKNOWN_TRANSFER_TO_ACCOUNT_ID = "__unknown_transfer_to_account__"
     }
 
     suspend fun stopRecurringSeries(parentRecurringId: String) {

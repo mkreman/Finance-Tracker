@@ -14,25 +14,22 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.moneytracker.app.data.local.database.entities.TransactionType
-import com.moneytracker.app.domain.model.Account
+import com.moneytracker.app.data.local.repository.TransactionRepository.Companion.UNKNOWN_TRANSFER_TO_ACCOUNT_ID
 import com.moneytracker.app.domain.model.ChartData
-import com.moneytracker.app.domain.model.Transaction
 import com.moneytracker.app.ui.components.*
 import com.moneytracker.app.ui.navigation.LocalBottomTabReselect
 import com.moneytracker.app.ui.navigation.Screen
-import java.text.SimpleDateFormat
 import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen(
     onCategoryClick: (String, String, String, Int, Int) -> Unit = { _, _, _, _, _ -> },
-    onEditTransaction: (String) -> Unit = {},
     onAddTransaction: () -> Unit = {},
     viewModel: DashboardViewModel = hiltViewModel()
 ) {
@@ -107,7 +104,6 @@ fun DashboardScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Overview title
             Text(
                 text = when (state.selectedOverview) {
                     OverviewType.EXPENSE -> "Expense Overview"
@@ -121,107 +117,12 @@ fun DashboardScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            if (state.selectedOverview == OverviewType.TRANSFER) {
-                
-                // Filters for Transfer Overview
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    AccountFilterDropdown(
-                        label = "From",
-                        accounts = state.accounts,
-                        selectedId = state.selectedFromAccountId,
-                        onSelected = viewModel::setFromAccountFilter,
-                        modifier = Modifier.weight(1f)
-                    )
-
-                    AccountFilterDropdown(
-                        label = "To",
-                        accounts = state.accounts,
-                        selectedId = state.selectedToAccountId,
-                        onSelected = viewModel::setToAccountFilter,
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-                
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Apply filters to list
-                val filteredTransfers = state.transferTransactions.filter { txn ->
-                    val matchFrom = state.selectedFromAccountId == null || txn.accountId == state.selectedFromAccountId
-                    val matchTo = state.selectedToAccountId == null || txn.toAccountId == state.selectedToAccountId
-                    matchFrom && matchTo
-                }
-
-                // Transfer entries list
-                if (filteredTransfers.isEmpty()) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(200.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = if (state.transferTransactions.isEmpty()) "No transfers this month" else "No matching transfers",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                } else {
-                    Column(modifier = Modifier.fillMaxWidth()) {
-                        filteredTransfers.forEach { transfer ->
-                            TransferEntryItem(
-                                transfer = transfer,
-                                onClick = { onEditTransaction(transfer.id) }
-                            )
-                        }
-                    }
-                }
-            } else {
-                val chartData = if (state.selectedOverview == OverviewType.INCOME) state.categoryIncome else state.categorySpending
-                val chartTotal = if (state.selectedOverview == OverviewType.INCOME) state.totalIncome else state.totalExpense
-                val chartLabel = if (state.selectedOverview == OverviewType.INCOME) "Income" else "Expense"
-
-                if (chartData.isNotEmpty()) {
-                    Box(
-                        modifier = Modifier.fillMaxWidth(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        DonutChart(
-                            data = chartData,
-                            totalAmount = chartTotal,
-                            centerLabel = chartLabel
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(24.dp))
-
-                    // Clickable Category Legend
-                    ClickableLegend(
-                        data = chartData,
-                        type = if (state.selectedOverview == OverviewType.INCOME) "INCOME" else "EXPENSE",
-                        month = currentMonth.get(Calendar.MONTH) + 1,
-                        year = currentMonth.get(Calendar.YEAR),
-                        onCategoryClick = onCategoryClick
-                    )
-                } else {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(200.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "No ${chartLabel.lowercase()} recorded this month",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-            }
+            DashboardDonutSection(
+                state = state,
+                currentMonth = currentMonth,
+                onCategoryClick = onCategoryClick,
+                modifier = Modifier.padding(horizontal = 16.dp)
+            )
 
             Spacer(modifier = Modifier.height(100.dp))
         }
@@ -240,61 +141,108 @@ fun DashboardScreen(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun AccountFilterDropdown(
-    label: String,
-    accounts: List<Account>,
-    selectedId: String?,
-    onSelected: (String?) -> Unit,
+private fun DashboardDonutSection(
+    state: DashboardState,
+    currentMonth: Calendar,
+    onCategoryClick: (String, String, String, Int, Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var expanded by remember { mutableStateOf(false) }
-    val selectedAccount = accounts.find { it.id == selectedId }
-    val displayText = selectedAccount?.name ?: "All"
+    val transferPalette = listOf(
+        MaterialTheme.colorScheme.primary,
+        MaterialTheme.colorScheme.secondary,
+        MaterialTheme.colorScheme.tertiary,
+        MaterialTheme.colorScheme.error,
+        MaterialTheme.colorScheme.inversePrimary,
+        MaterialTheme.colorScheme.outline
+    )
 
-    ExposedDropdownMenuBox(
-        expanded = expanded,
-        onExpandedChange = { expanded = !expanded },
-        modifier = modifier
-    ) {
-        OutlinedTextField(
-            value = displayText,
-            onValueChange = {},
-            readOnly = true,
-            label = { Text(label) },
-            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
-            modifier = Modifier
+    val donutData = when (state.selectedOverview) {
+        OverviewType.EXPENSE -> state.categorySpending
+        OverviewType.INCOME -> state.categoryIncome
+        OverviewType.TRANSFER -> buildTransferDonutData(state, transferPalette)
+    }
+
+    val centerLabel = when (state.selectedOverview) {
+        OverviewType.EXPENSE -> "Expense"
+        OverviewType.INCOME -> "Income"
+        OverviewType.TRANSFER -> "Transfer"
+    }
+
+    val totalAmount = when (state.selectedOverview) {
+        OverviewType.EXPENSE -> state.totalExpense
+        OverviewType.INCOME -> state.totalIncome
+        OverviewType.TRANSFER -> state.totalTransfer
+    }
+
+    if (donutData.isEmpty()) {
+        Box(
+            modifier = modifier
                 .fillMaxWidth()
-                .menuAnchor(),
-            shape = RoundedCornerShape(12.dp),
-            colors = OutlinedTextFieldDefaults.colors(
-                unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
-                focusedBorderColor = MaterialTheme.colorScheme.primary
-            )
-        )
-        ExposedDropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false },
-            modifier = Modifier.background(MaterialTheme.colorScheme.surface)
+                .height(200.dp),
+            contentAlignment = Alignment.Center
         ) {
-            DropdownMenuItem(
-                text = { Text("All", color = MaterialTheme.colorScheme.onSurface) },
-                onClick = { 
-                    onSelected(null)
-                    expanded = false 
-                }
+            Text(
+                text = "No ${centerLabel.lowercase()} recorded this month",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            accounts.forEach { account ->
-                DropdownMenuItem(
-                    text = { Text(account.name, color = MaterialTheme.colorScheme.onSurface) },
-                    onClick = { 
-                        onSelected(account.id)
-                        expanded = false 
-                    }
-                )
-            }
         }
+    } else {
+        Box(
+            modifier = modifier.fillMaxWidth(),
+            contentAlignment = Alignment.Center
+        ) {
+            DonutChart(
+                data = donutData,
+                totalAmount = totalAmount,
+                centerLabel = centerLabel
+            )
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        ClickableLegend(
+            data = donutData,
+            type = when (state.selectedOverview) {
+                OverviewType.INCOME -> "INCOME"
+                OverviewType.TRANSFER -> "TRANSFER"
+                else -> "EXPENSE"
+            },
+            month = currentMonth.get(Calendar.MONTH) + 1,
+            year = currentMonth.get(Calendar.YEAR),
+            onCategoryClick = onCategoryClick
+        )
+    }
+}
+
+private fun buildTransferDonutData(
+    state: DashboardState,
+    palette: List<Color>
+): List<ChartData> {
+    val grouped = state.transferTransactions
+        .groupBy {
+            val accountId = it.toAccountId ?: UNKNOWN_TRANSFER_TO_ACCOUNT_ID
+            val accountName = it.toAccountName?.takeIf(String::isNotBlank) ?: "Unknown"
+            accountId to accountName
+        }
+        .mapValues { entry -> entry.value.sumOf { it.totalAmount } }
+        .toList()
+        .sortedByDescending { it.second }
+
+    if (grouped.isEmpty()) return emptyList()
+
+    val total = grouped.sumOf { it.second }
+    return grouped.mapIndexed { index, (account, amount) ->
+        val (accountId, accountName) = account
+        ChartData(
+            categoryId = accountId,
+            categoryName = accountName,
+            amount = amount,
+            color = palette[index % palette.size],
+            iconKey = "swap_horiz",
+            percentage = if (total == 0.0) 0f else ((amount / total) * 100.0).toFloat()
+        )
     }
 }
 
@@ -345,55 +293,5 @@ private fun ClickableLegend(
                 )
             }
         }
-    }
-}
-
-@Composable
-private fun TransferEntryItem(transfer: Transaction, onClick: () -> Unit) {
-    val timeFormat = SimpleDateFormat("MMM dd, hh:mm a", Locale.getDefault())
-    val timeString = timeFormat.format(Date(transfer.date))
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(
-            modifier = Modifier
-                .size(42.dp)
-                .clip(RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.secondary.copy(alpha = 0.15f)),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = CategoryIcons.getIcon("swap_horiz"),
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.secondary,
-                modifier = Modifier.size(22.dp)
-            )
-        }
-
-        Spacer(modifier = Modifier.width(12.dp))
-
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = "${transfer.accountName} → ${transfer.toAccountName ?: "Unknown"}",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            Text(
-                text = timeString,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-
-        Text(
-            text = "${LocalCurrencySymbol.current}${formatAmount(transfer.totalAmount)}",
-            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-            color = MaterialTheme.colorScheme.secondary
-        )
     }
 }

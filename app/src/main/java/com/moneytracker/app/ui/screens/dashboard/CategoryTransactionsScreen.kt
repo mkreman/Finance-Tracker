@@ -1,5 +1,6 @@
 package com.moneytracker.app.ui.screens.dashboard
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -13,6 +14,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -20,6 +25,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import kotlin.math.max
 import com.moneytracker.app.domain.model.TransactionListItem
 import com.moneytracker.app.ui.components.LocalCurrencySymbol
 import com.moneytracker.app.ui.components.TransactionDateHeader
@@ -39,6 +45,7 @@ fun CategoryTransactionsScreen(
     val transactions by viewModel.transactions.collectAsState()
     val summary by viewModel.summary.collectAsState()
     val percentage by viewModel.percentage.collectAsState()
+    val trendPoints by viewModel.trendPoints.collectAsState()
     val currentMonth by viewModel.currentMonth.collectAsState()
     val currency = LocalCurrencySymbol.current
 
@@ -105,6 +112,14 @@ fun CategoryTransactionsScreen(
                     )
                 }
 
+                item(key = "trend") {
+                    CategoryTrendSection(
+                        points = trendPoints,
+                        isAllTime = currentMonth == null,
+                        typeColor = typeColor
+                    )
+                }
+
                 items(
                     items = transactions,
                     key = { item ->
@@ -126,6 +141,91 @@ fun CategoryTransactionsScreen(
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CategoryTrendSection(
+    points: List<CategoryTrendPoint>,
+    isAllTime: Boolean,
+    typeColor: androidx.compose.ui.graphics.Color
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 6.dp)
+            .clip(RoundedCornerShape(20.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .padding(16.dp)
+    ) {
+        Text(
+            text = if (isAllTime) "Trend (Last 12 Months)" else "Daily Trend",
+            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+            color = MaterialTheme.colorScheme.onSurface
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        if (points.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(140.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "No trend data",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            return
+        }
+
+        val maxValue = max(1.0, points.maxOfOrNull { it.value } ?: 1.0)
+
+        Canvas(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(160.dp)
+        ) {
+            val xStep = if (points.size > 1) size.width / (points.size - 1) else size.width
+            val path = Path()
+
+            points.forEachIndexed { index, point ->
+                val x = if (points.size == 1) size.width / 2f else index * xStep
+                val y = ((maxValue - point.value) / maxValue * size.height).toFloat()
+                if (index == 0) path.moveTo(x, y) else path.lineTo(x, y)
+                drawCircle(color = typeColor, radius = 2.5.dp.toPx(), center = Offset(x, y))
+            }
+
+            drawPath(
+                path = path,
+                color = typeColor,
+                style = Stroke(width = 2.5.dp.toPx(), cap = StrokeCap.Round)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(6.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            points.forEachIndexed { index, point ->
+                val showLabel = if (points.size <= 8) {
+                    true
+                } else {
+                    index == 0 || index == points.size / 2 || index == points.lastIndex
+                }
+
+                Text(
+                    text = if (showLabel) point.label else "",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }

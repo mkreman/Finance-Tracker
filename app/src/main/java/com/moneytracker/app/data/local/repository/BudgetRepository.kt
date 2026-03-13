@@ -5,6 +5,7 @@ import com.moneytracker.app.data.local.database.entities.BudgetEntity
 import com.moneytracker.app.domain.model.Budget
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import java.util.Calendar
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -71,6 +72,53 @@ class BudgetRepository @Inject constructor(
 
     suspend fun clearAllBudgets() {
         budgetDao.clearAllBudgets()
+    }
+
+    suspend fun copyMissingBudgetsFromPreviousMonth(month: Int, year: Int): Int {
+        val previous = Calendar.getInstance().apply {
+            set(Calendar.YEAR, year)
+            set(Calendar.MONTH, month - 1)
+            set(Calendar.DAY_OF_MONTH, 1)
+            add(Calendar.MONTH, -1)
+        }
+        val previousMonth = previous.get(Calendar.MONTH) + 1
+        val previousYear = previous.get(Calendar.YEAR)
+
+        val allBudgets = budgetDao.getAllBudgets()
+        val sourceBudgets = allBudgets
+            .filter { it.month == previousMonth && it.year == previousYear }
+            .sortedBy { it.sortOrder }
+        if (sourceBudgets.isEmpty()) return 0
+
+        val targetCategoryIds = allBudgets
+            .asSequence()
+            .filter { it.month == month && it.year == year }
+            .map { it.categoryId }
+            .toMutableSet()
+
+        var nextSortOrder = budgetDao.getMaxSortOrderForMonth(month, year) + 1
+        var copiedCount = 0
+        val now = System.currentTimeMillis()
+
+        sourceBudgets.forEach { source ->
+            if (targetCategoryIds.add(source.categoryId)) {
+                budgetDao.insertBudget(
+                    BudgetEntity(
+                        id = UUID.randomUUID().toString(),
+                        categoryId = source.categoryId,
+                        limitAmount = source.limitAmount,
+                        sortOrder = nextSortOrder++,
+                        month = month,
+                        year = year,
+                        createdAt = now,
+                        modifiedAt = now
+                    )
+                )
+                copiedCount++
+            }
+        }
+
+        return copiedCount
     }
 
     suspend fun getAllBudgets(): List<BudgetEntity> {

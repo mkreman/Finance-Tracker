@@ -7,6 +7,8 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -22,7 +24,9 @@ import com.moneytracker.app.ui.screens.budget.BudgetTransactionsScreen
 import com.moneytracker.app.ui.screens.dashboard.CategoryTransactionsScreen
 import com.moneytracker.app.ui.screens.dashboard.DashboardScreen
 import com.moneytracker.app.ui.screens.settings.SettingsScreen
+import com.moneytracker.app.ui.screens.transactions.AccountSelectionTarget
 import com.moneytracker.app.ui.screens.transactions.AddTransactionScreen
+import com.moneytracker.app.ui.screens.transactions.AddTransactionViewModel
 import com.moneytracker.app.ui.screens.transactions.TransactionsScreen
 
 // Helper function to safely extract the Activity from Compose's wrapped Contexts
@@ -48,9 +52,6 @@ fun NavGraph(navController: NavHostController) {
                     navController.navigate(
                         Screen.CategoryTransactions.createRoute(categoryId, categoryName, type, month, year)
                     )
-                },
-                onEditTransaction = { transactionId ->
-                    navController.navigate(Screen.EditTransaction.createRoute(transactionId))
                 },
                 onAddTransaction = {
                     navController.navigate(Screen.AddTransaction.createRoute())
@@ -149,6 +150,13 @@ fun NavGraph(navController: NavHostController) {
         ) { backStackEntry ->
             val fromWidget = backStackEntry.arguments?.getBoolean("fromWidget") ?: false
             val context = LocalContext.current
+            val viewModel: AddTransactionViewModel = androidx.hilt.navigation.compose.hiltViewModel(backStackEntry)
+            val createdAccountId by backStackEntry.savedStateHandle
+                .getStateFlow<String?>("createdAccountId", null)
+                .collectAsState()
+            val createdAccountTarget by backStackEntry.savedStateHandle
+                .getStateFlow<String?>("createdAccountTarget", null)
+                .collectAsState()
 
             AddTransactionScreen(
                 onNavigateBack = {
@@ -162,9 +170,17 @@ fun NavGraph(navController: NavHostController) {
                         }
                     }
                 },
-                onAddAccount = {
+                onAddAccount = { target ->
+                    backStackEntry.savedStateHandle["createdAccountTarget"] = target.name
                     navController.navigate(Screen.AddAccount.route)
-                }
+                },
+                createdAccountId = createdAccountId,
+                createdAccountTarget = createdAccountTarget,
+                onCreatedAccountConsumed = {
+                    backStackEntry.savedStateHandle["createdAccountId"] = null
+                    backStackEntry.savedStateHandle["createdAccountTarget"] = null
+                },
+                viewModel = viewModel
             )
         }
 
@@ -198,7 +214,12 @@ fun NavGraph(navController: NavHostController) {
 
         composable(Screen.AddAccount.route) {
             AddAccountScreen(
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { createdAccountId ->
+                    if (!createdAccountId.isNullOrBlank()) {
+                        navController.previousBackStackEntry?.savedStateHandle?.set("createdAccountId", createdAccountId)
+                    }
+                    navController.popBackStack()
+                }
             )
         }
 
@@ -207,7 +228,7 @@ fun NavGraph(navController: NavHostController) {
             arguments = listOf(navArgument("accountId") { type = NavType.StringType })
         ) {
             AddAccountScreen(
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { _ -> navController.popBackStack() }
             )
         }
 
@@ -229,7 +250,15 @@ fun NavGraph(navController: NavHostController) {
         composable(
             route = Screen.EditTransaction.route,
             arguments = listOf(navArgument("transactionId") { type = NavType.StringType })
-        ) {
+        ) { backStackEntry ->
+            val viewModel: AddTransactionViewModel = androidx.hilt.navigation.compose.hiltViewModel(backStackEntry)
+            val createdAccountId by backStackEntry.savedStateHandle
+                .getStateFlow<String?>("createdAccountId", null)
+                .collectAsState()
+            val createdAccountTarget by backStackEntry.savedStateHandle
+                .getStateFlow<String?>("createdAccountTarget", null)
+                .collectAsState()
+
             AddTransactionScreen(
                 onNavigateBack = {
                     if (!navController.popBackStack()) {
@@ -238,6 +267,18 @@ fun NavGraph(navController: NavHostController) {
                         }
                     }
                 }
+                ,
+                onAddAccount = { target ->
+                    backStackEntry.savedStateHandle["createdAccountTarget"] = target.name
+                    navController.navigate(Screen.AddAccount.route)
+                },
+                createdAccountId = createdAccountId,
+                createdAccountTarget = createdAccountTarget,
+                onCreatedAccountConsumed = {
+                    backStackEntry.savedStateHandle["createdAccountId"] = null
+                    backStackEntry.savedStateHandle["createdAccountTarget"] = null
+                },
+                viewModel = viewModel
             )
         }
 

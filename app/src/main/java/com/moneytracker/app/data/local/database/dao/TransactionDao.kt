@@ -106,13 +106,14 @@ interface TransactionDao {
         SELECT DISTINCT t.* FROM transactions t
         JOIN transaction_splits s ON s.transactionId = t.id
         WHERE s.categoryId = :categoryId
-        AND t.type = 'EXPENSE'
+        AND t.type = :type
         AND t.isDeleted = 0
         AND t.date BETWEEN :startDate AND :endDate
         ORDER BY t.date DESC
     """)
     fun getTransactionsByCategoryForPeriod(
         categoryId: String,
+        type: String,
         startDate: Long,
         endDate: Long
     ): Flow<List<TransactionWithSplits>>
@@ -199,6 +200,55 @@ interface TransactionDao {
         ORDER BY date DESC
     """)
     fun getTransferTransactionsForPeriod(startDate: Long, endDate: Long): Flow<List<TransactionWithSplits>>
+
+    @androidx.room.Transaction
+    @Query("""
+        SELECT * FROM transactions
+        WHERE type = 'TRANSFER'
+        AND toAccountId = :toAccountId
+        AND isDeleted = 0
+        ORDER BY date DESC
+    """)
+    fun getTransferTransactionsToAccount(toAccountId: String): Flow<List<TransactionWithSplits>>
+
+    @androidx.room.Transaction
+    @Query("""
+        SELECT * FROM transactions
+        WHERE type = 'TRANSFER'
+        AND toAccountId IS NULL
+        AND isDeleted = 0
+        ORDER BY date DESC
+    """)
+    fun getTransferTransactionsToUnknownAccount(): Flow<List<TransactionWithSplits>>
+
+    @androidx.room.Transaction
+    @Query("""
+        SELECT * FROM transactions
+        WHERE type = 'TRANSFER'
+        AND toAccountId = :toAccountId
+        AND date BETWEEN :startDate AND :endDate
+        AND isDeleted = 0
+        ORDER BY date DESC
+    """)
+    fun getTransferTransactionsToAccountForPeriod(
+        toAccountId: String,
+        startDate: Long,
+        endDate: Long
+    ): Flow<List<TransactionWithSplits>>
+
+    @androidx.room.Transaction
+    @Query("""
+        SELECT * FROM transactions
+        WHERE type = 'TRANSFER'
+        AND toAccountId IS NULL
+        AND date BETWEEN :startDate AND :endDate
+        AND isDeleted = 0
+        ORDER BY date DESC
+    """)
+    fun getTransferTransactionsToUnknownAccountForPeriod(
+        startDate: Long,
+        endDate: Long
+    ): Flow<List<TransactionWithSplits>>
 
     // ---- Sync ----
 

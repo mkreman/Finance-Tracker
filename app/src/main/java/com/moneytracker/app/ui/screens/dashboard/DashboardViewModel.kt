@@ -2,7 +2,6 @@ package com.moneytracker.app.ui.screens.dashboard
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.moneytracker.app.data.local.repository.AccountRepository
 import com.moneytracker.app.data.local.repository.TransactionRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
@@ -12,8 +11,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class DashboardViewModel @Inject constructor(
-    private val transactionRepository: TransactionRepository,
-    private val accountRepository: AccountRepository
+    private val transactionRepository: TransactionRepository
 ) : ViewModel() {
 
     private val _currentMonth = MutableStateFlow(Calendar.getInstance())
@@ -23,16 +21,7 @@ class DashboardViewModel @Inject constructor(
     val state: StateFlow<DashboardState> = _state.asStateFlow()
 
     init {
-        loadAccounts()
         observeMonthData()
-    }
-
-    private fun loadAccounts() {
-        viewModelScope.launch {
-            accountRepository.getAllAccounts().collect { accountsList ->
-                _state.update { it.copy(accounts = accountsList) }
-            }
-        }
     }
 
     fun previousMonth() {
@@ -49,15 +38,6 @@ class DashboardViewModel @Inject constructor(
 
     fun selectOverview(type: OverviewType) {
         _state.update { it.copy(selectedOverview = type) }
-    }
-
-    // Filter handlers
-    fun setFromAccountFilter(accountId: String?) {
-        _state.update { it.copy(selectedFromAccountId = accountId) }
-    }
-
-    fun setToAccountFilter(accountId: String?) {
-        _state.update { it.copy(selectedToAccountId = accountId) }
     }
 
     private fun observeMonthData() {

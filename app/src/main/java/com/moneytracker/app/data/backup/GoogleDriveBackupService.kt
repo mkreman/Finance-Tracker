@@ -1,6 +1,10 @@
 package com.moneytracker.app.data.backup
 
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.net.Uri
+import android.util.Base64
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.common.api.Scope
 import com.google.api.client.googleapis.extensions.android.gms.auth.GoogleAccountCredential
@@ -9,8 +13,9 @@ import com.google.api.client.http.ByteArrayContent
 import com.google.api.client.json.gson.GsonFactory
 import com.google.api.services.drive.Drive
 import com.google.api.services.drive.DriveScopes
-import com.google.api.services.drive.model.File
+import com.google.api.services.drive.model.File as DriveFile
 import com.moneytracker.app.data.local.database.entities.AccountType
+import com.moneytracker.app.data.local.database.entities.RecurringUnit
 import com.moneytracker.app.data.local.database.entities.SyncStatus
 import com.moneytracker.app.data.local.database.entities.TransactionEntity
 import com.moneytracker.app.data.local.database.entities.TransactionSplitEntity
@@ -29,6 +34,8 @@ import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
+import java.io.ByteArrayOutputStream
+import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -59,6 +66,12 @@ class GoogleDriveBackupService @Inject constructor(
     private val userPreferences: UserPreferences
 ) {
 
+    companion object {
+        private const val MAX_RECEIPT_FILE_BYTES = 2 * 1024 * 1024
+        private const val MAX_RECEIPT_TOTAL_BYTES = 15 * 1024 * 1024
+        private const val RECEIPT_JPEG_QUALITY = 80
+    }
+
     suspend fun hasAnyLocalData(): Boolean = withContext(Dispatchers.IO) {
         accountRepository.getAllAccountsIncludingInactiveOnce().isNotEmpty() ||
             budgetRepository.getAllBudgets().isNotEmpty() ||
@@ -78,7 +91,7 @@ class GoogleDriveBackupService @Inject constructor(
 
                 val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
                 val fileName = "moneytracker_backup_$timestamp.json"
-                val fileMetadata = File().apply {
+                val fileMetadata = DriveFile().apply {
                     name = fileName
                     parents = listOf("appDataFolder")
                 }
@@ -178,6 +191,56 @@ class GoogleDriveBackupService @Inject constructor(
     }
 
     private suspend fun buildBackupJson(): String {
+        fun decodeReceiptUris(serialized: String?): List<String> {
+            return serialized
+                ?.split("\n")
+                ?.map { it.trim() }
+                ?.filter { it.isNotBlank() }
+                ?: emptyList()
+        }
+
+        fun encodeReceiptBlob(receiptUri: String): JSONObject? {
+            val uriObj = runCatching { Uri.parse(receiptUri) }.getOrNull() ?: return null
+            val rawBytes = runCatching {
+                context.contentResolver.openInputStream(uriObj)?.use { it.readBytes() }
+            }.getOrNull() ?: return null
+            if (rawBytes.isEmpty()) return null
+
+            val sourceMimeType = context.contentResolver.getType(uriObj) ?: "application/octet-stream"
+            val (bytes, mimeType) = if (sourceMimeType.startsWith("image/")) {
+                val bitmap = runCatching {
+                    BitmapFactory.decodeByteArray(rawBytes, 0, rawBytes.size)
+                }.getOrNull()
+
+                if (bitmap != null) {
+                    val output = ByteArrayOutputStream()
+                    val compressed = runCatching {
+                        bitmap.compress(Bitmap.CompressFormat.JPEG, RECEIPT_JPEG_QUALITY, output)
+                    }.getOrDefault(false)
+                    val jpegBytes = if (compressed) output.toByteArray() else ByteArray(0)
+                    bitmap.recycle()
+
+                    if (jpegBytes.isNotEmpty() && jpegBytes.size < rawBytes.size) {
+                        jpegBytes to "image/jpeg"
+                    } else {
+                        rawBytes to sourceMimeType
+                    }
+                } else {
+                    rawBytes to sourceMimeType
+                }
+            } else {
+                rawBytes to sourceMimeType
+            }
+
+            if (bytes.size > MAX_RECEIPT_FILE_BYTES) return null
+
+            return JSONObject().apply {
+                put("mimeType", mimeType)
+                put("dataBase64", Base64.encodeToString(bytes, Base64.NO_WRAP))
+                put("sizeBytes", bytes.size)
+            }
+        }
+
         val transactions = transactionRepository.getAllTransactionsRaw()
         // Use ALL accounts (including soft-deleted) so transaction account names resolve correctly
         val allAccounts = accountRepository.getAllAccountsForBackup()
@@ -222,6 +285,8 @@ class GoogleDriveBackupService @Inject constructor(
         rootObj.put("budgets", budgetsArray)
 
         val txnsArray = JSONArray()
+        val receiptFilesObj = JSONObject()
+        var totalReceiptBytes = 0
         transactions.forEach { txnWithSplits ->
             val txn = txnWithSplits.transaction
             txnsArray.put(
@@ -232,6 +297,12 @@ class GoogleDriveBackupService @Inject constructor(
                     put("note", txn.note ?: "")
                     put("payee", txn.payee)
                     put("receiptUri", txn.receiptUri ?: "")
+                    put("isRecurring", txn.isRecurring)
+                    put("recurringInterval", txn.recurringInterval)
+                    put("recurringUnit", txn.recurringUnit?.name ?: "")
+                    put("recurringEndDate", txn.recurringEndDate)
+                    put("parentRecurringId", txn.parentRecurringId ?: "")
+                    put("notifyForRecurringEntries", txn.notifyForRecurringEntries)
                     put("fromAccountName", accountMap[txn.accountId]?.name ?: "Unknown")
                     if (txn.type == TransactionType.TRANSFER) {
                         put("toAccountName", accountMap[txn.toAccountId]?.name ?: "Unknown")
@@ -247,10 +318,24 @@ class GoogleDriveBackupService @Inject constructor(
                         )
                     }
                     put("splits", splitsArray)
+
+                    // Backup actual attachment bytes so restores on another device can recreate files.
+                    decodeReceiptUris(txn.receiptUri).forEach { receiptUri ->
+                        if (!receiptFilesObj.has(receiptUri)) {
+                            encodeReceiptBlob(receiptUri)?.let { receiptBlob ->
+                                val sizeBytes = receiptBlob.optInt("sizeBytes", 0)
+                                if (sizeBytes > 0 && totalReceiptBytes + sizeBytes <= MAX_RECEIPT_TOTAL_BYTES) {
+                                    receiptFilesObj.put(receiptUri, receiptBlob)
+                                    totalReceiptBytes += sizeBytes
+                                }
+                            }
+                        }
+                    }
                 }
             )
         }
         rootObj.put("transactions", txnsArray)
+        rootObj.put("receiptFiles", receiptFilesObj)
 
         return rootObj.toString(4)
     }
@@ -267,6 +352,56 @@ class GoogleDriveBackupService @Inject constructor(
 
         fun categoryKey(name: String, type: TransactionType): Pair<String, TransactionType> =
             normalizeKey(name) to type
+
+        fun restoreReceiptFile(dataBase64: String, mimeType: String): String? {
+            val bytes = runCatching { Base64.decode(dataBase64, Base64.DEFAULT) }.getOrNull() ?: return null
+            if (bytes.isEmpty()) return null
+
+            val extension = when {
+                mimeType.contains("jpeg", ignoreCase = true) || mimeType.contains("jpg", ignoreCase = true) -> "jpg"
+                mimeType.contains("png", ignoreCase = true) -> "png"
+                mimeType.contains("webp", ignoreCase = true) -> "webp"
+                mimeType.contains("heic", ignoreCase = true) || mimeType.contains("heif", ignoreCase = true) -> "heic"
+                mimeType.contains("pdf", ignoreCase = true) -> "pdf"
+                else -> "bin"
+            }
+
+            val directory = File(context.filesDir, "restored_receipts").apply { mkdirs() }
+            val file = File(directory, "receipt_${UUID.randomUUID()}.$extension")
+            return runCatching {
+                file.writeBytes(bytes)
+                Uri.fromFile(file).toString()
+            }.getOrNull()
+        }
+
+        fun remapReceiptUris(serialized: String?, restoredMap: Map<String, String>): String? {
+            val uris = serialized
+                ?.split("\n")
+                ?.map { it.trim() }
+                ?.filter { it.isNotBlank() }
+                .orEmpty()
+
+            if (uris.isEmpty()) return null
+
+            val remapped = uris.map { original -> restoredMap[original] ?: original }
+            return remapped.joinToString("\n").ifBlank { null }
+        }
+
+        val restoredReceiptUriMap = mutableMapOf<String, String>()
+        val receiptFilesObj = rootObj.optJSONObject("receiptFiles")
+        if (receiptFilesObj != null) {
+            val keys = receiptFilesObj.keys()
+            while (keys.hasNext()) {
+                val originalUri = keys.next()
+                val blobObj = receiptFilesObj.optJSONObject(originalUri) ?: continue
+                val dataBase64 = blobObj.optString("dataBase64", "")
+                if (dataBase64.isBlank()) continue
+                val mimeType = blobObj.optString("mimeType", "application/octet-stream")
+                restoreReceiptFile(dataBase64, mimeType)?.let { localUri ->
+                    restoredReceiptUriMap[originalUri] = localUri
+                }
+            }
+        }
 
         // Use ALL accounts (including deleted) to avoid duplicate creation
         val accounts = accountRepository.getAllAccountsForBackup()
@@ -404,10 +539,29 @@ class GoogleDriveBackupService @Inject constructor(
                     toAccountId = toAccountId,
                     payee = txnObj.optString("payee", "Transaction"),
                     note = txnObj.optString("note", "").ifBlank { null },
-                    receiptUri = txnObj.optString("receiptUri", "").ifBlank { null },
+                    receiptUri = remapReceiptUris(
+                        txnObj.optString("receiptUri", "").ifBlank { null },
+                        restoredReceiptUriMap
+                    ),
                     date = txnObj.getLong("date"),
                     totalAmount = txnObj.getDouble("totalAmount"),
                     type = type,
+                    isRecurring = txnObj.optBoolean("isRecurring", false),
+                    recurringInterval = if (txnObj.has("recurringInterval") && !txnObj.isNull("recurringInterval")) {
+                        txnObj.optInt("recurringInterval").takeIf { it > 0 }
+                    } else {
+                        null
+                    },
+                    recurringUnit = txnObj.optString("recurringUnit", "")
+                        .ifBlank { null }
+                        ?.let { value -> runCatching { RecurringUnit.valueOf(value) }.getOrNull() },
+                    recurringEndDate = if (txnObj.has("recurringEndDate") && !txnObj.isNull("recurringEndDate")) {
+                        txnObj.optLong("recurringEndDate")
+                    } else {
+                        null
+                    },
+                    parentRecurringId = txnObj.optString("parentRecurringId", "").ifBlank { null },
+                    notifyForRecurringEntries = txnObj.optBoolean("notifyForRecurringEntries", true),
                     createdAt = System.currentTimeMillis(),
                     modifiedAt = System.currentTimeMillis(),
                     syncStatus = SyncStatus.DIRTY

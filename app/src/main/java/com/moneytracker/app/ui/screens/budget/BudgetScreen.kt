@@ -17,6 +17,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -28,6 +29,7 @@ import com.moneytracker.app.ui.components.formatAmount
 import com.moneytracker.app.ui.navigation.LocalBottomTabReselect
 import com.moneytracker.app.ui.navigation.Screen
 import java.util.Calendar
+import android.widget.Toast
 
 @Composable
 fun BudgetScreen(
@@ -39,7 +41,9 @@ fun BudgetScreen(
 ) {
     val state by viewModel.state.collectAsState()
     val currentMonth by viewModel.currentMonth.collectAsState()
+    val copyMessage by viewModel.copyMessage.collectAsState()
     val currency = LocalCurrencySymbol.current
+    val context = LocalContext.current
 
     val scrollState = rememberScrollState()
     val reselectFlow = LocalBottomTabReselect.current
@@ -49,6 +53,13 @@ fun BudgetScreen(
             if (route == Screen.Budget.route) {
                 scrollState.animateScrollTo(0)
             }
+        }
+    }
+
+    LaunchedEffect(copyMessage) {
+        copyMessage?.let { message ->
+            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+            viewModel.clearCopyMessage()
         }
     }
 
@@ -245,6 +256,19 @@ fun BudgetScreen(
                         )
                     }
                 }
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            OutlinedButton(
+                onClick = viewModel::copyFromPreviousMonth,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+                    .height(48.dp),
+                shape = RoundedCornerShape(14.dp)
+            ) {
+                Text("Copy Missing Budgets From Last Month")
             }
 
             Spacer(modifier = Modifier.height(100.dp))

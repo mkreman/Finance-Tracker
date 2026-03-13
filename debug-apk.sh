@@ -1,5 +1,4 @@
 set -x
-clear
 ./gradlew assembleDebug
 adb kill-server
 adb start-server

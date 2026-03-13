@@ -28,6 +28,8 @@ class BudgetViewModel @Inject constructor(
 
     private val _state = MutableStateFlow(BudgetState())
     val state: StateFlow<BudgetState> = _state.asStateFlow()
+    private val _copyMessage = MutableStateFlow<String?>(null)
+    val copyMessage: StateFlow<String?> = _copyMessage.asStateFlow()
 
     init {
         observeBudgets()
@@ -64,6 +66,23 @@ class BudgetViewModel @Inject constructor(
         viewModelScope.launch {
             budgetRepository.updateBudgetOrder(reordered)
         }
+    }
+
+    fun copyFromPreviousMonth() {
+        viewModelScope.launch {
+            val calendar = _currentMonth.value
+            val month = calendar.get(Calendar.MONTH) + 1
+            val year = calendar.get(Calendar.YEAR)
+            val copied = budgetRepository.copyMissingBudgetsFromPreviousMonth(month, year)
+            _copyMessage.value = when {
+                copied > 0 -> "Copied $copied budget${if (copied > 1) "s" else ""} from last month"
+                else -> "No new budgets to copy from last month"
+            }
+        }
+    }
+
+    fun clearCopyMessage() {
+        _copyMessage.value = null
     }
 
     private fun observeBudgets() {
