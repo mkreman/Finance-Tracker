@@ -9,6 +9,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.moneytracker.app.data.local.UserPreferences
 import com.moneytracker.app.data.backup.BackupResult
+import com.moneytracker.app.data.backup.CloudBackupInfo
 import com.moneytracker.app.data.backup.CloudBackupScheduler
 import com.moneytracker.app.data.backup.GoogleDriveBackupService
 import com.moneytracker.app.data.local.database.entities.SyncStatus
@@ -49,6 +50,8 @@ data class SettingsState(
     val budgetAlertsEnabled: Boolean = true,
     val autoCloudBackupEnabled: Boolean = false,
     val lastCloudBackupTime: Long = 0L,
+    val cloudBackups: List<CloudBackupInfo> = emptyList(),
+    val isLoadingCloudBackups: Boolean = false,
 )
 
 @HiltViewModel
@@ -183,7 +186,7 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val transactions = transactionRepository.getAllTransactionsRaw()
-                val accounts = accountRepository.getAllAccountsOnce()
+                val accounts = accountRepository.getAllAccountsForBackup()
                 val allBudgets = budgetRepository.getAllBudgets()
                 
                 val accountMap = accounts.associateBy { it.id }
@@ -198,10 +201,14 @@ class SettingsViewModel @Inject constructor(
                     val accObj = JSONObject().apply {
                         put("name", acc.name)
                         put("type", acc.type.name)
+                        put("customTypeName", acc.customTypeName ?: "")
                         put("initialBalance", acc.initialBalance)
                         put("currentBalance", acc.currentBalance)
+                        put("currency", acc.currency)
                         put("colorHex", acc.colorHex)
                         put("iconKey", acc.iconKey)
+                        put("isActive", acc.isActive)
+                        put("isDeleted", acc.isDeleted)
                     }
                     accountsArray.put(accObj)
                 }
@@ -425,6 +432,12 @@ class SettingsViewModel @Inject constructor(
     fun importData(context: Context, uri: Uri) {
         viewModelScope.launch {
             try {
+                fun normalizeKey(value: String): String =
+                    value.trim().replace(Regex("\\s+"), " ").lowercase(Locale.ROOT)
+
+                fun categoryKey(name: String, type: TransactionType): Pair<String, TransactionType> =
+                    normalizeKey(name) to type
+
                 // Read file
                 val jsonString = context.contentResolver.openInputStream(uri)?.use { 
                     it.readBytes().toString(Charsets.UTF_8) 
@@ -432,12 +445,12 @@ class SettingsViewModel @Inject constructor(
 
                 val rootObj = JSONObject(jsonString)
 
-                val accounts = accountRepository.getAllAccountsOnce()
-                val accountByName = accounts.associateBy { it.name }.toMutableMap()
+                val accounts = accountRepository.getAllAccountsForBackup()
+                val accountByName = accounts.associateBy { normalizeKey(it.name) }.toMutableMap()
 
-                val allCategories = mutableMapOf<String, com.moneytracker.app.domain.model.Category>()
+                val allCategories = mutableMapOf<Pair<String, TransactionType>, com.moneytracker.app.domain.model.Category>()
                 categoryRepository.getAllCategories().first().forEach { cat ->
-                    allCategories[cat.name] = cat
+                    allCategories[categoryKey(cat.name, cat.type)] = cat
                 }
 
                 var importedAccounts = 0
@@ -449,7 +462,7 @@ class SettingsViewModel @Inject constructor(
                 if (accountsArray != null) {
                     for (i in 0 until accountsArray.length()) {
                         val accObj = accountsArray.getJSONObject(i)
-                        val name = accObj.getString("name")
+                        val name = accObj.getString("name").trim()
                         val importedInitial = accObj.getDouble("initialBalance")
                         
                         // FIX: Start the current balance at the initial balance. 
@@ -457,33 +470,45 @@ class SettingsViewModel @Inject constructor(
                         val startingBalance = importedInitial 
                         
                         val typeStr = accObj.getString("type")
+                        val customTypeName = accObj.optString("customTypeName", "").ifBlank { null }
+                        val currency = accObj.optString("currency", "INR")
                         val colorHex = accObj.getString("colorHex")
                         val iconKey = accObj.getString("iconKey")
+                        val isActive = accObj.optBoolean("isActive", true)
+                        val isDeleted = accObj.optBoolean("isDeleted", false)
                         
-                        val existingAccount = accountByName[name]
+                        val existingAccount = accountByName[normalizeKey(name)]
                         
                         if (existingAccount == null) {
                             val newAccount = Account(
                                 id = UUID.randomUUID().toString(),
                                 name = name,
                                 type = com.moneytracker.app.data.local.database.entities.AccountType.valueOf(typeStr),
+                                customTypeName = customTypeName,
                                 initialBalance = importedInitial,
-                                currentBalance = startingBalance, // Set to initial
+                                currentBalance = startingBalance,
+                                currency = currency,
                                 colorHex = colorHex,
-                                iconKey = iconKey
+                                iconKey = iconKey,
+                                isActive = isActive,
+                                isDeleted = isDeleted
                             )
                             accountRepository.saveAccount(newAccount)
-                            accountByName[name] = newAccount
+                            accountByName[normalizeKey(name)] = newAccount
                             importedAccounts++
                         } else {
                             val updatedAccount = existingAccount.copy(
                                 initialBalance = importedInitial,
-                                currentBalance = startingBalance, // Set to initial
+                                currentBalance = startingBalance,
+                                customTypeName = customTypeName,
+                                currency = currency,
                                 colorHex = colorHex,
-                                iconKey = iconKey
+                                iconKey = iconKey,
+                                isActive = isActive,
+                                isDeleted = isDeleted
                             )
                             accountRepository.saveAccount(updatedAccount)
-                            accountByName[name] = updatedAccount
+                            accountByName[normalizeKey(name)] = updatedAccount
                             importedAccounts++ 
                         }
                     }
@@ -494,9 +519,10 @@ class SettingsViewModel @Inject constructor(
                 if (budgetsArray != null) {
                     for (i in 0 until budgetsArray.length()) {
                         val bObj = budgetsArray.getJSONObject(i)
-                        val categoryName = bObj.getString("categoryName")
+                        val categoryName = bObj.getString("categoryName").trim()
+                        val budgetCategoryKey = categoryKey(categoryName, TransactionType.EXPENSE)
                         
-                        var category = allCategories[categoryName]
+                        var category = allCategories[budgetCategoryKey]
                         if (category == null) {
                             category = com.moneytracker.app.domain.model.Category(
                                 id = UUID.randomUUID().toString(),
@@ -506,7 +532,7 @@ class SettingsViewModel @Inject constructor(
                                 iconKey = "more_horiz"
                             )
                             categoryRepository.saveCategory(category)
-                            allCategories[categoryName] = category
+                            allCategories[budgetCategoryKey] = category
                         }
                         
                         budgetRepository.saveBudget(
@@ -526,10 +552,10 @@ class SettingsViewModel @Inject constructor(
                         val txnObj = txnsArray.getJSONObject(i)
                         
                         val type = TransactionType.valueOf(txnObj.getString("type"))
-                        val fromAccountName = txnObj.getString("fromAccountName")
+                        val fromAccountName = txnObj.getString("fromAccountName").trim()
                         
                         // Ensure From Account exists
-                        var fromAccount = accountByName[fromAccountName]
+                        var fromAccount = accountByName[normalizeKey(fromAccountName)]
                         if (fromAccount == null) {
                             fromAccount = Account(
                                 id = UUID.randomUUID().toString(), name = fromAccountName,
@@ -537,15 +563,15 @@ class SettingsViewModel @Inject constructor(
                                 initialBalance = 0.0, currentBalance = 0.0, colorHex = "#2196F3", iconKey = "bank"
                             )
                             accountRepository.saveAccount(fromAccount)
-                            accountByName[fromAccountName] = fromAccount
+                            accountByName[normalizeKey(fromAccountName)] = fromAccount
                         }
 
                         val transactionId = UUID.randomUUID().toString()
                         var toAccountId: String? = null
 
                         if (type == TransactionType.TRANSFER) {
-                            val toAccountName = txnObj.optString("toAccountName", "Unknown")
-                            var toAccount = accountByName[toAccountName]
+                            val toAccountName = txnObj.optString("toAccountName", "Unknown").trim()
+                            var toAccount = accountByName[normalizeKey(toAccountName)]
                             if (toAccount == null) {
                                 toAccount = Account(
                                     id = UUID.randomUUID().toString(), name = toAccountName,
@@ -553,7 +579,7 @@ class SettingsViewModel @Inject constructor(
                                     initialBalance = 0.0, currentBalance = 0.0, colorHex = "#4CAF50", iconKey = "bank"
                                 )
                                 accountRepository.saveAccount(toAccount)
-                                accountByName[toAccountName] = toAccount
+                                accountByName[normalizeKey(toAccountName)] = toAccount
                             }
                             toAccountId = toAccount.id
                         }
@@ -579,19 +605,22 @@ class SettingsViewModel @Inject constructor(
                         if (splitsArray != null) {
                             for (j in 0 until splitsArray.length()) {
                                 val splitObj = splitsArray.getJSONObject(j)
-                                val catName = splitObj.getString("categoryName")
+                                val catName = splitObj.getString("categoryName").trim()
+                                val splitType = if (type == TransactionType.TRANSFER) TransactionType.EXPENSE else type
+                                val splitCategoryKey = categoryKey(catName, splitType)
                                 
-                                var cat = allCategories[catName]
+                                var cat = allCategories[splitCategoryKey]
+                                    ?: allCategories[categoryKey(catName, TransactionType.EXPENSE)]
                                 if (cat == null) {
                                     cat = com.moneytracker.app.domain.model.Category(
                                         id = UUID.randomUUID().toString(),
                                         name = catName,
-                                        type = type,
-                                        colorHex = if (type == TransactionType.INCOME) "#4CAF50" else "#FF5722",
+                                        type = splitType,
+                                        colorHex = if (splitType == TransactionType.INCOME) "#4CAF50" else "#FF5722",
                                         iconKey = "more_horiz"
                                     )
                                     categoryRepository.saveCategory(cat)
-                                    allCategories[catName] = cat
+                                    allCategories[splitCategoryKey] = cat
                                 }
                                 
                                 splitsEntities.add(
@@ -670,5 +699,34 @@ class SettingsViewModel @Inject constructor(
                 is BackupResult.Error -> _state.update { it.copy(importMessage = "Cloud restore failed: ${result.message}") }
             }
         }
+    }
+
+    fun loadCloudBackups() {
+        viewModelScope.launch {
+            _state.update { it.copy(isLoadingCloudBackups = true, cloudBackups = emptyList()) }
+            googleDriveBackupService.listAvailableBackups()
+                .onSuccess { backups ->
+                    _state.update { it.copy(cloudBackups = backups, isLoadingCloudBackups = false) }
+                }
+                .onFailure { err ->
+                    _state.update { it.copy(isLoadingCloudBackups = false, importMessage = "Could not load backups: ${err.message}") }
+                }
+        }
+    }
+
+    fun restoreFromCloudById(fileId: String) {
+        viewModelScope.launch {
+            _state.update { it.copy(cloudBackups = emptyList()) }
+            when (val result = googleDriveBackupService.restoreBackupById(fileId)) {
+                BackupResult.Success -> _state.update { it.copy(importMessage = "Cloud restore completed") }
+                BackupResult.NotSignedIn -> _state.update { it.copy(importMessage = "Google sign-in required") }
+                BackupResult.NoBackupFound -> _state.update { it.copy(importMessage = "Backup not found") }
+                is BackupResult.Error -> _state.update { it.copy(importMessage = "Restore failed: ${result.message}") }
+            }
+        }
+    }
+
+    fun clearCloudBackups() {
+        _state.update { it.copy(cloudBackups = emptyList(), isLoadingCloudBackups = false) }
     }
 }

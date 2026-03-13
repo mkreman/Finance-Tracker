@@ -29,6 +29,9 @@ import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -39,6 +42,12 @@ sealed class BackupResult {
     data object NoBackupFound : BackupResult()
     data class Error(val message: String) : BackupResult()
 }
+
+data class CloudBackupInfo(
+    val fileId: String,
+    val name: String,
+    val modifiedTimeMs: Long
+)
 
 @Singleton
 class GoogleDriveBackupService @Inject constructor(
@@ -51,7 +60,7 @@ class GoogleDriveBackupService @Inject constructor(
 ) {
 
     suspend fun hasAnyLocalData(): Boolean = withContext(Dispatchers.IO) {
-        accountRepository.getAllAccountsOnce().isNotEmpty() ||
+        accountRepository.getAllAccountsIncludingInactiveOnce().isNotEmpty() ||
             budgetRepository.getAllBudgets().isNotEmpty() ||
             transactionRepository.getAllTransactionsRaw().isNotEmpty()
     }
@@ -67,22 +76,25 @@ class GoogleDriveBackupService @Inject constructor(
                 val json = buildBackupJson()
                 val mediaContent = ByteArrayContent.fromString("application/json", json)
 
-                val existing = drive.files().list()
-                    .setSpaces("appDataFolder")
-                    .setQ("name='moneytracker_backup.json' and trashed=false")
-                    .setFields("files(id,name)")
-                    .execute()
-                    .files
-                    ?.firstOrNull()
+                val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
+                val fileName = "moneytracker_backup_$timestamp.json"
+                val fileMetadata = File().apply {
+                    name = fileName
+                    parents = listOf("appDataFolder")
+                }
+                drive.files().create(fileMetadata, mediaContent).setFields("id").execute()
 
-                if (existing != null) {
-                    drive.files().update(existing.id, null, mediaContent).execute()
-                } else {
-                    val fileMetadata = File().apply {
-                        name = "moneytracker_backup.json"
-                        parents = listOf("appDataFolder")
-                    }
-                    drive.files().create(fileMetadata, mediaContent).setFields("id").execute()
+                // Keep only the 5 most recent backups; delete older ones
+                val allBackups = drive.files().list()
+                    .setSpaces("appDataFolder")
+                    .setQ("name contains 'moneytracker_backup_' and trashed=false")
+                    .setOrderBy("modifiedTime desc")
+                    .setFields("files(id,name,modifiedTime)")
+                    .execute()
+                    .files.orEmpty()
+
+                allBackups.drop(5).forEach { old ->
+                    runCatching { drive.files().delete(old.id).execute() }
                 }
 
                 userPreferences.setLastCloudBackupTime(System.currentTimeMillis())
@@ -93,7 +105,36 @@ class GoogleDriveBackupService @Inject constructor(
         }
     }
 
-    suspend fun restoreLatestBackupFromCloud(): BackupResult {
+    suspend fun listAvailableBackups(): Result<List<CloudBackupInfo>> {
+        return withContext(Dispatchers.IO) {
+            runCatching {
+                val account = GoogleSignIn.getLastSignedInAccount(context)
+                    ?: error("Not signed in")
+                val requiredScope = Scope(DriveScopes.DRIVE_APPDATA)
+                if (!account.grantedScopes.contains(requiredScope)) error("Drive scope not granted")
+
+                val drive = createDriveService(account.account?.name ?: error("No account name"))
+
+                drive.files().list()
+                    .setSpaces("appDataFolder")
+                    .setQ("name contains 'moneytracker_backup_' and trashed=false")
+                    .setOrderBy("modifiedTime desc")
+                    .setPageSize(5)
+                    .setFields("files(id,name,modifiedTime)")
+                    .execute()
+                    .files.orEmpty()
+                    .map { f ->
+                        CloudBackupInfo(
+                            fileId = f.id,
+                            name = f.name,
+                            modifiedTimeMs = f.modifiedTime?.value ?: 0L
+                        )
+                    }
+            }
+        }
+    }
+
+    suspend fun restoreBackupById(fileId: String): BackupResult {
         return withContext(Dispatchers.IO) {
             try {
                 val account = GoogleSignIn.getLastSignedInAccount(context) ?: return@withContext BackupResult.NotSignedIn
@@ -102,23 +143,24 @@ class GoogleDriveBackupService @Inject constructor(
 
                 val drive = createDriveService(account.account?.name ?: return@withContext BackupResult.NotSignedIn)
 
-                val latestBackup = drive.files().list()
-                    .setSpaces("appDataFolder")
-                    .setQ("name='moneytracker_backup.json' and trashed=false")
-                    .setOrderBy("modifiedTime desc")
-                    .setPageSize(1)
-                    .setFields("files(id,name,modifiedTime)")
-                    .execute()
-                    .files
-                    ?.firstOrNull()
-                    ?: return@withContext BackupResult.NoBackupFound
-
-                val jsonString = drive.files().get(latestBackup.id)
+                val jsonString = drive.files().get(fileId)
                     .executeMediaAsInputStream()
                     .use { it.readBytes().toString(Charsets.UTF_8) }
 
                 importFromJson(jsonString)
                 BackupResult.Success
+            } catch (e: Exception) {
+                BackupResult.Error(e.message ?: "Unknown Drive restore error")
+            }
+        }
+    }
+
+    suspend fun restoreLatestBackupFromCloud(): BackupResult {
+        return withContext(Dispatchers.IO) {
+            try {
+                val backups = listAvailableBackups().getOrNull()
+                if (backups.isNullOrEmpty()) return@withContext BackupResult.NoBackupFound
+                restoreBackupById(backups.first().fileId)
             } catch (e: Exception) {
                 BackupResult.Error(e.message ?: "Unknown Drive restore error")
             }
@@ -137,25 +179,30 @@ class GoogleDriveBackupService @Inject constructor(
 
     private suspend fun buildBackupJson(): String {
         val transactions = transactionRepository.getAllTransactionsRaw()
-        val accounts = accountRepository.getAllAccountsOnce()
+        // Use ALL accounts (including soft-deleted) so transaction account names resolve correctly
+        val allAccounts = accountRepository.getAllAccountsForBackup()
         val budgets = budgetRepository.getAllBudgets()
         val categories = categoryRepository.getAllCategories().firstOrNull().orEmpty()
 
-        val accountMap = accounts.associateBy { it.id }
+        val accountMap = allAccounts.associateBy { it.id }
         val categoryMap = categories.associateBy { it.id }
 
         val rootObj = JSONObject()
 
         val accountsArray = JSONArray()
-        accounts.forEach { acc ->
+        allAccounts.forEach { acc ->
             accountsArray.put(
                 JSONObject().apply {
                     put("name", acc.name)
                     put("type", acc.type.name)
+                    put("customTypeName", acc.customTypeName ?: "")
                     put("initialBalance", acc.initialBalance)
                     put("currentBalance", acc.currentBalance)
+                    put("currency", acc.currency)
                     put("colorHex", acc.colorHex)
                     put("iconKey", acc.iconKey)
+                    put("isActive", acc.isActive)
+                    put("isDeleted", acc.isDeleted)
                 }
             )
         }
@@ -215,47 +262,66 @@ class GoogleDriveBackupService @Inject constructor(
             throw IllegalArgumentException("Invalid cloud backup format")
         }
 
-        val accounts = accountRepository.getAllAccountsOnce()
-        val accountByName = accounts.associateBy { it.name }.toMutableMap()
+        fun normalizeKey(value: String): String =
+            value.trim().replace(Regex("\\s+"), " ").lowercase(Locale.ROOT)
 
-        val allCategories = mutableMapOf<String, Category>()
+        fun categoryKey(name: String, type: TransactionType): Pair<String, TransactionType> =
+            normalizeKey(name) to type
+
+        // Use ALL accounts (including deleted) to avoid duplicate creation
+        val accounts = accountRepository.getAllAccountsForBackup()
+        val accountByName = accounts.associateBy { normalizeKey(it.name) }.toMutableMap()
+
+        val allCategories = mutableMapOf<Pair<String, TransactionType>, Category>()
         categoryRepository.getAllCategories().firstOrNull().orEmpty().forEach { category ->
-            allCategories[category.name] = category
+            allCategories[categoryKey(category.name, category.type)] = category
         }
 
         val accountsArray = rootObj.optJSONArray("accounts")
         if (accountsArray != null) {
             for (i in 0 until accountsArray.length()) {
                 val accObj = accountsArray.getJSONObject(i)
-                val name = accObj.getString("name")
+                val name = accObj.getString("name").trim()
                 val importedInitial = accObj.getDouble("initialBalance")
                 val startingBalance = importedInitial
                 val typeStr = accObj.getString("type")
+                val customTypeName = accObj.optString("customTypeName", "").ifBlank { null }
+                val currency = accObj.optString("currency", "INR")
                 val colorHex = accObj.optString("colorHex", "#2196F3")
                 val iconKey = accObj.optString("iconKey", "bank")
+                val isActive = accObj.optBoolean("isActive", true)
+                val isDeleted = accObj.optBoolean("isDeleted", false)
 
-                val existingAccount = accountByName[name]
+                val existingAccount = accountByName[normalizeKey(name)]
                 if (existingAccount == null) {
                     val newAccount = Account(
                         id = UUID.randomUUID().toString(),
                         name = name,
                         type = AccountType.valueOf(typeStr),
+                        customTypeName = customTypeName,
                         initialBalance = importedInitial,
                         currentBalance = startingBalance,
+                        currency = currency,
                         colorHex = colorHex,
-                        iconKey = iconKey
+                        iconKey = iconKey,
+                        isActive = isActive,
+                        isDeleted = isDeleted
                     )
                     accountRepository.saveAccount(newAccount)
-                    accountByName[name] = newAccount
+                    accountByName[normalizeKey(name)] = newAccount
                 } else {
                     val updated = existingAccount.copy(
                         initialBalance = importedInitial,
                         currentBalance = startingBalance,
+                        customTypeName = customTypeName,
+                        currency = currency,
                         colorHex = colorHex,
-                        iconKey = iconKey
+                        iconKey = iconKey,
+                        isActive = isActive,
+                        isDeleted = isDeleted
                     )
                     accountRepository.saveAccount(updated)
-                    accountByName[name] = updated
+                    accountByName[normalizeKey(name)] = updated
                 }
             }
         }
@@ -264,8 +330,9 @@ class GoogleDriveBackupService @Inject constructor(
         if (budgetsArray != null) {
             for (i in 0 until budgetsArray.length()) {
                 val budgetObj = budgetsArray.getJSONObject(i)
-                val categoryName = budgetObj.getString("categoryName")
-                var category = allCategories[categoryName]
+                val categoryName = budgetObj.getString("categoryName").trim()
+                val budgetCategoryKey = categoryKey(categoryName, TransactionType.EXPENSE)
+                var category = allCategories[budgetCategoryKey]
 
                 if (category == null) {
                     category = Category(
@@ -276,7 +343,7 @@ class GoogleDriveBackupService @Inject constructor(
                         iconKey = "more_horiz"
                     )
                     categoryRepository.saveCategory(category)
-                    allCategories[categoryName] = category
+                    allCategories[budgetCategoryKey] = category
                 }
 
                 budgetRepository.saveBudget(
@@ -293,9 +360,9 @@ class GoogleDriveBackupService @Inject constructor(
             for (i in 0 until txnsArray.length()) {
                 val txnObj = txnsArray.getJSONObject(i)
                 val type = TransactionType.valueOf(txnObj.getString("type"))
-                val fromAccountName = txnObj.getString("fromAccountName")
+                val fromAccountName = txnObj.getString("fromAccountName").trim()
 
-                var fromAccount = accountByName[fromAccountName]
+                var fromAccount = accountByName[normalizeKey(fromAccountName)]
                 if (fromAccount == null) {
                     fromAccount = Account(
                         id = UUID.randomUUID().toString(),
@@ -307,13 +374,13 @@ class GoogleDriveBackupService @Inject constructor(
                         iconKey = "bank"
                     )
                     accountRepository.saveAccount(fromAccount)
-                    accountByName[fromAccountName] = fromAccount
+                    accountByName[normalizeKey(fromAccountName)] = fromAccount
                 }
 
                 var toAccountId: String? = null
                 if (type == TransactionType.TRANSFER) {
-                    val toAccountName = txnObj.optString("toAccountName", "Unknown")
-                    var toAccount = accountByName[toAccountName]
+                    val toAccountName = txnObj.optString("toAccountName", "Unknown").trim()
+                    var toAccount = accountByName[normalizeKey(toAccountName)]
                     if (toAccount == null) {
                         toAccount = Account(
                             id = UUID.randomUUID().toString(),
@@ -325,7 +392,7 @@ class GoogleDriveBackupService @Inject constructor(
                             iconKey = "bank"
                         )
                         accountRepository.saveAccount(toAccount)
-                        accountByName[toAccountName] = toAccount
+                        accountByName[normalizeKey(toAccountName)] = toAccount
                     }
                     toAccountId = toAccount.id
                 }
@@ -351,19 +418,22 @@ class GoogleDriveBackupService @Inject constructor(
                 if (splitsArray != null) {
                     for (j in 0 until splitsArray.length()) {
                         val splitObj = splitsArray.getJSONObject(j)
-                        val categoryName = splitObj.getString("categoryName")
+                        val categoryName = splitObj.getString("categoryName").trim()
+                        val splitType = if (type == TransactionType.TRANSFER) TransactionType.EXPENSE else type
+                        val splitCategoryKey = categoryKey(categoryName, splitType)
 
-                        var category = allCategories[categoryName]
+                        var category = allCategories[splitCategoryKey]
+                            ?: allCategories[categoryKey(categoryName, TransactionType.EXPENSE)]
                         if (category == null) {
                             category = Category(
                                 id = UUID.randomUUID().toString(),
                                 name = categoryName,
-                                type = type,
-                                colorHex = if (type == TransactionType.INCOME) "#4CAF50" else "#FF5722",
+                                type = splitType,
+                                colorHex = if (splitType == TransactionType.INCOME) "#4CAF50" else "#FF5722",
                                 iconKey = "more_horiz"
                             )
                             categoryRepository.saveCategory(category)
-                            allCategories[categoryName] = category
+                            allCategories[splitCategoryKey] = category
                         }
 
                         splitsEntities.add(

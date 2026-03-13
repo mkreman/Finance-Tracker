@@ -2,3 +2,5 @@
 .idea
 app/build
 client_secret_*.json
+.github/
+data/

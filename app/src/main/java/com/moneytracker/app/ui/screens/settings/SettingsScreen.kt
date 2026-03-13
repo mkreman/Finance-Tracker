@@ -49,6 +49,7 @@ private enum class PendingCloudAction {
     NONE,
     BACKUP_NOW,
     RESTORE_NOW,
+    SHOW_BACKUP_LIST,
     ENABLE_AUTO_BACKUP
 }
 
@@ -64,6 +65,7 @@ fun SettingsScreen(
     var monthlyExportFormat by remember { mutableStateOf("CSV") }
     var selectedExportMonth by remember { mutableStateOf(Calendar.getInstance()) }
     var pendingCloudAction by remember { mutableStateOf(PendingCloudAction.NONE) }
+    var showCloudBackupPicker by remember { mutableStateOf(false) }
 
     val gso = remember {
         GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
@@ -81,6 +83,7 @@ fun SettingsScreen(
             when (pendingCloudAction) {
                 PendingCloudAction.BACKUP_NOW -> viewModel.backupNowToCloud()
                 PendingCloudAction.RESTORE_NOW -> viewModel.restoreNowFromCloud()
+                PendingCloudAction.SHOW_BACKUP_LIST -> viewModel.loadCloudBackups()
                 PendingCloudAction.ENABLE_AUTO_BACKUP -> viewModel.setAutoCloudBackupEnabled(true)
                 PendingCloudAction.NONE -> Unit
             }
@@ -123,6 +126,10 @@ fun SettingsScreen(
             viewModel.exportMonthlyPdf(context, uri, monthYear.first, monthYear.second)
         }
         pendingPdfMonthYear = null
+    }
+
+    LaunchedEffect(state.cloudBackups) {
+        if (state.cloudBackups.isNotEmpty()) showCloudBackupPicker = true
     }
 
     LaunchedEffect(state.exportMessage) {
@@ -324,7 +331,13 @@ fun SettingsScreen(
                 onDismissRequest = { showAccountPicker = false },
                 title = { Text("Default Account", color = MaterialTheme.colorScheme.onSurface) },
                 text = {
-                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 400.dp)
+                            .verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -653,13 +666,13 @@ fun SettingsScreen(
         SettingsItem(
             icon = Icons.Filled.CloudDownload,
             title = "Restore From Cloud",
-            subtitle = if (hasDriveSignIn) "Download and import latest Drive backup" else "Sign in to Google to restore",
+            subtitle = if (hasDriveSignIn) "Choose a backup to restore from Drive" else "Sign in to Google to restore",
             iconTint = MaterialTheme.colorScheme.secondary,
             onClick = {
                 if (hasDriveSignIn) {
-                    viewModel.restoreNowFromCloud()
+                    viewModel.loadCloudBackups()
                 } else {
-                    pendingCloudAction = PendingCloudAction.RESTORE_NOW
+                    pendingCloudAction = PendingCloudAction.SHOW_BACKUP_LIST
                     cloudSignInLauncher.launch(GoogleSignIn.getClient(context, gso).signInIntent)
                 }
             }
@@ -845,6 +858,84 @@ fun SettingsScreen(
 
     if (showAbout) {
         AboutDialog(onDismiss = { showAbout = false })
+    }
+
+    // Cloud backup picker dialog
+    if (showCloudBackupPicker || state.isLoadingCloudBackups) {
+        AlertDialog(
+            onDismissRequest = {
+                showCloudBackupPicker = false
+                viewModel.clearCloudBackups()
+            },
+            title = { Text("Choose Backup to Restore") },
+            text = {
+                Box(modifier = Modifier.heightIn(min = 60.dp, max = 400.dp)) {
+                    if (state.isLoadingCloudBackups) {
+                        CircularProgressIndicator(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .align(Alignment.Center)
+                        )
+                    } else if (state.cloudBackups.isEmpty()) {
+                        Text(
+                            "No backups found in Drive.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    } else {
+                        val dateFormat = remember { SimpleDateFormat("MMM dd yyyy hh:mm a", Locale.getDefault()) }
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .verticalScroll(rememberScrollState())
+                        ) {
+                            state.cloudBackups.forEachIndexed { index, backup ->
+                                if (index > 0) HorizontalDivider()
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable {
+                                            showCloudBackupPicker = false
+                                            viewModel.restoreFromCloudById(backup.fileId)
+                                        }
+                                        .padding(vertical = 14.dp, horizontal = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        Icons.Filled.CloudDownload,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.secondary,
+                                        modifier = Modifier.size(22.dp)
+                                    )
+                                    Spacer(Modifier.width(12.dp))
+                                    Column {
+                                        Text(
+                                            text = dateFormat.format(java.util.Date(backup.modifiedTimeMs)),
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                        Text(
+                                            text = backup.name,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = {
+                    showCloudBackupPicker = false
+                    viewModel.clearCloudBackups()
+                }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }
 

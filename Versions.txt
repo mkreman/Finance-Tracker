@@ -179,31 +179,23 @@ Version 1.2.0
 	- Keep the add button on all pages for adding transaction
 	- Notes are supposed to be skipped for notification only not for transaction entry
 
+
+Version - 1.3.0
+	- Export to PDF / CSV: While your JSON export is perfect for restoring app data, users often need their data in human-readable formats for taxes or sharing. Adding an option to export a specific month's transactions as a clean PDF report or a standard CSV file (readable in Excel/Google Sheets) is a highly requested feature in finance apps.
+	- Allow users to snap a photo of a physical receipt or upload an invoice to attach directly to a transaction. This is incredibly useful for claiming business expenses, keeping track of warranties, or simply storing specific records like a vet bill for your cat or a receipt for bike maintenance. You can store the local URI of the image in your Room database.
+	- Automatic Cloud Backup: Currently, users rely on manual JSON exports to save their data. Implementing an automatic, silent background backup to Google Drive (using the Google Drive REST API and WorkManager) would be a massive upgrade. You could add a toggle in Settings for "Auto-backup daily" so users never have to worry about losing their data if they lose their phone.
+
 Done  
 ___________________________________________________________________________________________________
 
-Version - 1.3.0
-	- Export to PDF / CSV
-	While your JSON export is perfect for restoring app data, users often need their data in human-readable formats for taxes or sharing. Adding an option to export a specific month's transactions as a clean PDF report or a standard CSV file (readable in Excel/Google Sheets) is a highly requested feature in finance apps.
-	- Allow users to snap a photo of a physical receipt or upload an invoice to attach directly to a transaction. This is incredibly useful for claiming business expenses, keeping track of warranties, or simply storing specific records like a vet bill for your cat or a receipt for bike maintenance. You can store the local URI of the image in your Room database.
+- Build calculator in amount section
+- Change the icon
 
-
-	- Back up user data with Auto Backup  |  Identity  |  Android Developers https://share.google/PrKwcm21nU3HfmthC
-	- Build calculator in amount section
-
-	?- Add tags to account SBI (saving, for SIPs), show tag filters on top in account view 
-
-	- Change the icon
-
-1. Automatic Cloud Backup
-Currently, users rely on manual JSON exports to save their data. Implementing an automatic, silent background backup to Google Drive (using the Google Drive REST API and WorkManager) would be a massive upgrade. You could add a toggle in Settings for "Auto-backup daily" so users never have to worry about losing their data if they lose their phone.
-2. Receipt & Image Attachments
-Allow users to snap a photo of a physical receipt or upload an invoice to attach directly to a transaction. This is incredibly useful for claiming business expenses, keeping track of warranties, or simply storing specific records like a vet bill for your cat or a receipt for bike maintenance. You can store the local URI of the image in your Room database.
-3. Savings Goals (Reverse Budgeting)
+- Savings Goals (Reverse Budgeting)
 You currently have Budgets to restrict spending, but adding Savings Goals is highly motivating. Users could create a goal (e.g., "New Bike Gear", "Vacation Fund", "Emergency Fund") with a target amount. They could then allocate portions of their income or link specific "Wallet" accounts to visually track their progress filling up a goal bar.
-4. Advanced Search & Filtering
+- Advanced Search & Filtering
 As the database grows over the months, finding old entries gets difficult. A dedicated global search screen would be a lifesaver. Users should be able to type a keyword (like a friend's name, or a specific note like "wedding gift" or "lime sulfur dip") and filter the results by date range, category, or amount (e.g., "Show me all expenses over ₹5,000 last year").
-5. Enhanced Analytics & Trends (Line Charts)
+- Enhanced Analytics & Trends (Line Charts)
 The current dashboard uses Donut charts for a great monthly snapshot. Adding Line Charts or Bar Charts to show Month-over-Month comparisons or Net Worth over time would give users a macro-level view of their financial health. You can easily implement these using a Compose-native charting library like Vico or YCharts.
-8. Quick Action Templates
+- Quick Action Templates
 For frequent expenses that aren't necessarily scheduled on a strict recurring calendar, "Templates" are great. A user could save a template like "Morning Coffee - ₹150 - Food". They can then just tap this template from the dashboard to log the expense instantly without typing the amount or picking the category every time.

@@ -12,5 +12,6 @@ data class Account(
     val currency: String = "INR",
     val colorHex: String,
     val iconKey: String = "wallet",
-    val isActive: Boolean = true
+    val isActive: Boolean = true,
+    val isDeleted: Boolean = false
 )

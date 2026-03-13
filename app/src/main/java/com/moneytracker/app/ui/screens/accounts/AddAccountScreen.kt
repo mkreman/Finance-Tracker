@@ -128,18 +128,24 @@ class AddAccountViewModel @Inject constructor(
 
     fun save() {
         val current = _state.value
-        if (current.name.isBlank()) return
+        val normalizedName = current.name.trim()
+        if (normalizedName.isBlank()) return
         if (current.type == AccountType.CUSTOM && current.customTypeName.isBlank()) return
 
         viewModelScope.launch {
             _state.update { it.copy(isSaving = true) }
             val balance = current.initialBalance.toDoubleOrNull() ?: 0.0
+            val existingSameName = accountRepository.getAllAccountsIncludingInactiveOnce()
+                .firstOrNull {
+                    it.id != current.editAccountId &&
+                        it.name.trim().equals(normalizedName, ignoreCase = true)
+                }
 
             if (current.isEditMode && current.editAccountId != null) {
                 accountRepository.updateAccount(
                     Account(
                         id = current.editAccountId,
-                        name = current.name,
+                        name = normalizedName,
                         type = current.type,
                         customTypeName = if (current.type == AccountType.CUSTOM) current.customTypeName else null,
                         initialBalance = balance,
@@ -148,11 +154,26 @@ class AddAccountViewModel @Inject constructor(
                         iconKey = current.iconKey
                     )
                 )
+            } else if (existingSameName != null) {
+                val balanceDiff = balance - existingSameName.initialBalance
+                accountRepository.saveAccount(
+                    existingSameName.copy(
+                        name = normalizedName,
+                        type = current.type,
+                        customTypeName = if (current.type == AccountType.CUSTOM) current.customTypeName else null,
+                        initialBalance = balance,
+                        currentBalance = existingSameName.currentBalance + balanceDiff,
+                        colorHex = current.colorHex,
+                        iconKey = current.iconKey,
+                        isActive = true,
+                        isDeleted = false
+                    )
+                )
             } else {
                 accountRepository.saveAccount(
                     Account(
                         id = UUID.randomUUID().toString(),
-                        name = current.name,
+                        name = normalizedName,
                         type = current.type,
                         customTypeName = if (current.type == AccountType.CUSTOM) current.customTypeName else null,
                         initialBalance = balance,

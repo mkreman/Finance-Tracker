@@ -26,6 +26,12 @@ class AccountRepository @Inject constructor(
     suspend fun getAllAccountsOnce(): List<Account> =
         accountDao.getAllAccounts().first().map { it.toDomain() }
 
+    suspend fun getAllAccountsIncludingInactiveOnce(): List<Account> =
+        accountDao.getAllAccountsIncludingInactive().first().map { it.toDomain() }
+
+    suspend fun getAllAccountsForBackup(): List<Account> =
+        accountDao.getAllAccountsForBackup().map { it.toDomain() }
+
     fun getAccountsByType(type: AccountType): Flow<List<Account>> =
         accountDao.getAccountsByType(type).map { list ->
             list.map { it.toDomain() }
@@ -64,6 +70,8 @@ class AccountRepository @Inject constructor(
                 currency = account.currency,
                 colorHex = account.colorHex,
                 iconKey = account.iconKey,
+                isActive = account.isActive,
+                isDeleted = account.isDeleted,
                 modifiedAt = System.currentTimeMillis(),
                 syncStatus = SyncStatus.DIRTY
             )
@@ -173,6 +181,7 @@ class AccountRepository @Inject constructor(
         currency = currency,
         colorHex = colorHex,
         iconKey = iconKey,
-        isActive = isActive
+        isActive = isActive,
+        isDeleted = isDeleted
     )
 }

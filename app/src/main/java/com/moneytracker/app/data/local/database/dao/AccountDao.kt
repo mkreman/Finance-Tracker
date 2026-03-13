@@ -11,6 +11,12 @@ interface AccountDao {
     @Query("SELECT * FROM accounts WHERE isDeleted = 0 AND isActive = 1 ORDER BY name ASC")
     fun getAllAccounts(): Flow<List<AccountEntity>>
 
+    @Query("SELECT * FROM accounts WHERE isDeleted = 0 ORDER BY name ASC")
+    fun getAllAccountsIncludingInactive(): Flow<List<AccountEntity>>
+
+    @Query("SELECT * FROM accounts ORDER BY name ASC")
+    suspend fun getAllAccountsForBackup(): List<AccountEntity>
+
     @Query("SELECT * FROM accounts WHERE isDeleted = 0 AND isActive = 0 ORDER BY name ASC")
     fun getInactiveAccounts(): Flow<List<AccountEntity>>
 
