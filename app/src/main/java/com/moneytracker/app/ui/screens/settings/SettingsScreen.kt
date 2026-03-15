@@ -9,6 +9,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.input.ImeAction
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.compose.BackHandler
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -53,6 +54,15 @@ private enum class PendingCloudAction {
     ENABLE_AUTO_BACKUP
 }
 
+private enum class SettingsPage {
+    HOME,
+    GENERAL,
+    NOTIFICATIONS,
+    SECURITY,
+    DATA_SYNC,
+    ABOUT
+}
+
 @Composable
 fun SettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel()
@@ -66,6 +76,15 @@ fun SettingsScreen(
     var selectedExportMonth by remember { mutableStateOf(Calendar.getInstance()) }
     var pendingCloudAction by remember { mutableStateOf(PendingCloudAction.NONE) }
     var showCloudBackupPicker by remember { mutableStateOf(false) }
+    var currentPage by remember { mutableStateOf(SettingsPage.HOME) }
+
+    fun navigateToSettingsHome() {
+        currentPage = SettingsPage.HOME
+    }
+
+    BackHandler(enabled = currentPage != SettingsPage.HOME) {
+        navigateToSettingsHome()
+    }
 
     val gso = remember {
         GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
@@ -154,17 +173,80 @@ fun SettingsScreen(
     ) {
         Spacer(modifier = Modifier.height(16.dp))
 
-        Text(
-            text = "Settings",
-            style = MaterialTheme.typography.headlineMedium,
-            color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.padding(horizontal = 16.dp)
-        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (currentPage != SettingsPage.HOME) {
+                IconButton(onClick = ::navigateToSettingsHome) {
+                    Icon(Icons.Filled.ArrowBack, contentDescription = "Back")
+                }
+            }
+            Text(
+                text = when (currentPage) {
+                    SettingsPage.HOME -> "Settings"
+                    SettingsPage.GENERAL -> "General"
+                    SettingsPage.NOTIFICATIONS -> "Notifications"
+                    SettingsPage.SECURITY -> "Security"
+                    SettingsPage.DATA_SYNC -> "Data & Sync"
+                    SettingsPage.ABOUT -> "About"
+                },
+                style = MaterialTheme.typography.headlineMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.padding(start = if (currentPage == SettingsPage.HOME) 8.dp else 0.dp)
+            )
+        }
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // General Section
-        SettingsSectionHeader("General")
+        if (currentPage == SettingsPage.HOME) {
+            SettingsItem(
+                icon = Icons.Filled.Tune,
+                title = "General",
+                subtitle = "Theme, currency, first day, default account",
+                iconTint = MaterialTheme.colorScheme.primary,
+                onClick = { currentPage = SettingsPage.GENERAL }
+            )
+
+            SettingsItem(
+                icon = Icons.Filled.Notifications,
+                title = "Notifications",
+                subtitle = "Daily reminders, budget alerts, recurring notifications",
+                iconTint = MaterialTheme.colorScheme.secondary,
+                onClick = { currentPage = SettingsPage.NOTIFICATIONS }
+            )
+
+            SettingsItem(
+                icon = Icons.Filled.Security,
+                title = "Security",
+                subtitle = "Biometric lock and passcode protection",
+                iconTint = MaterialTheme.colorScheme.error,
+                onClick = { currentPage = SettingsPage.SECURITY }
+            )
+
+            SettingsItem(
+                icon = Icons.Filled.Cloud,
+                title = "Data & Sync",
+                subtitle = "Backup, restore, export, import, and reset",
+                iconTint = MaterialTheme.colorScheme.tertiary,
+                onClick = { currentPage = SettingsPage.DATA_SYNC }
+            )
+
+            SettingsItem(
+                icon = Icons.Filled.Info,
+                title = "About",
+                subtitle = "Version and app information",
+                iconTint = MaterialTheme.colorScheme.onSurfaceVariant,
+                onClick = { currentPage = SettingsPage.ABOUT }
+            )
+
+            Spacer(modifier = Modifier.height(100.dp))
+        }
+
+        if (currentPage == SettingsPage.GENERAL) {
+            SettingsSectionHeader("General")
 
         // Theme picker
         var showThemePicker by remember { mutableStateOf(false) }
@@ -388,8 +470,10 @@ fun SettingsScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // --- NEW NOTIFICATIONS SECTION ---
-        SettingsSectionHeader("Notifications")
+        }
+
+        if (currentPage == SettingsPage.NOTIFICATIONS) {
+            SettingsSectionHeader("Notifications")
 
         SettingsToggleItem(
             icon = Icons.Filled.AccessTime,
@@ -420,8 +504,10 @@ fun SettingsScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Security Section
-        SettingsSectionHeader("Security")
+        }
+
+        if (currentPage == SettingsPage.SECURITY) {
+            SettingsSectionHeader("Security")
 
         SettingsToggleItem(
             icon = Icons.Filled.Fingerprint,
@@ -615,8 +701,10 @@ fun SettingsScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Data Section
-        SettingsSectionHeader("Data & Sync")
+        }
+
+        if (currentPage == SettingsPage.DATA_SYNC) {
+            SettingsSectionHeader("Data & Sync")
 
         val hasDriveSignIn = GoogleSignIn.getLastSignedInAccount(context)
             ?.grantedScopes
@@ -827,8 +915,10 @@ fun SettingsScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // About Section
-        SettingsSectionHeader("About")
+        }
+
+        if (currentPage == SettingsPage.ABOUT) {
+            SettingsSectionHeader("About")
 
         SettingsItem(
             icon = Icons.Filled.Info,
@@ -847,7 +937,8 @@ fun SettingsScreen(
             onClick = { showAbout = true }
         )
 
-        Spacer(modifier = Modifier.height(100.dp))
+            Spacer(modifier = Modifier.height(100.dp))
+        }
     }
     
     if (showVersionHistory) {

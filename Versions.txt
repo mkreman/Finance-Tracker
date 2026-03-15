@@ -186,16 +186,16 @@ Version - 1.3.0
 	- Automatic Cloud Backup: Currently, users rely on manual JSON exports to save their data. Implementing an automatic, silent background backup to Google Drive (using the Google Drive REST API and WorkManager) would be a massive upgrade. You could add a toggle in Settings for "Auto-backup daily" so users never have to worry about losing their data if they lose their phone.
 	- Enhanced Analytics & Trends (Line Charts): The current dashboard uses Donut charts for a great monthly snapshot. Adding Line Charts or Bar Charts to show Month-over-Month comparisons or Net Worth over time would give users a macro-level view of their financial health. You can easily implement these using a Compose-native charting library like Vico or YCharts.
 	- Add a button at the bottom of the budget page to copy the budgets from last month which should all the un-set budgets for the current month.
-
+	- Build calculator in amount section
+	- Create pages for every type of settings in settings
+	
 Done  
 ___________________________________________________________________________________________________
 
-- Build calculator in amount section
 - Change the icon
-
 - Advanced Search & Filtering
 As the database grows over the months, finding old entries gets difficult. A dedicated global search screen would be a lifesaver. Users should be able to type a keyword (like a friend's name, or a specific note like "wedding gift" or "lime sulfur dip") and filter the results by date range, category, or amount (e.g., "Show me all expenses over ₹5,000 last year").
 - Quick Action Templates
 For frequent expenses that aren't necessarily scheduled on a strict recurring calendar, "Templates" are great. A user could save a template like "Morning Coffee - ₹150 - Food". They can then just tap this template from the dashboard to log the expense instantly without typing the amount or picking the category every time.
 - Allow Google assistant to add the a transaction
-
+ 

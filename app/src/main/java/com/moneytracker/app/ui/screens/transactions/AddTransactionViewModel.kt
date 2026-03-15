@@ -207,8 +207,9 @@ class AddTransactionViewModel @Inject constructor(
         _state.update { state ->
             val newState = state.copy(amount = value)
             if (!state.isSplitMode) {
+                val splitAmount = newState.evaluatedAmount?.let(::toEditableAmount) ?: value
                 newState.copy(
-                    splits = state.splits.map { it.copy(amount = value) }
+                    splits = state.splits.map { it.copy(amount = splitAmount) }
                 )
             } else {
                 newState
@@ -473,7 +474,7 @@ class AddTransactionViewModel @Inject constructor(
                 } else {
                     val validSplits = currentState.splits.mapNotNull { split ->
                         val categoryId = split.categoryId?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
-                        val splitAmount = split.amount.toDoubleOrNull() ?: 0.0
+                        val splitAmount = evaluateAmountExpression(split.amount) ?: 0.0
                         if (splitAmount <= 0.0) return@mapNotNull null
 
                         TransactionSplitEntity(

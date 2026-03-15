@@ -2,26 +2,17 @@ package com.moneytracker.app.ui.components
 
 import android.content.Intent
 import android.net.Uri
-import android.widget.ImageView
 import android.widget.Toast
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AttachFile
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -29,7 +20,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
 import com.moneytracker.app.data.local.database.entities.TransactionType
 import com.moneytracker.app.domain.model.Transaction
 import java.text.SimpleDateFormat
@@ -42,7 +32,6 @@ fun TransactionItem(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    var previewImageUri by remember(transaction.id) { mutableStateOf<Uri?>(null) }
 
     fun firstAttachmentUri(serialized: String?): Uri? {
         val first = serialized
@@ -61,57 +50,16 @@ fun TransactionItem(
             it.endsWith(".jpg") || it.endsWith(".jpeg") || it.endsWith(".png") || it.endsWith(".webp") || it.endsWith(".heic") || it.endsWith(".heif")
         }
 
-        if (isImageByMime || isImageByPath) {
-            previewImageUri = uri
-            return
-        }
-
         val openIntent = Intent(Intent.ACTION_VIEW).apply {
-            setDataAndType(uri, mimeType.ifBlank { "*/*" })
+            val resolvedType = if (isImageByMime || isImageByPath) "image/*" else mimeType.ifBlank { "*/*" }
+            setDataAndType(uri, resolvedType)
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
 
         runCatching {
-            context.startActivity(Intent.createChooser(openIntent, "Open attachment"))
+            context.startActivity(openIntent)
         }.onFailure {
             Toast.makeText(context, "No app found to open this attachment", Toast.LENGTH_SHORT).show()
-        }
-    }
-
-    previewImageUri?.let { imageUri ->
-        Dialog(onDismissRequest = { previewImageUri = null }) {
-            Surface(
-                shape = RoundedCornerShape(16.dp),
-                color = MaterialTheme.colorScheme.surface,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 240.dp, max = 520.dp)
-            ) {
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
-                        horizontalArrangement = Arrangement.End
-                    ) {
-                        IconButton(onClick = { previewImageUri = null }) {
-                            Icon(Icons.Filled.Close, contentDescription = "Close")
-                        }
-                    }
-
-                    AndroidView(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f, fill = false)
-                            .heightIn(min = 220.dp, max = 460.dp),
-                        factory = { viewContext ->
-                            ImageView(viewContext).apply {
-                                adjustViewBounds = true
-                                scaleType = ImageView.ScaleType.FIT_CENTER
-                            }
-                        },
-                        update = { imageView -> imageView.setImageURI(imageUri) }
-                    )
-                }
-            }
         }
     }
 

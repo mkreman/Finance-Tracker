@@ -274,8 +274,10 @@ fun AddTransactionScreen(
                 Spacer(modifier = Modifier.height(20.dp))
 
                 Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 25.dp),
+                    horizontalAlignment = Alignment.Start
                 ) {
                     Text("Amount", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(modifier = Modifier.height(4.dp))
@@ -298,48 +300,143 @@ fun AddTransactionScreen(
                         }
                     }
 
+                    fun insertOperator(op: Char) {
+                        val text = amountTextFieldValue.text
+                        val cursor = amountTextFieldValue.selection.start.coerceIn(0, text.length)
+                        val updated = buildString {
+                            append(text.substring(0, cursor))
+                            append(op)
+                            append(text.substring(cursor))
+                        }
+                        val nextCursor = (cursor + 1).coerceAtMost(updated.length)
+                        val nextValue = TextFieldValue(updated, TextRange(nextCursor))
+                        amountTextFieldValue = nextValue
+                        viewModel.onAmountChange(updated)
+                    }
+
                     Row(
+                        modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center
+                        horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text(
-                            LocalCurrencySymbol.current,
-                            style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Light),
-                            color = typeColor
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        BasicTextField(
-                            value = amountTextFieldValue,
-                            onValueChange = { newValue ->
-                                amountTextFieldValue = newValue
-                                viewModel.onAmountChange(newValue.text)
-                            },
-                            textStyle = TextStyle(
-                                fontSize = 40.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface,
-                                textAlign = TextAlign.Center
-                            ),
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                            singleLine = true,
-                            cursorBrush = SolidColor(typeColor),
+                        Column(
                             modifier = Modifier
-                                .widthIn(min = 60.dp, max = 220.dp)
-                                .focusRequester(focusRequester),
-                            decorationBox = { innerTextField ->
-                                if (amountTextFieldValue.text.isEmpty()) {
+                                .weight(1f)
+                                .padding(end = 10.dp),
+                            horizontalAlignment = Alignment.Start
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Start
+                            ) {
+                                Text(
+                                    LocalCurrencySymbol.current,
+                                    style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Light),
+                                    color = typeColor
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                BasicTextField(
+                                    value = amountTextFieldValue,
+                                    onValueChange = { newValue ->
+                                        amountTextFieldValue = newValue
+                                        viewModel.onAmountChange(newValue.text)
+                                    },
+                                    textStyle = TextStyle(
+                                        fontSize = 38.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        textAlign = TextAlign.Start
+                                    ),
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                    singleLine = true,
+                                    cursorBrush = SolidColor(typeColor),
+                                    modifier = Modifier
+                                        .widthIn(min = 70.dp, max = 220.dp)
+                                        .focusRequester(focusRequester),
+                                    decorationBox = { innerTextField ->
+                                        if (amountTextFieldValue.text.isEmpty()) {
+                                            Text(
+                                                "0",
+                                                style = TextStyle(
+                                                    fontSize = 38.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = MaterialTheme.colorScheme.outline
+                                                )
+                                            )
+                                        }
+                                        innerTextField()
+                                    }
+                                )
+                            }
+
+                            if (state.amount.any { it == '+' || it == '-' || it == '*' || it == '/' }) {
+                                Spacer(modifier = Modifier.height(6.dp))
+                                val evaluated = state.evaluatedAmount
+                                Text(
+                                    text = if (evaluated != null) {
+                                        "= ${LocalCurrencySymbol.current}${"%.2f".format(Locale.US, evaluated)}"
+                                    } else {
+                                        "Invalid expression"
+                                    },
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = if (evaluated != null) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.error
+                                )
+                            }
+                        }
+
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            horizontalAlignment = Alignment.End
+                        ) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                FilledTonalButton(
+                                    onClick = { insertOperator('+') },
+                                    modifier = Modifier.size(width = 58.dp, height = 48.dp),
+                                    shape = RoundedCornerShape(12.dp),
+                                    contentPadding = PaddingValues(0.dp)
+                                ) {
                                     Text(
-                                        "0",
-                                        style = TextStyle(
-                                            fontSize = 40.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = MaterialTheme.colorScheme.outline
-                                        )
+                                        "+",
+                                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
                                     )
                                 }
-                                innerTextField()
+                                FilledTonalButton(
+                                    onClick = { insertOperator('-') },
+                                    modifier = Modifier.size(width = 58.dp, height = 48.dp),
+                                    shape = RoundedCornerShape(12.dp),
+                                    contentPadding = PaddingValues(0.dp)
+                                ) {
+                                    Text(
+                                        "-",
+                                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
+                                    )
+                                }
                             }
-                        )
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                FilledTonalButton(
+                                    onClick = { insertOperator('*') },
+                                    modifier = Modifier.size(width = 58.dp, height = 48.dp),
+                                    shape = RoundedCornerShape(12.dp),
+                                    contentPadding = PaddingValues(0.dp)
+                                ) {
+                                    Text(
+                                        "x",
+                                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
+                                    )
+                                }
+                                FilledTonalButton(
+                                    onClick = { insertOperator('/') },
+                                    modifier = Modifier.size(width = 58.dp, height = 48.dp),
+                                    shape = RoundedCornerShape(12.dp),
+                                    contentPadding = PaddingValues(0.dp)
+                                ) {
+                                    Text(
+                                        "÷",
+                                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -608,8 +705,8 @@ private fun ReceiptAttachmentsPreviewSection(
     onRemove: (String) -> Unit,
     onClearAll: () -> Unit
 ) {
+    val context = LocalContext.current
     val parsedUris = receiptUris.mapNotNull { runCatching { Uri.parse(it) }.getOrNull() }
-    var selectedPreviewUri by remember { mutableStateOf<Uri?>(null) }
 
     Column(
         modifier = Modifier
@@ -634,7 +731,17 @@ private fun ReceiptAttachmentsPreviewSection(
                             .height(150.dp)
                             .clip(RoundedCornerShape(12.dp))
                             .background(MaterialTheme.colorScheme.surface)
-                            .clickable { selectedPreviewUri = uri }
+                            .clickable {
+                                val mimeType = context.contentResolver.getType(uri).orEmpty()
+                                val openIntent = Intent(Intent.ACTION_VIEW).apply {
+                                    setDataAndType(uri, if (mimeType.startsWith("image/")) "image/*" else mimeType.ifBlank { "*/*" })
+                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                }
+                                runCatching { context.startActivity(openIntent) }
+                                    .onFailure {
+                                        Toast.makeText(context, "No app found to open this attachment", Toast.LENGTH_SHORT).show()
+                                    }
+                            }
                     ) {
                         AndroidView(
                             factory = { viewContext ->
@@ -663,45 +770,6 @@ private fun ReceiptAttachmentsPreviewSection(
                 Icon(Icons.Filled.DeleteOutline, contentDescription = null)
                 Spacer(modifier = Modifier.width(4.dp))
                 Text("Remove all attachments")
-            }
-        }
-    }
-
-    selectedPreviewUri?.let { previewUri ->
-        Dialog(onDismissRequest = { selectedPreviewUri = null }) {
-            Surface(
-                shape = RoundedCornerShape(16.dp),
-                color = MaterialTheme.colorScheme.surface,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 240.dp, max = 560.dp)
-            ) {
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 8.dp, vertical = 4.dp),
-                        horizontalArrangement = Arrangement.End
-                    ) {
-                        IconButton(onClick = { selectedPreviewUri = null }) {
-                            Icon(Icons.Filled.Close, contentDescription = "Close preview")
-                        }
-                    }
-
-                    AndroidView(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f, fill = false)
-                            .heightIn(min = 220.dp, max = 500.dp),
-                        factory = { viewContext ->
-                            ImageView(viewContext).apply {
-                                adjustViewBounds = true
-                                scaleType = ImageView.ScaleType.FIT_CENTER
-                            }
-                        },
-                        update = { imageView -> imageView.setImageURI(previewUri) }
-                    )
-                }
             }
         }
     }
