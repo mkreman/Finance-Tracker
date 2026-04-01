@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="72dp"
     android:orientation="horizontal"
@@ -30,7 +31,7 @@
             android:background="@drawable/widget_preview_expense_bg"
             android:padding="10dp"
             android:src="@drawable/ic_arrow_upward"
-            android:tint="#B3261E"
+            app:tint="#B3261E"
             android:contentDescription="Expense" />
 
         <ImageView
@@ -41,7 +42,7 @@
             android:background="@drawable/widget_preview_income_bg"
             android:padding="10dp"
             android:src="@drawable/ic_arrow_downward"
-            android:tint="#146C2E"
+            app:tint="#146C2E"
             android:contentDescription="Income" />
 
         <ImageView
@@ -51,7 +52,7 @@
             android:background="@drawable/widget_preview_transfer_bg"
             android:padding="10dp"
             android:src="@drawable/ic_swap_horiz"
-            android:tint="#1D4E89"
+            app:tint="#1D4E89"
             android:contentDescription="Transfer" />
     </LinearLayout>
 

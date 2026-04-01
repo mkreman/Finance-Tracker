@@ -85,6 +85,7 @@ class MainActivity : FragmentActivity() {
     @Inject lateinit var userPreferences: UserPreferences
     @Inject lateinit var googleDriveBackupService: GoogleDriveBackupService
     private lateinit var biometricAuthManager: BiometricAuthManager
+    private var widgetLaunchSession: Boolean = false
     
     private val intentState = MutableStateFlow<Intent?>(null)
 
@@ -112,6 +113,7 @@ class MainActivity : FragmentActivity() {
         window.setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE)
         
         intentState.value = intent
+        widgetLaunchSession = intent.getStringExtra("transaction_type") != null
 
         enableEdgeToEdge(
             statusBarStyle = SystemBarStyle.auto(Color.TRANSPARENT, Color.TRANSPARENT),
@@ -239,8 +241,14 @@ class MainActivity : FragmentActivity() {
                     if (event == Lifecycle.Event.ON_STOP) {
                         if (!this@MainActivity.isChangingConfigurations && !isAuthenticating) {
                             isAuthenticated = false
-                            backgroundTime = System.currentTimeMillis() // Record exact background time
-                            lastAppBackgroundAtMs = backgroundTime
+                            if (widgetLaunchSession && this@MainActivity.isFinishing) {
+                                // Do not allow quick bypass after closing a widget-launched session.
+                                backgroundTime = 0L
+                                lastAppBackgroundAtMs = 0L
+                            } else {
+                                backgroundTime = System.currentTimeMillis() // Record exact background time
+                                lastAppBackgroundAtMs = backgroundTime
+                            }
                         }
                     } else if (event == Lifecycle.Event.ON_RESUME) {
                         backgroundTime = 0L // Reset timer
@@ -482,6 +490,9 @@ class MainActivity : FragmentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        if (intent.getStringExtra("transaction_type") != null) {
+            widgetLaunchSession = true
+        }
         intentState.value = intent
     }
 

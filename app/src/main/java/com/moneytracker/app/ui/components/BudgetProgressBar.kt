@@ -90,7 +90,7 @@ fun BudgetProgressBar(
                 )
                 if (budget.isOverBudget) {
                     Text(
-                        text = "Limit exceeded",
+                        text = "Exceeded by $currency${formatAmount(budget.exceededAmount)}",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.error
                     )
