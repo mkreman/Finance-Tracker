@@ -31,6 +31,7 @@ object BankAlertSuggestionNotifier {
     const val EXTRA_PAYEE = "extra_payee"
     const val EXTRA_NOTE = "extra_note"
     const val EXTRA_SUGGESTED_CAT_ID = "extra_suggested_cat_id"
+    const val EXTRA_SUGGESTED_ACCOUNT_ID = "extra_suggested_account_id"
 
     private const val CHANNEL_ID = "bank_alert_suggestions_v2"
 
@@ -50,6 +51,7 @@ object BankAlertSuggestionNotifier {
             putExtra("suggestion_payee", suggestion.payee)
             putExtra(EXTRA_SUGGESTION_ID, suggestion.suggestionId)
             putExtra("suggested_cat_id", suggestion.suggestedCategoryId)
+            putExtra("suggested_account_id", suggestion.suggestedAccountId)
         }
         val editPendingIntent = PendingIntent.getActivity(
             context, notificationId, editIntent,
@@ -65,6 +67,7 @@ object BankAlertSuggestionNotifier {
             putExtra(EXTRA_PAYEE, suggestion.payee)
             putExtra(EXTRA_NOTE, suggestion.note)
             putExtra(EXTRA_SUGGESTED_CAT_ID, suggestion.suggestedCategoryId)
+            putExtra(EXTRA_SUGGESTED_ACCOUNT_ID, suggestion.suggestedAccountId)
         }
         val savePendingIntent = PendingIntent.getBroadcast(
             context, notificationId + 1, saveIntent,

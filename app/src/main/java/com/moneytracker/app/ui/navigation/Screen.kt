@@ -48,7 +48,7 @@ sealed class Screen(
     )
 
     object AddTransaction : Screen(
-        route = "add_transaction?type={type}&amount={amount}&note={note}&payee={payee}&fromWidget={fromWidget}&suggestedCategoryId={suggestedCategoryId}",
+        route = "add_transaction?type={type}&amount={amount}&note={note}&payee={payee}&fromWidget={fromWidget}&suggestedCategoryId={suggestedCategoryId}&suggestedAccountId={suggestedAccountId}",
         title = "Add Transaction"
     ) {
         fun createRoute(
@@ -57,7 +57,8 @@ sealed class Screen(
             note: String? = null,
             payee: String? = null,
             fromWidget: Boolean = false,
-            suggestedCategoryId: String? = null
+            suggestedCategoryId: String? = null,
+            suggestedAccountId: String? = null
         ): String {
             val parts = mutableListOf<String>()
             if (type != null) parts.add("type=${Uri.encode(type)}")
@@ -66,6 +67,7 @@ sealed class Screen(
             if (payee != null) parts.add("payee=${Uri.encode(payee)}")
             if (fromWidget) parts.add("fromWidget=true")
             if (suggestedCategoryId != null) parts.add("suggestedCategoryId=${Uri.encode(suggestedCategoryId)}")
+            if (suggestedAccountId != null) parts.add("suggestedAccountId=${Uri.encode(suggestedAccountId)}")
             return if (parts.isEmpty()) "add_transaction" else "add_transaction?${parts.joinToString("&")}" 
         }
     }

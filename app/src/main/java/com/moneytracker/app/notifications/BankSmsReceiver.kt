@@ -32,8 +32,9 @@ class BankSmsReceiver : BroadcastReceiver() {
         val pendingResult = goAsync()
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                // Fetch smart recommendation passing both payee AND transaction type
-                val catId = categoryRecommendationRepo.getRecommendation(parsed.payee, parsed.type)
+                // Fetch smart recommendation passing both payee AND transaction type.
+                val recommendation = categoryRecommendationRepo.getRecommendationEntity(parsed.payee, parsed.type)
+                val catId = recommendation?.categoryId
                 if (catId != null) {
                     val category = categoryRepo.getCategoryById(catId)
                     if (category != null) {
@@ -41,6 +42,7 @@ class BankSmsReceiver : BroadcastReceiver() {
                         parsed.suggestedCategoryName = category.name
                     }
                 }
+                parsed.suggestedAccountId = recommendation?.accountId
                 BankAlertSuggestionNotifier.show(context, parsed)
             } catch (e: Exception) {
                 Log.e("BankSmsReceiver", "Error processing SMS for suggestions", e)

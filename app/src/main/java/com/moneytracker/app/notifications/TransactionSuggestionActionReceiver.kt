@@ -83,7 +83,10 @@ class TransactionSuggestionActionReceiver : BroadcastReceiver() {
         if (accounts.isEmpty()) return
 
         val defaultAccountId = userPreferences.defaultAccountId.first()
-        val selectedAccount = accounts.find { it.id == defaultAccountId } ?: accounts.first()
+        val recommendedAccountId = categoryRecommendationRepository.getRecommendedAccountId(payee, type)
+        val selectedAccount = accounts.find { it.id == recommendedAccountId }
+            ?: accounts.find { it.id == defaultAccountId }
+            ?: accounts.first()
 
         val categories = categoryRepository.getCategoriesByType(type).first()
         var selectedCategory: com.moneytracker.app.domain.model.Category? = null
@@ -102,7 +105,12 @@ class TransactionSuggestionActionReceiver : BroadcastReceiver() {
 
         // 3. Update the recommendation engine!
         if (selectedCategory != null) {
-            categoryRecommendationRepository.upsertRecommendation(payee, type, selectedCategory.id)
+            categoryRecommendationRepository.upsertRecommendation(
+                payee = payee,
+                type = type,
+                categoryId = selectedCategory.id,
+                accountId = selectedAccount.id
+            )
         }
 
         val transactionId = UUID.randomUUID().toString()

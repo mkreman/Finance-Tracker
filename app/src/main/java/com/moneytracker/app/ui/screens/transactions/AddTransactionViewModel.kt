@@ -66,6 +66,7 @@ class AddTransactionViewModel @Inject constructor(
     private val initialNote: String? = savedStateHandle.get<String>("note")
     private val initialPayee: String? = savedStateHandle.get<String>("payee")
     private val suggestedCategoryId: String? = savedStateHandle.get<String>("suggestedCategoryId")
+    private val suggestedAccountId: String? = savedStateHandle.get<String>("suggestedAccountId")
 
     init {
         loadData()
@@ -138,6 +139,14 @@ class AddTransactionViewModel @Inject constructor(
     private fun loadData() {
         viewModelScope.launch {
             val defaultAccountId = userPreferences.defaultAccountId.first()
+            val initialTxnType = runCatching { TransactionType.valueOf(initialType ?: "") }
+                .getOrNull()
+                ?: _state.value.type
+            val recommendedAccountId = if (editTransactionId == null && !initialPayee.isNullOrBlank()) {
+                categoryRecommendationRepository.getRecommendedAccountId(initialPayee, initialTxnType)
+            } else {
+                null
+            }
 
             accountRepository.getAllAccounts().collect { accounts ->
                 val sortedAccounts = accounts.sortedWith(compareBy<com.moneytracker.app.domain.model.Account> { 
@@ -155,6 +164,8 @@ class AddTransactionViewModel @Inject constructor(
                     val accountId = when {
                         currentState.isEditMode -> currentState.selectedAccountId
                         currentState.selectedAccountId != null -> currentState.selectedAccountId
+                        suggestedAccountId != null && sortedAccounts.any { it.id == suggestedAccountId } -> suggestedAccountId
+                        recommendedAccountId != null && sortedAccounts.any { it.id == recommendedAccountId } -> recommendedAccountId
                         defaultAccountId != null && sortedAccounts.any { it.id == defaultAccountId } -> defaultAccountId
                         else -> sortedAccounts.firstOrNull()?.id
                     }
@@ -540,7 +551,8 @@ class AddTransactionViewModel @Inject constructor(
                     categoryRecommendationRepository.upsertRecommendation(
                         currentState.payee, 
                         currentState.type, 
-                        splits.first().categoryId
+                        splits.first().categoryId,
+                        currentState.selectedAccountId
                     )
                 }
 

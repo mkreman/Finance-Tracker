@@ -7,6 +7,7 @@ import androidx.room.PrimaryKey
 data class CategoryRecommendationEntity(
     @PrimaryKey val payeePattern: String,
     val categoryId: String,
+    val accountId: String? = null,
     val usageCount: Int = 1,
     val lastUsedTimestamp: Long
 )

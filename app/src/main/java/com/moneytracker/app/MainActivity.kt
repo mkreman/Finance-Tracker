@@ -297,6 +297,7 @@ class MainActivity : FragmentActivity() {
                         val suggestionPayee = currentIntent?.getStringExtra("suggestion_payee")
                         val suggestionId = currentIntent?.getStringExtra("extra_suggestion_id")
                         val suggestedCatId = currentIntent?.getStringExtra("suggested_cat_id")
+                        val suggestedAccountId = currentIntent?.getStringExtra("suggested_account_id")
                         val openBudgetCategoryId = currentIntent?.getStringExtra("open_budget_category_id")
                         val openBudgetCategoryName = currentIntent?.getStringExtra("open_budget_category_name")
 
@@ -321,7 +322,8 @@ class MainActivity : FragmentActivity() {
                                     note = suggestionNote,
                                     payee = suggestionPayee,
                                     fromWidget = true,
-                                    suggestedCategoryId = suggestedCatId
+                                    suggestedCategoryId = suggestedCatId,
+                                    suggestedAccountId = suggestedAccountId
                                 )
                             )
                             currentIntent?.removeExtra("transaction_type")
@@ -330,6 +332,7 @@ class MainActivity : FragmentActivity() {
                             currentIntent?.removeExtra("suggestion_payee")
                             currentIntent?.removeExtra("extra_suggestion_id")
                             currentIntent?.removeExtra("suggested_cat_id")
+                            currentIntent?.removeExtra("suggested_account_id")
                         }
                     }
 

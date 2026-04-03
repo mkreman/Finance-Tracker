@@ -145,6 +145,11 @@ fun NavGraph(navController: NavHostController) {
                     type = NavType.StringType
                     nullable = true
                     defaultValue = null
+                },
+                navArgument("suggestedAccountId") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
                 }
             )
         ) { backStackEntry ->

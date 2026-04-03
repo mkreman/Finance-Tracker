@@ -12,7 +12,8 @@ data class ParsedBankAlert(
     val rawText: String,
     val timestamp: Long,
     var suggestedCategoryId: String? = null,
-    var suggestedCategoryName: String? = null
+    var suggestedCategoryName: String? = null,
+    var suggestedAccountId: String? = null
 )
 
 object BankAlertParser {
