@@ -101,9 +101,11 @@ object BankAlertSuggestionNotifier {
 
         val directionPrefix = if (suggestion.type == TransactionType.INCOME) "From" else "To"
         val categoryName = suggestion.suggestedCategoryName ?: "AutoDetected"
+        val accountName = suggestion.suggestedAccountName
 
         // Short text (When notification is collapsed) - Category in 2nd place, No Note
-        val shortText = "$amountText | Cat: $categoryName | $directionPrefix: ${suggestion.payee}"
+        val accountPart = accountName?.let { " | Acc: $it" } ?: ""
+        val shortText = "$amountText | Cat: $categoryName$accountPart | $directionPrefix: ${suggestion.payee}"
         val contentText = SpannableString(shortText).apply {
             val amountStart = shortText.indexOf(amountText)
             if (amountStart >= 0) {
@@ -120,6 +122,9 @@ object BankAlertSuggestionNotifier {
             append("\n")
             
             append("Category: $categoryName\n")
+            accountName?.let {
+                append("Account: $it\n")
+            }
             append("$directionPrefix: ${suggestion.payee}")
         }
 

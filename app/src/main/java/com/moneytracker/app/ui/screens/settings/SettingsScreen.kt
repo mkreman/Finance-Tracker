@@ -1215,6 +1215,7 @@ private fun VersionHistoryDialog(onDismiss: () -> Unit) {
                         "Feature: Added category auto-recommendation storage with usage tracking and capped retention.",
                         "Improvement: Auto-recommendation now stores and reuses account along with category for smarter suggestions.",
                         "Fixed: Suggested transactions now preselect the learned account (not just category) from recommendation history.",
+                        "Improvement: SMS expense/income detection notifications now show the predicted account.",
                         "Feature: Added ATM withdrawal detection in auto-detection flow.",
                         "Feature: Added 5-second authentication bypass when reopening the app quickly.",
                         "Feature: Added a Notifications section in Settings.",

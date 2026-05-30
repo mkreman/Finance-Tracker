@@ -45,6 +45,7 @@ class TransactionSuggestionActionReceiver : BroadcastReceiver() {
                 val payee = intent.getStringExtra(BankAlertSuggestionNotifier.EXTRA_PAYEE).orEmpty().ifBlank { "Transaction" }
                 val note = intent.getStringExtra(BankAlertSuggestionNotifier.EXTRA_NOTE)
                 val suggestedCatId = intent.getStringExtra(BankAlertSuggestionNotifier.EXTRA_SUGGESTED_CAT_ID)
+                val suggestedAccountId = intent.getStringExtra(BankAlertSuggestionNotifier.EXTRA_SUGGESTED_ACCOUNT_ID)
                 
                 val type = runCatching { TransactionType.valueOf(typeName ?: "") }.getOrNull()
                 if (type == null || amount <= 0.0) {
@@ -55,7 +56,7 @@ class TransactionSuggestionActionReceiver : BroadcastReceiver() {
                 val pendingResult = goAsync()
                 CoroutineScope(Dispatchers.IO).launch {
                     try {
-                        saveSuggestedTransaction(type, amount, payee, note, suggestedCatId)
+                        saveSuggestedTransaction(type, amount, payee, note, suggestedCatId, suggestedAccountId)
                         BankAlertSuggestionNotifier.cancel(context, suggestionId)
                         CoroutineScope(Dispatchers.Main).launch {
                             Toast.makeText(context, "Transaction saved", Toast.LENGTH_SHORT).show()
@@ -77,14 +78,16 @@ class TransactionSuggestionActionReceiver : BroadcastReceiver() {
         amount: Double,
         payee: String,
         note: String?,
-        suggestedCatId: String?
+        suggestedCatId: String?,
+        suggestedAccountId: String?
     ) {
         val accounts = accountRepository.getAllAccountsOnce()
         if (accounts.isEmpty()) return
 
         val defaultAccountId = userPreferences.defaultAccountId.first()
         val recommendedAccountId = categoryRecommendationRepository.getRecommendedAccountId(payee, type)
-        val selectedAccount = accounts.find { it.id == recommendedAccountId }
+        val selectedAccount = accounts.find { it.id == suggestedAccountId }
+            ?: accounts.find { it.id == recommendedAccountId }
             ?: accounts.find { it.id == defaultAccountId }
             ?: accounts.first()
 
