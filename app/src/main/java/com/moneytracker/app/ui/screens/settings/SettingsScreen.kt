@@ -1212,6 +1212,8 @@ private fun VersionHistoryDialog(onDismiss: () -> Unit) {
                     features = listOf(
                         "Feature: Added a prominent bar for collapsed account sections.",
                         "Feature: Added ability to rearrange the order of account types.",
+                        "Feature: Swipe left or right to switch between main tabs.",
+                        "Improvement: Added a light haptic tick when swiping between main tabs.",
                         "Feature: Added category auto-recommendation storage with usage tracking and capped retention.",
                         "Improvement: Auto-recommendation now stores and reuses account along with category for smarter suggestions.",
                         "Fixed: Suggested transactions now preselect the learned account (not just category) from recommendation history.",

@@ -26,6 +26,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.Button
@@ -42,10 +44,12 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
@@ -72,6 +76,7 @@ import com.moneytracker.app.ui.theme.MoneyTrackerTheme
 import com.moneytracker.app.util.BiometricAuthManager
 import com.moneytracker.app.widget.MoneyTrackerWidget
 import dagger.hilt.android.AndroidEntryPoint
+import android.view.HapticFeedbackConstants
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
@@ -79,6 +84,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import javax.inject.Inject
 
+@OptIn(ExperimentalFoundationApi::class)
 @AndroidEntryPoint
 class MainActivity : FragmentActivity() {
 
@@ -288,7 +294,26 @@ class MainActivity : FragmentActivity() {
                     val navController = rememberNavController()
                     val navBackStackEntry by navController.currentBackStackEntryAsState()
                     val currentRoute = navBackStackEntry?.destination?.route
-                    val showBottomNav = currentRoute in Screen.bottomNavItems.map { it.route }
+                    val bottomRoutes = Screen.bottomNavItems.map { it.route }
+                    val pagerState = rememberPagerState(
+                        initialPage = bottomRoutes.indexOf(Screen.Transactions.route).coerceAtLeast(0)
+                    ) { bottomRoutes.size }
+                    val currentTabRoute = bottomRoutes.getOrNull(pagerState.currentPage)
+                    val showBottomNav = currentRoute == Screen.MainTabs.route
+                    val coroutineScope = rememberCoroutineScope()
+                    val view = LocalView.current
+                    var lastHapticPage by remember { mutableStateOf(pagerState.currentPage) }
+
+                    LaunchedEffect(pagerState.currentPage, showBottomNav) {
+                        if (!showBottomNav) {
+                            lastHapticPage = pagerState.currentPage
+                            return@LaunchedEffect
+                        }
+                        if (pagerState.currentPage != lastHapticPage) {
+                            view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                            lastHapticPage = pagerState.currentPage
+                        }
+                    }
 
                     LaunchedEffect(currentIntent) {
                         val transactionType = currentIntent?.getStringExtra("transaction_type")
@@ -342,7 +367,22 @@ class MainActivity : FragmentActivity() {
                             containerColor = MaterialTheme.colorScheme.background,
                             bottomBar = {
                                 if (showBottomNav) {
-                                    BottomNavBar(navController = navController)
+                                    BottomNavBar(
+                                        currentRoute = currentTabRoute,
+                                        onTabSelected = { route ->
+                                            val index = bottomRoutes.indexOf(route)
+                                            if (index >= 0) {
+                                                coroutineScope.launch {
+                                                    pagerState.animateScrollToPage(index)
+                                                }
+                                            }
+                                        },
+                                        onTabReselect = { route ->
+                                            coroutineScope.launch {
+                                                bottomTabReselectFlow.emit(route)
+                                            }
+                                        }
+                                    )
                                 }
                             }
                         ) { innerPadding ->
@@ -351,7 +391,18 @@ class MainActivity : FragmentActivity() {
                                     .fillMaxSize()
                                     .padding(innerPadding)
                             ) {
-                                NavGraph(navController = navController)
+                                NavGraph(
+                                    navController = navController,
+                                    pagerState = pagerState,
+                                    onSelectTab = { tab ->
+                                        val index = bottomRoutes.indexOf(tab.route)
+                                        if (index >= 0) {
+                                            coroutineScope.launch {
+                                                pagerState.animateScrollToPage(index)
+                                            }
+                                        }
+                                    }
+                                )
                             }
                         }
 

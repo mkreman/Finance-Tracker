@@ -6,9 +6,14 @@ import android.content.ContextWrapper
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.PagerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -36,82 +41,26 @@ fun Context.getActivity(): Activity? = when (this) {
     else -> null
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun NavGraph(navController: NavHostController) {
+fun NavGraph(
+    navController: NavHostController,
+    pagerState: PagerState,
+    onSelectTab: (Screen) -> Unit
+) {
     NavHost(
         navController = navController,
-        startDestination = Screen.Transactions.route,
+        startDestination = Screen.MainTabs.route,
         enterTransition = { fadeIn(animationSpec = tween(150)) },
         exitTransition = { fadeOut(animationSpec = tween(150)) },
         popEnterTransition = { fadeIn(animationSpec = tween(150)) },
         popExitTransition = { fadeOut(animationSpec = tween(150)) }
     ) {
-        composable(Screen.Dashboard.route) {
-            DashboardScreen(
-                onCategoryClick = { categoryId, categoryName, type, month, year ->
-                    navController.navigate(
-                        Screen.CategoryTransactions.createRoute(categoryId, categoryName, type, month, year)
-                    )
-                },
-                onAddTransaction = {
-                    navController.navigate(Screen.AddTransaction.createRoute())
-                }
+        composable(Screen.MainTabs.route) {
+            MainTabsPager(
+                navController = navController,
+                pagerState = pagerState
             )
-        }
-
-        composable(Screen.Transactions.route) {
-            TransactionsScreen(
-                onAddTransaction = {
-                    navController.navigate(Screen.AddTransaction.createRoute())
-                },
-                onEditTransaction = { transactionId ->
-                    navController.navigate(Screen.EditTransaction.createRoute(transactionId))
-                }
-            )
-        }
-
-        composable(Screen.Accounts.route) {
-            AccountsScreen(
-                onAddAccount = {
-                    navController.navigate(Screen.AddAccount.route)
-                },
-                onAddTransaction = {
-                    navController.navigate(Screen.AddTransaction.createRoute())
-                },
-                onAccountClick = { accountId, accountName ->
-                    navController.navigate(
-                        Screen.AccountTransactions.createRoute(accountId, accountName)
-                    )
-                },
-                onEditAccount = { accountId ->
-                    navController.navigate(Screen.EditAccount.createRoute(accountId))
-                }
-            )
-        }
-
-        composable(Screen.Budget.route) {
-            BudgetScreen(
-                onAddBudget = { month, year ->
-                    navController.navigate(Screen.AddBudget.createRoute(month, year))
-                },
-                onAddTransaction = {
-                    navController.navigate(Screen.AddTransaction.createRoute())
-                },
-                onBudgetClick = { categoryId, categoryName, month, year ->
-                    navController.navigate(
-                        Screen.BudgetTransactions.createRoute(categoryId, categoryName, month, year)
-                    )
-                },
-                onEditBudget = { budgetId, categoryId, categoryName, limitAmount, month, year ->
-                    navController.navigate(
-                        Screen.EditBudget.createRoute(budgetId, categoryId, categoryName, limitAmount, month, year)
-                    )
-                }
-            )
-        }
-
-        composable(Screen.Settings.route) {
-            SettingsScreen()
         }
 
         composable(
@@ -168,8 +117,9 @@ fun NavGraph(navController: NavHostController) {
                     if (fromWidget) {
                         context.getActivity()?.finish()
                     } else {
-                        if (!navController.popBackStack(Screen.Transactions.route, inclusive = false)) {
-                            navController.navigate(Screen.Transactions.route) {
+                        onSelectTab(Screen.Transactions)
+                        if (!navController.popBackStack(Screen.MainTabs.route, inclusive = false)) {
+                            navController.navigate(Screen.MainTabs.route) {
                                 launchSingleTop = true
                             }
                         }
@@ -266,8 +216,9 @@ fun NavGraph(navController: NavHostController) {
 
             AddTransactionScreen(
                 onNavigateBack = {
-                    if (!navController.popBackStack()) {
-                        navController.navigate(Screen.Transactions.route) {
+                    onSelectTab(Screen.Transactions)
+                    if (!navController.popBackStack(Screen.MainTabs.route, inclusive = false)) {
+                        navController.navigate(Screen.MainTabs.route) {
                             launchSingleTop = true
                         }
                     }
@@ -320,6 +271,87 @@ fun NavGraph(navController: NavHostController) {
                     navController.navigate(Screen.EditTransaction.createRoute(transactionId))
                 }
             )
+        }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun MainTabsPager(
+    navController: NavHostController,
+    pagerState: PagerState
+) {
+    val tabs = Screen.bottomNavItems
+
+    HorizontalPager(
+        state = pagerState,
+        modifier = Modifier.fillMaxSize()
+    ) { page ->
+        when (tabs[page]) {
+            Screen.Dashboard -> {
+                DashboardScreen(
+                    onCategoryClick = { categoryId, categoryName, type, month, year ->
+                        navController.navigate(
+                            Screen.CategoryTransactions.createRoute(categoryId, categoryName, type, month, year)
+                        )
+                    },
+                    onAddTransaction = {
+                        navController.navigate(Screen.AddTransaction.createRoute())
+                    }
+                )
+            }
+            Screen.Transactions -> {
+                TransactionsScreen(
+                    onAddTransaction = {
+                        navController.navigate(Screen.AddTransaction.createRoute())
+                    },
+                    onEditTransaction = { transactionId ->
+                        navController.navigate(Screen.EditTransaction.createRoute(transactionId))
+                    }
+                )
+            }
+            Screen.Accounts -> {
+                AccountsScreen(
+                    onAddAccount = {
+                        navController.navigate(Screen.AddAccount.route)
+                    },
+                    onAddTransaction = {
+                        navController.navigate(Screen.AddTransaction.createRoute())
+                    },
+                    onAccountClick = { accountId, accountName ->
+                        navController.navigate(
+                            Screen.AccountTransactions.createRoute(accountId, accountName)
+                        )
+                    },
+                    onEditAccount = { accountId ->
+                        navController.navigate(Screen.EditAccount.createRoute(accountId))
+                    }
+                )
+            }
+            Screen.Budget -> {
+                BudgetScreen(
+                    onAddBudget = { month, year ->
+                        navController.navigate(Screen.AddBudget.createRoute(month, year))
+                    },
+                    onAddTransaction = {
+                        navController.navigate(Screen.AddTransaction.createRoute())
+                    },
+                    onBudgetClick = { categoryId, categoryName, month, year ->
+                        navController.navigate(
+                            Screen.BudgetTransactions.createRoute(categoryId, categoryName, month, year)
+                        )
+                    },
+                    onEditBudget = { budgetId, categoryId, categoryName, limitAmount, month, year ->
+                        navController.navigate(
+                            Screen.EditBudget.createRoute(budgetId, categoryId, categoryName, limitAmount, month, year)
+                        )
+                    }
+                )
+            }
+            Screen.Settings -> {
+                SettingsScreen()
+            }
+            else -> Unit
         }
     }
 }

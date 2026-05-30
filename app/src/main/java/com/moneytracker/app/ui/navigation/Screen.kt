@@ -12,6 +12,11 @@ sealed class Screen(
     val selectedIcon: ImageVector? = null,
     val unselectedIcon: ImageVector? = null
 ) {
+    object MainTabs : Screen(
+        route = "main_tabs",
+        title = "Main Tabs"
+    )
+
     object Dashboard : Screen(
         route = "dashboard",
         title = "Dashboard",
