@@ -78,7 +78,6 @@ class AddAccountViewModel @Inject constructor(
         if (accountId != null) {
             loadAccount(accountId)
         } else if (preSelectedType != null) {
-            // Automatically select the type passed via navigation (e.g. PEOPLE)
             val type = runCatching { AccountType.valueOf(preSelectedType) }.getOrNull()
             if (type != null) {
                 val icon = if (type == AccountType.PEOPLE) "person" else "bank"
@@ -248,8 +247,35 @@ fun AddAccountScreen(
                     Icon(Icons.Filled.ArrowBack, "Back", tint = MaterialTheme.colorScheme.onSurface)
                 }
             },
+            // MOVED SAVE BUTTON HERE
+            actions = {
+                val canSave = state.name.isNotBlank() && !state.isSaving
+                FilledIconButton(
+                    onClick = viewModel::save,
+                    enabled = canSave,
+                    modifier = Modifier
+                        .padding(end = 8.dp)
+                        .size(width = 56.dp, height = 35.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = IconButtonDefaults.filledIconButtonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = Color.White,
+                        disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
+                ) {
+                    if (state.isSaving) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(18.dp),
+                            color = Color.White,
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Icon(Icons.Filled.Check, "Save", modifier = Modifier.size(24.dp))
+                    }
+                }
+            },
             colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
-            windowInsets = WindowInsets(0.dp) // <-- This removes the top gap!
+            windowInsets = WindowInsets(0.dp)
         )
 
         Column(
@@ -352,7 +378,7 @@ fun AddAccountScreen(
                 )
             }
 
-            // Custom Type Name Field (shown only when CUSTOM is selected)
+            // Custom Type Name Field
             if (state.type == AccountType.CUSTOM) {
                 OutlinedTextField(
                     value = state.customTypeName,
@@ -447,28 +473,7 @@ fun AddAccountScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Button(
-                onClick = viewModel::save,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(52.dp),
-                enabled = state.name.isNotBlank() && !state.isSaving,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary,
-                    disabledContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
-                ),
-                shape = RoundedCornerShape(16.dp)
-            ) {
-                Text(
-                    if (state.isEditMode) "Update Account" else "Save Account",
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold)
-                )
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(32.dp))
         }
     }
 }

@@ -250,19 +250,46 @@ fun AddTransactionScreen(
 
                     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
                         Column(modifier = Modifier.weight(1f).padding(end = 10.dp), horizontalAlignment = Alignment.Start) {
-                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Start) {
-                                Text(LocalCurrencySymbol.current, style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Light), color = typeColor)
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Start
+                            ) {
+                                Text(
+                                    LocalCurrencySymbol.current,
+                                    style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Light),
+                                    color = typeColor
+                                )
                                 Spacer(modifier = Modifier.width(4.dp))
                                 BasicTextField(
                                     value = amountTextFieldValue,
-                                    onValueChange = { newValue -> amountTextFieldValue = newValue; viewModel.onAmountChange(newValue.text) },
-                                    textStyle = TextStyle(fontSize = 38.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface, textAlign = TextAlign.Start),
+                                    onValueChange = { newValue ->
+                                        amountTextFieldValue = newValue
+                                        viewModel.onAmountChange(newValue.text)
+                                    },
+                                    textStyle = TextStyle(
+                                        fontSize = 38.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        textAlign = TextAlign.Start
+                                    ),
                                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                                     singleLine = true,
                                     cursorBrush = SolidColor(typeColor),
-                                    modifier = Modifier.widthIn(min = 70.dp, max = 220.dp).focusRequester(focusRequester),
+                                    visualTransformation = IndianCurrencyVisualTransformation(), // NEW
+                                    modifier = Modifier
+                                        .widthIn(min = 70.dp, max = 220.dp)
+                                        .focusRequester(focusRequester),
                                     decorationBox = { innerTextField ->
-                                        if (amountTextFieldValue.text.isEmpty()) Text("0", style = TextStyle(fontSize = 38.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.outline))
+                                        if (amountTextFieldValue.text.isEmpty()) {
+                                            Text(
+                                                "0",
+                                                style = TextStyle(
+                                                    fontSize = 38.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = MaterialTheme.colorScheme.outline
+                                                )
+                                            )
+                                        }
                                         innerTextField()
                                     }
                                 )
@@ -685,3 +712,91 @@ private fun DateTimeSelector(date: Long, onDateSelected: (Long) -> Unit) {
 
 @Composable
 private fun textFieldColors() = OutlinedTextFieldDefaults.colors(focusedBorderColor = MaterialTheme.colorScheme.primary, unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant)
+
+class IndianCurrencyVisualTransformation : androidx.compose.ui.text.input.VisualTransformation {
+    override fun filter(text: androidx.compose.ui.text.AnnotatedString): androidx.compose.ui.text.input.TransformedText {
+        val originalText = text.text
+        if (originalText.isEmpty()) return androidx.compose.ui.text.input.TransformedText(text, androidx.compose.ui.text.input.OffsetMapping.Identity)
+
+        var formattedText = ""
+        val offsetMapping = mutableListOf<Int>()
+        var originalOffset = 0
+
+        // Regex to find sequence of digits (including decimals) amidst math operators
+        val pattern = Regex("([0-9.]+)|([^0-9.]+)")
+        val matches = pattern.findAll(originalText)
+
+        for (match in matches) {
+            val part = match.value
+            if (part.matches(Regex("[0-9.]+"))) {
+                // Formatting this specific number
+                val split = part.split(".")
+                val intPart = split[0]
+                val decPart = if (split.size > 1) ".${split[1]}" else ""
+
+                val formattedIntPart = if (intPart.length > 3) {
+                    val lastThree = intPart.takeLast(3)
+                    val remaining = intPart.dropLast(3)
+                    val formattedRemaining = remaining.reversed().chunked(2).joinToString(",").reversed()
+                    "$formattedRemaining,$lastThree"
+                } else {
+                    intPart
+                }
+
+                val formattedPart = formattedIntPart + decPart
+                
+                // Map the offsets. Every original character gets mapped to its new index
+                var commasAdded = 0
+                for (i in intPart.indices) {
+                    offsetMapping.add(formattedText.length + i + commasAdded)
+                    if (formattedIntPart[i + commasAdded] == ',') {
+                        commasAdded++
+                    }
+                }
+                
+                if(split.size > 1) {
+                     for(i in 0..split[1].length){
+                         offsetMapping.add(formattedText.length + intPart.length + commasAdded + i)
+                     }
+                }
+
+                formattedText += formattedPart
+                originalOffset += part.length
+            } else {
+                // It's an operator (+, -, *, /)
+                for (i in part.indices) {
+                    offsetMapping.add(formattedText.length + i)
+                }
+                formattedText += part
+                originalOffset += part.length
+            }
+        }
+        
+        // Add one more mapping for the cursor at the very end
+        offsetMapping.add(formattedText.length)
+
+        val mapping = object : androidx.compose.ui.text.input.OffsetMapping {
+            override fun originalToTransformed(offset: Int): Int {
+                if (offset < 0) return 0
+                if (offset >= offsetMapping.size) return formattedText.length
+                return offsetMapping[offset]
+            }
+
+            override fun transformedToOriginal(offset: Int): Int {
+                if(offset == 0) return 0
+                val index = offsetMapping.indexOf(offset)
+                if(index != -1) return index
+                
+                // Find nearest index
+                for(i in offsetMapping.indices.reversed()) {
+                    if(offsetMapping[i] < offset) {
+                        return i + 1
+                    }
+                }
+                return originalText.length
+            }
+        }
+
+        return androidx.compose.ui.text.input.TransformedText(androidx.compose.ui.text.AnnotatedString(formattedText), mapping)
+    }
+}

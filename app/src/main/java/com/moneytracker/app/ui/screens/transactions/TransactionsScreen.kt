@@ -63,7 +63,8 @@ fun TransactionsScreen(
                 MonthSelector(
                     currentMonth = currentMonth,
                     onPreviousMonth = viewModel::previousMonth,
-                    onNextMonth = viewModel::nextMonth
+                    onNextMonth = viewModel::nextMonth,
+                    onSelectAllTime = viewModel::selectAllTime // NEW
                 )
             }
 

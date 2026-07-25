@@ -15,26 +15,44 @@ class TransactionsViewModel @Inject constructor(
     private val transactionRepository: TransactionRepository
 ) : ViewModel() {
 
-    private val _currentMonth = MutableStateFlow(Calendar.getInstance())
-    val currentMonth: StateFlow<Calendar> = _currentMonth.asStateFlow()
+    // Null represents "All Time"
+    private val _currentMonth = MutableStateFlow<Calendar?>(Calendar.getInstance())
+    val currentMonth: StateFlow<Calendar?> = _currentMonth.asStateFlow()
 
     val transactions: StateFlow<List<TransactionListItem>> = _currentMonth
         .flatMapLatest { calendar ->
-            val (startDate, endDate) = getMonthRange(calendar)
-            transactionRepository.getTransactionsByDateRange(startDate, endDate)
+            if (calendar == null) {
+                // If null, get everything
+                transactionRepository.getAllTransactions()
+            } else {
+                val (startDate, endDate) = getMonthRange(calendar)
+                transactionRepository.getTransactionsByDateRange(startDate, endDate)
+            }
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     fun previousMonth() {
         _currentMonth.update { cal ->
-            (cal.clone() as Calendar).apply { add(Calendar.MONTH, -1) }
+            if (cal == null) {
+                Calendar.getInstance().apply { add(Calendar.MONTH, -1) }
+            } else {
+                (cal.clone() as Calendar).apply { add(Calendar.MONTH, -1) }
+            }
         }
     }
 
     fun nextMonth() {
         _currentMonth.update { cal ->
-            (cal.clone() as Calendar).apply { add(Calendar.MONTH, 1) }
+            if (cal == null) {
+                Calendar.getInstance().apply { add(Calendar.MONTH, 1) }
+            } else {
+                (cal.clone() as Calendar).apply { add(Calendar.MONTH, 1) }
+            }
         }
+    }
+
+    fun selectAllTime() {
+        _currentMonth.value = null
     }
 
     fun deleteTransaction(id: String) {

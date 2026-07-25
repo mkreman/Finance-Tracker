@@ -100,13 +100,6 @@ fun DonutChart(
     }
 }
 
-fun formatAmount(amount: Double): String {
-    val formatter = NumberFormat.getNumberInstance(Locale("en", "IN"))
-    formatter.minimumFractionDigits = 0
-    formatter.maximumFractionDigits = 2
-    return formatter.format(amount)
-}
-
 @Composable
 fun DonutChartLegend(
     data: List<ChartData>,

@@ -9,6 +9,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -171,6 +172,35 @@ fun AddBudgetScreen(
                     Icon(Icons.Filled.ArrowBack, "Back", tint = MaterialTheme.colorScheme.onSurface)
                 }
             },
+            actions = {
+                val canSave = state.selectedCategoryId != null
+                        && (state.limitAmount.toDoubleOrNull() ?: 0.0) > 0
+                        && !state.isSaving
+                
+                FilledIconButton(
+                    onClick = viewModel::save,
+                    enabled = canSave,
+                    modifier = Modifier
+                        .padding(end = 8.dp)
+                        .size(width = 56.dp, height = 35.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = IconButtonDefaults.filledIconButtonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = Color.White,
+                        disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
+                ) {
+                    if (state.isSaving) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(18.dp),
+                            color = Color.White,
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Icon(Icons.Filled.Check, "Save", modifier = Modifier.size(24.dp))
+                    }
+                }
+            },
             colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
             windowInsets = WindowInsets(0.dp) // <-- This removes the top gap!
         )
@@ -219,28 +249,7 @@ fun AddBudgetScreen(
                 shape = RoundedCornerShape(12.dp)
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Button(
-                onClick = viewModel::save,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(52.dp),
-                enabled = state.selectedCategoryId != null
-                        && (state.limitAmount.toDoubleOrNull() ?: 0.0) > 0
-                        && !state.isSaving,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary,
-                    disabledContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
-                ),
-                shape = RoundedCornerShape(16.dp)
-            ) {
-                Text(
-                    if (state.isEditMode) "Update Budget" else "Save Budget",
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold)
-                )
-            }
+            Spacer(modifier = Modifier.height(32.dp))
         }
     }
 
@@ -250,7 +259,10 @@ fun AddBudgetScreen(
             onDismissRequest = { showCategoryPicker = false },
             title = { Text("Select Category", color = MaterialTheme.colorScheme.onSurface) },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Column(
+                    modifier = Modifier.verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
                     state.categories.forEach { category ->
                         Row(
                             modifier = Modifier

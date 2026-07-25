@@ -22,13 +22,14 @@ import java.util.*
 
 @Composable
 fun MonthSelector(
-    currentMonth: Calendar,
+    currentMonth: Calendar?,
     onPreviousMonth: () -> Unit,
     onNextMonth: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onSelectAllTime: (() -> Unit)? = null
 ) {
     val sdf = SimpleDateFormat("MMMM yyyy", Locale.getDefault())
-    val monthText = sdf.format(currentMonth.time)
+    val monthText = currentMonth?.let { sdf.format(it.time) } ?: "All Time"
 
     Row(
         modifier = modifier
@@ -49,8 +50,12 @@ fun MonthSelector(
         Text(
             text = monthText,
             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-            color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.padding(horizontal = 16.dp)
+            color = if (currentMonth == null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier
+                .padding(horizontal = 16.dp)
+                .then(
+                    if (onSelectAllTime != null) Modifier.clickable { onSelectAllTime() } else Modifier
+                )
         )
 
         IconButton(onClick = onNextMonth, modifier = Modifier.size(36.dp)) {
