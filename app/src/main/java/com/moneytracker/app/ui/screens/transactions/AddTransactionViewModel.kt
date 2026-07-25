@@ -20,6 +20,7 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.math.BigDecimal
+import java.math.RoundingMode
 import java.util.UUID
 import javax.inject.Inject
 
@@ -31,16 +32,12 @@ class AddTransactionViewModel @Inject constructor(
     private val categoryRecommendationRepository: CategoryRecommendationRepository,
     private val userPreferences: UserPreferences,
     private val recurringTransactionManager: RecurringTransactionManager,
-    private val budgetAlertManager: com.moneytracker.app.notifications.BudgetAlertManager, // ADDED HERE
+    private val budgetAlertManager: com.moneytracker.app.notifications.BudgetAlertManager,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
     private fun decodeReceiptUris(serialized: String?): List<String> {
-        return serialized
-            ?.split("\n")
-            ?.map { it.trim() }
-            ?.filter { it.isNotBlank() }
-            ?: emptyList()
+        return serialized?.split("\n")?.map { it.trim() }?.filter { it.isNotBlank() } ?: emptyList()
     }
 
     private fun encodeReceiptUris(uris: List<String>): String? {
@@ -49,9 +46,16 @@ class AddTransactionViewModel @Inject constructor(
     }
 
     private fun toEditableAmount(value: Double): String {
-        return BigDecimal.valueOf(value)
+        return BigDecimal.valueOf(value).stripTrailingZeros().toPlainString()
+    }
+
+    private fun autoDivideAmounts(splits: List<SplitState>, totalAmount: Double): List<SplitState> {
+        if (splits.isEmpty() || totalAmount <= 0.0) return splits
+        val divided = BigDecimal.valueOf(totalAmount / splits.size)
+            .setScale(2, RoundingMode.HALF_UP)
             .stripTrailingZeros()
             .toPlainString()
+        return splits.map { it.copy(amount = divided) }
     }
 
     private val _state = MutableStateFlow(AddTransactionState())
@@ -82,7 +86,6 @@ class AddTransactionViewModel @Inject constructor(
         if (editTransactionId == null) {
             _state.update { state ->
                 val amountValue = initialAmount?.takeIf { it.isNotBlank() }
-                
                 state.copy(
                     amount = amountValue ?: state.amount,
                     note = initialNote ?: state.note,
@@ -99,7 +102,7 @@ class AddTransactionViewModel @Inject constructor(
                 transactionRepository.getTransactionById(parentId)
             }
             val recurrenceSource = if (transaction.isRecurring) transaction else parentRecurring
-                val primarySplit = transaction.splits.firstOrNull()
+            val primarySplit = transaction.splits.firstOrNull()
 
             _state.update { state ->
                 state.copy(
@@ -110,7 +113,7 @@ class AddTransactionViewModel @Inject constructor(
                     selectedAccountId = transaction.accountId,
                     toAccountId = transaction.toAccountId,
                     note = transaction.note ?: "",
-                    payee = transaction.payee, // Preserve payee
+                    payee = transaction.payee, 
                     date = transaction.date,
                     isSplitMode = false,
                     parentRecurringId = transaction.parentRecurringId,
@@ -126,8 +129,9 @@ class AddTransactionViewModel @Inject constructor(
                         ?: emptySet(),
                     splits = listOf(
                         SplitState(
-                            categoryId = primarySplit?.categoryId,
-                            categoryName = primarySplit?.categoryName.orEmpty(),
+                            targetType = SplitTargetType.CATEGORY,
+                            targetId = primarySplit?.categoryId,
+                            targetName = primarySplit?.categoryName.orEmpty(),
                             amount = toEditableAmount(transaction.totalAmount)
                         )
                     )
@@ -139,9 +143,7 @@ class AddTransactionViewModel @Inject constructor(
     private fun loadData() {
         viewModelScope.launch {
             val defaultAccountId = userPreferences.defaultAccountId.first()
-            val initialTxnType = runCatching { TransactionType.valueOf(initialType ?: "") }
-                .getOrNull()
-                ?: _state.value.type
+            val initialTxnType = runCatching { TransactionType.valueOf(initialType ?: "") }.getOrNull() ?: _state.value.type
             val recommendedAccountId = if (editTransactionId == null && !initialPayee.isNullOrBlank()) {
                 categoryRecommendationRepository.getRecommendedAccountId(initialPayee, initialTxnType)
             } else {
@@ -160,6 +162,8 @@ class AddTransactionViewModel @Inject constructor(
                     }
                 }.thenBy { it.name })
 
+                val peopleAccounts = accounts.filter { it.type == AccountType.PEOPLE }
+
                 _state.update { currentState ->
                     val accountId = when {
                         currentState.isEditMode -> currentState.selectedAccountId
@@ -171,6 +175,7 @@ class AddTransactionViewModel @Inject constructor(
                     }
                     currentState.copy(
                         accounts = sortedAccounts,
+                        peopleAccounts = peopleAccounts,
                         selectedAccountId = accountId
                     )
                 }
@@ -179,8 +184,7 @@ class AddTransactionViewModel @Inject constructor(
         viewModelScope.launch {
             userPreferences.defaultNotifyForRecurringEntries.collect { enabled ->
                 _state.update { currentState ->
-                    if (currentState.isEditMode) currentState
-                    else currentState.copy(notifyForRecurringEntries = enabled)
+                    if (currentState.isEditMode) currentState else currentState.copy(notifyForRecurringEntries = enabled)
                 }
             }
         }
@@ -194,12 +198,11 @@ class AddTransactionViewModel @Inject constructor(
                         var newSelectedIds = state.selectedCategoryIds
                         var newSplits = state.splits
                         
-                        // Auto-select the smart suggested category!
                         if (suggestedCategoryId != null && newSelectedIds.isEmpty() && !state.isEditMode) {
                             val cat = sortedCategories.find { it.id == suggestedCategoryId }
                             if (cat != null) {
                                 newSelectedIds = setOf(cat.id)
-                                newSplits = listOf(SplitState(categoryId = cat.id, categoryName = cat.name, amount = state.amount))
+                                newSplits = listOf(SplitState(targetId = cat.id, targetName = cat.name, amount = state.amount))
                             }
                         }
 
@@ -237,8 +240,9 @@ class AddTransactionViewModel @Inject constructor(
             } else {
                 listOf(
                     SplitState(
-                        categoryId = categoryId,
-                        categoryName = state.categories.find { it.id == categoryId }?.name ?: categoryName,
+                        targetType = SplitTargetType.CATEGORY,
+                        targetId = categoryId,
+                        targetName = state.categories.find { it.id == categoryId }?.name ?: categoryName,
                         amount = state.amount
                     )
                 )
@@ -251,46 +255,86 @@ class AddTransactionViewModel @Inject constructor(
         }
     }
 
-    fun onNoteChange(value: String) {
-        _state.update { it.copy(note = value) }
-    }
-
-    fun onDateChange(value: Long) {
-        _state.update { it.copy(date = value) }
-    }
-
-    fun onTypeChange(type: TransactionType) {
-        _state.update { current ->
-            if (type == current.type) return@update current
-
-            current.copy(
-                type = type,
-                isSplitMode = false,
-                selectedCategoryIds = emptySet(),
-                splits = listOf(SplitState(amount = current.amount)),
-                toAccountId = if (type == TransactionType.TRANSFER) current.toAccountId else null
-            )
+    fun toggleSplitMode() {
+        _state.update { state ->
+            if (state.isSplitMode) {
+                val categoryIds = state.splits.filter { it.targetType == SplitTargetType.CATEGORY }.mapNotNull { it.targetId }.toSet()
+                val newSplits = if (categoryIds.isEmpty()) {
+                    listOf(SplitState(amount = state.amount))
+                } else {
+                    state.splits.filter { it.targetType == SplitTargetType.CATEGORY && it.targetId != null }.map { it.copy(amount = state.amount) }
+                }
+                state.copy(
+                    isSplitMode = false,
+                    selectedCategoryIds = categoryIds,
+                    splits = newSplits
+                )
+            } else {
+                val newSplits = if (state.splits.isEmpty()) listOf(SplitState()) else state.splits
+                state.copy(
+                    isSplitMode = true,
+                    selectedCategoryIds = emptySet(),
+                    splits = autoDivideAmounts(newSplits, state.totalAmount)
+                )
+            }
         }
     }
 
-    fun onAccountSelected(accountId: String) {
-        _state.update { it.copy(selectedAccountId = accountId) }
+    fun addSplit() {
+        _state.update { state -> 
+            val newSplits = state.splits + SplitState(targetType = SplitTargetType.CATEGORY)
+            state.copy(splits = autoDivideAmounts(newSplits, state.totalAmount)) 
+        }
     }
 
-    fun onToAccountSelected(accountId: String) {
-        _state.update { it.copy(toAccountId = accountId) }
+    fun addPersonSplit() {
+        _state.update { state -> 
+            val newSplits = state.splits + SplitState(targetType = SplitTargetType.PERSON)
+            state.copy(splits = autoDivideAmounts(newSplits, state.totalAmount)) 
+        }
     }
 
     fun onCategorySelected(index: Int, categoryId: String, categoryName: String) {
         _state.update { state ->
             val newSplits = state.splits.toMutableList()
             if (index < newSplits.size) {
-                newSplits[index] = newSplits[index].copy(
-                    categoryId = categoryId,
-                    categoryName = categoryName
-                )
+                newSplits[index] = newSplits[index].copy(targetId = categoryId, targetName = categoryName)
             }
             state.copy(splits = newSplits)
+        }
+    }
+
+    fun onPersonSplitSelected(index: Int, accountId: String, accountName: String) {
+        _state.update { state ->
+            val newSplits = state.splits.toMutableList()
+            if (index < newSplits.size) {
+                newSplits[index] = newSplits[index].copy(targetId = accountId, targetName = accountName)
+            }
+            state.copy(splits = newSplits)
+        }
+    }
+    
+    fun onPersonAccountCreated(accountId: String) {
+        viewModelScope.launch {
+            kotlinx.coroutines.delay(100)
+            _state.update { state ->
+                val account = state.peopleAccounts.find { it.id == accountId } 
+                           ?: state.accounts.find { it.id == accountId }
+                val accountName = account?.name ?: "Unknown"
+                
+                val splits = state.splits.toMutableList()
+                val targetIndex = splits.indexOfLast { it.targetType == SplitTargetType.PERSON && it.targetId == null }
+                
+                if (targetIndex != -1) {
+                    splits[targetIndex] = splits[targetIndex].copy(targetId = accountId, targetName = accountName)
+                } else {
+                    val lastPersonIndex = splits.indexOfLast { it.targetType == SplitTargetType.PERSON }
+                    if (lastPersonIndex != -1) {
+                        splits[lastPersonIndex] = splits[lastPersonIndex].copy(targetId = accountId, targetName = accountName)
+                    }
+                }
+                state.copy(splits = splits)
+            }
         }
     }
 
@@ -304,34 +348,40 @@ class AddTransactionViewModel @Inject constructor(
         }
     }
 
-    fun toggleSplitMode() {
+    fun removeSplit(index: Int) {
         _state.update { state ->
-            if (state.isSplitMode) {
-                val categoryIds = state.splits.mapNotNull { it.categoryId }.toSet()
-                val newSplits = if (categoryIds.isEmpty()) {
-                    listOf(SplitState(amount = state.amount))
-                } else {
-                    state.splits.filter { it.categoryId != null }.map { it.copy(amount = state.amount) }
-                }
-                state.copy(
-                    isSplitMode = false,
-                    selectedCategoryIds = categoryIds,
-                    splits = newSplits
-                )
-            } else {
-                state.copy(
-                    isSplitMode = true,
-                    selectedCategoryIds = emptySet()
-                )
-            }
+            if (state.splits.size > 1) {
+                val updatedSplits = state.splits.toMutableList().apply { removeAt(index) }
+                state.copy(splits = autoDivideAmounts(updatedSplits, state.totalAmount))
+            } else state
         }
     }
 
-    fun addSplit() {
-        _state.update { state ->
-            state.copy(splits = state.splits + SplitState())
+    fun onTypeChange(type: TransactionType) {
+        _state.update { current ->
+            if (type == current.type) return@update current
+            current.copy(
+                type = type,
+                isSplitMode = false,
+                selectedCategoryIds = emptySet(),
+                splits = listOf(SplitState(amount = current.amount)),
+                toAccountId = if (type == TransactionType.TRANSFER) current.toAccountId else null
+            )
         }
     }
+
+    fun onAccountSelected(accountId: String) { _state.update { it.copy(selectedAccountId = accountId) } }
+    fun onToAccountSelected(accountId: String) { _state.update { it.copy(toAccountId = accountId) } }
+    fun onNoteChange(value: String) { _state.update { it.copy(note = value) } }
+    fun onDateChange(value: Long) { _state.update { it.copy(date = value) } }
+    fun onRecurringToggle(isRecurring: Boolean) { _state.update { it.copy(isRecurring = isRecurring) } }
+    fun onRecurringIntervalChange(interval: String) { _state.update { it.copy(recurringInterval = interval) } }
+    fun onRecurringUnitChange(unit: RecurringUnit) { _state.update { it.copy(recurringUnit = unit) } }
+    fun onRecurringEndDateChange(endDate: Long?) { _state.update { it.copy(recurringEndDate = endDate) } }
+    fun onNotifyForRecurringEntriesChange(enabled: Boolean) { _state.update { it.copy(notifyForRecurringEntries = enabled) } }
+    fun addReceiptUri(uri: String) { _state.update { state -> if (uri.isBlank() || uri in state.receiptUris) state else state.copy(receiptUris = state.receiptUris + uri) } }
+    fun removeReceiptUri(uri: String) { _state.update { state -> state.copy(receiptUris = state.receiptUris.filterNot { it == uri }) } }
+    fun clearAllReceipts() { _state.update { it.copy(receiptUris = emptyList()) } }
 
     fun addCategory(name: String, iconKey: String, colorHex: String) {
         viewModelScope.launch {
@@ -353,16 +403,9 @@ class AddTransactionViewModel @Inject constructor(
             categoryRepository.deleteCategory(categoryId)
             _state.update { state ->
                 val updatedSelectedIds = state.selectedCategoryIds - categoryId
-                val updatedSplits = state.splits.filterNot { it.categoryId == categoryId }
-                val normalizedSplits = if (updatedSplits.isEmpty()) {
-                    listOf(SplitState(amount = state.amount))
-                } else {
-                    updatedSplits
-                }
-                state.copy(
-                    selectedCategoryIds = updatedSelectedIds,
-                    splits = normalizedSplits
-                )
+                val updatedSplits = state.splits.filterNot { it.targetId == categoryId }
+                val normalizedSplits = if (updatedSplits.isEmpty()) listOf(SplitState(amount = state.amount)) else updatedSplits
+                state.copy(selectedCategoryIds = updatedSelectedIds, splits = normalizedSplits)
             }
         }
     }
@@ -372,14 +415,11 @@ class AddTransactionViewModel @Inject constructor(
             try {
                 val existing = categoryRepository.getCategoryById(categoryId) ?: return@launch
                 val updated = existing.copy(name = newName, iconKey = newIconKey, colorHex = newColorHex)
-                
                 categoryRepository.updateCategory(updated)
                 
                 _state.update { state ->
                     val newSplits = state.splits.map { split ->
-                        if (split.categoryId == categoryId) {
-                            split.copy(categoryName = newName)
-                        } else split
+                        if (split.targetId == categoryId) split.copy(targetName = newName) else split
                     }
                     state.copy(splits = newSplits)
                 }
@@ -387,51 +427,6 @@ class AddTransactionViewModel @Inject constructor(
                 android.util.Log.e("AddTransactionVM", "Failed to edit category", e)
             }
         }
-    }
-
-    fun removeSplit(index: Int) {
-        _state.update { state ->
-            if (state.splits.size > 1) {
-                state.copy(splits = state.splits.toMutableList().apply { removeAt(index) })
-            } else state
-        }
-    }
-
-    fun onRecurringToggle(isRecurring: Boolean) {
-        _state.update { current ->
-            current.copy(isRecurring = isRecurring)
-        }
-    }
-
-    fun onRecurringIntervalChange(interval: String) {
-        _state.update { it.copy(recurringInterval = interval) }
-    }
-
-    fun onRecurringUnitChange(unit: RecurringUnit) {
-        _state.update { it.copy(recurringUnit = unit) }
-    }
-
-    fun onRecurringEndDateChange(endDate: Long?) {
-        _state.update { it.copy(recurringEndDate = endDate) }
-    }
-
-    fun onNotifyForRecurringEntriesChange(enabled: Boolean) {
-        _state.update { it.copy(notifyForRecurringEntries = enabled) }
-    }
-
-    fun addReceiptUri(uri: String) {
-        _state.update { state ->
-            if (uri.isBlank() || uri in state.receiptUris) state
-            else state.copy(receiptUris = state.receiptUris + uri)
-        }
-    }
-
-    fun removeReceiptUri(uri: String) {
-        _state.update { state -> state.copy(receiptUris = state.receiptUris.filterNot { it == uri }) }
-    }
-
-    fun clearAllReceipts() {
-        _state.update { it.copy(receiptUris = emptyList()) }
     }
 
     fun saveTransaction() {
@@ -446,134 +441,183 @@ class AddTransactionViewModel @Inject constructor(
             _state.update { it.copy(isSaving = true) }
 
             try {
-                val transactionId = currentState.editTransactionId ?: UUID.randomUUID().toString()
                 val now = System.currentTimeMillis()
-                val existingTransaction = if (currentState.isEditMode) {
-                    transactionRepository.getTransactionById(transactionId)
-                } else {
-                    null
-                }
                 val isSeriesChildEntry = currentState.parentRecurringId != null
                 val shouldPersistRecurringOnThisEntry = currentState.isRecurring && !isSeriesChildEntry
+                val finalPayee = currentState.payee.ifBlank { currentState.splits.firstOrNull()?.targetName ?: "Transaction" }
 
-                // If payee is blank (manual entry without a typed payee), use the primary category name
-                val finalPayee = currentState.payee.ifBlank { currentState.splits.firstOrNull()?.categoryName ?: "Transaction" }
+                // --- If in split mode, process EVERY split item as an independent TransactionEntity ---
+                if (currentState.isSplitMode) {
+                    val validSplits = currentState.splits.filter { it.targetId != null }
+                    
+                    validSplits.forEachIndexed { index, split ->
+                        val amount = evaluateAmountExpression(split.amount) ?: return@forEachIndexed
+                        if (amount <= 0.0) return@forEachIndexed
+                        
+                        // We reuse the original ID for the very first split only if we are editing an existing transaction.
+                        // Every subsequent split gets a brand new UUID so it stands alone in the ledger.
+                        val isFirst = index == 0
+                        val transactionId = if (currentState.isEditMode && isFirst) {
+                            currentState.editTransactionId!!
+                        } else {
+                            UUID.randomUUID().toString()
+                        }
+                        
+                        val isThisRecurring = isFirst && shouldPersistRecurringOnThisEntry
 
-                val transaction = TransactionEntity(
-                    id = transactionId,
-                    accountId = currentState.selectedAccountId!!,
-                    payee = finalPayee,
-                    note = currentState.note.ifBlank { null },
-                    date = currentState.date,
-                    totalAmount = currentState.totalAmount,
-                    type = currentState.type,
-                    toAccountId = currentState.toAccountId,
-                    createdAt = now,
-                    modifiedAt = now,
-                    syncStatus = SyncStatus.DIRTY,
-                    isRecurring = shouldPersistRecurringOnThisEntry,
-                    recurringInterval = if (shouldPersistRecurringOnThisEntry) currentState.recurringInterval.toIntOrNull() else null,
-                    recurringUnit = if (shouldPersistRecurringOnThisEntry) currentState.recurringUnit else null,
-                    recurringEndDate = if (shouldPersistRecurringOnThisEntry) currentState.recurringEndDate else null,
-                    parentRecurringId = currentState.parentRecurringId ?: existingTransaction?.parentRecurringId,
-                    notifyForRecurringEntries = if (shouldPersistRecurringOnThisEntry) currentState.notifyForRecurringEntries else true,
-                    receiptUri = encodeReceiptUris(currentState.receiptUris)
-                )
+                        if (split.targetType == SplitTargetType.CATEGORY) {
+                            val transaction = TransactionEntity(
+                                id = transactionId,
+                                accountId = currentState.selectedAccountId!!,
+                                payee = finalPayee,
+                                note = currentState.note.ifBlank { null },
+                                date = currentState.date,
+                                totalAmount = amount,
+                                type = currentState.type,
+                                toAccountId = null,
+                                createdAt = now,
+                                modifiedAt = now,
+                                syncStatus = SyncStatus.DIRTY,
+                                isRecurring = isThisRecurring,
+                                recurringInterval = if (isThisRecurring) currentState.recurringInterval.toIntOrNull() else null,
+                                recurringUnit = if (isThisRecurring) currentState.recurringUnit else null,
+                                recurringEndDate = if (isThisRecurring) currentState.recurringEndDate else null,
+                                parentRecurringId = if (isFirst) currentState.parentRecurringId else null,
+                                notifyForRecurringEntries = if (isThisRecurring) currentState.notifyForRecurringEntries else true,
+                                receiptUri = encodeReceiptUris(currentState.receiptUris)
+                            )
+                            
+                            val dbSplits = listOf(
+                                TransactionSplitEntity(
+                                    id = UUID.randomUUID().toString(),
+                                    transactionId = transactionId,
+                                    categoryId = split.targetId!!,
+                                    amount = amount,
+                                    note = null
+                                )
+                            )
 
-                val splits = if (currentState.type == TransactionType.TRANSFER) {
-                    emptyList()
+                            if (currentState.isEditMode && isFirst) {
+                                transactionRepository.updateTransactionFull(transaction, dbSplits)
+                                val wasParentTurnedOff = currentState.parentRecurringId == null && !currentState.isRecurring
+                                val wasChildTurnedOff = currentState.parentRecurringId != null && !currentState.isRecurring
+                                if (wasParentTurnedOff) transactionRepository.stopRecurringSeries(transactionId)
+                                else if (wasChildTurnedOff) currentState.parentRecurringId?.let { parentId -> transactionRepository.stopRecurringSeries(parentId) }
+                            } else {
+                                transactionRepository.saveTransaction(transaction, dbSplits)
+                            }
+                            
+                            categoryRecommendationRepository.upsertRecommendation(
+                                finalPayee, currentState.type, split.targetId!!, currentState.selectedAccountId
+                            )
+                            
+                            if (currentState.type == TransactionType.EXPENSE) {
+                                budgetAlertManager.checkBudgets(currentState.date, mapOf(split.targetId!! to split.targetName))
+                            }
+
+                        } else if (split.targetType == SplitTargetType.PERSON) {
+                            val transferTransaction = TransactionEntity(
+                                id = transactionId,
+                                accountId = currentState.selectedAccountId!!, 
+                                payee = "Split with ${split.targetName}",
+                                note = currentState.note.ifBlank { null },
+                                date = currentState.date,
+                                totalAmount = amount,
+                                type = TransactionType.TRANSFER, 
+                                toAccountId = split.targetId!!, 
+                                createdAt = now,
+                                modifiedAt = now,
+                                syncStatus = SyncStatus.DIRTY,
+                                isRecurring = isThisRecurring, 
+                                recurringInterval = if (isThisRecurring) currentState.recurringInterval.toIntOrNull() else null,
+                                recurringUnit = if (isThisRecurring) currentState.recurringUnit else null,
+                                recurringEndDate = if (isThisRecurring) currentState.recurringEndDate else null,
+                                parentRecurringId = if (isFirst) currentState.parentRecurringId else null,
+                                notifyForRecurringEntries = if (isThisRecurring) currentState.notifyForRecurringEntries else true,
+                                receiptUri = encodeReceiptUris(currentState.receiptUris)
+                            )
+                            
+                            if (currentState.isEditMode && isFirst) {
+                                transactionRepository.updateTransactionFull(transferTransaction, emptyList())
+                                val wasParentTurnedOff = currentState.parentRecurringId == null && !currentState.isRecurring
+                                val wasChildTurnedOff = currentState.parentRecurringId != null && !currentState.isRecurring
+                                if (wasParentTurnedOff) transactionRepository.stopRecurringSeries(transactionId)
+                                else if (wasChildTurnedOff) currentState.parentRecurringId?.let { parentId -> transactionRepository.stopRecurringSeries(parentId) }
+                            } else {
+                                transactionRepository.saveTransaction(transferTransaction, emptyList())
+                            }
+                        }
+                    }
+                    
+                    if (shouldPersistRecurringOnThisEntry) recurringTransactionManager.checkNow()
+
                 } else {
-                    val validSplits = currentState.splits.mapNotNull { split ->
-                        val categoryId = split.categoryId?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
-                        val splitAmount = evaluateAmountExpression(split.amount) ?: 0.0
-                        if (splitAmount <= 0.0) return@mapNotNull null
+                    // --- Normal (Non-Split) Transaction Processing ---
+                    val transactionId = currentState.editTransactionId ?: UUID.randomUUID().toString()
+                    val transaction = TransactionEntity(
+                        id = transactionId,
+                        accountId = currentState.selectedAccountId!!,
+                        payee = finalPayee,
+                        note = currentState.note.ifBlank { null },
+                        date = currentState.date,
+                        totalAmount = currentState.totalAmount,
+                        type = currentState.type,
+                        toAccountId = currentState.toAccountId,
+                        createdAt = now,
+                        modifiedAt = now,
+                        syncStatus = SyncStatus.DIRTY,
+                        isRecurring = shouldPersistRecurringOnThisEntry,
+                        recurringInterval = if (shouldPersistRecurringOnThisEntry) currentState.recurringInterval.toIntOrNull() else null,
+                        recurringUnit = if (shouldPersistRecurringOnThisEntry) currentState.recurringUnit else null,
+                        recurringEndDate = if (shouldPersistRecurringOnThisEntry) currentState.recurringEndDate else null,
+                        parentRecurringId = currentState.parentRecurringId,
+                        notifyForRecurringEntries = if (shouldPersistRecurringOnThisEntry) currentState.notifyForRecurringEntries else true,
+                        receiptUri = encodeReceiptUris(currentState.receiptUris)
+                    )
 
-                        TransactionSplitEntity(
-                            id = UUID.randomUUID().toString(),
-                            transactionId = transactionId,
-                            categoryId = categoryId,
-                            amount = splitAmount,
-                            note = null
+                    val dbSplits = if (currentState.type == TransactionType.TRANSFER || currentState.selectedCategoryIds.isEmpty()) {
+                        emptyList()
+                    } else {
+                        val amountPerCategory = currentState.totalAmount / currentState.selectedCategoryIds.size
+                        currentState.selectedCategoryIds.map { categoryId ->
+                            TransactionSplitEntity(
+                                id = UUID.randomUUID().toString(),
+                                transactionId = transactionId,
+                                categoryId = categoryId,
+                                amount = amountPerCategory,
+                                note = null
+                            )
+                        }
+                    }
+
+                    if (currentState.isEditMode) {
+                        transactionRepository.updateTransactionFull(transaction, dbSplits)
+                        val wasParentTurnedOff = currentState.parentRecurringId == null && !currentState.isRecurring
+                        val wasChildTurnedOff = currentState.parentRecurringId != null && !currentState.isRecurring
+                        if (wasParentTurnedOff) transactionRepository.stopRecurringSeries(transactionId)
+                        else if (wasChildTurnedOff) currentState.parentRecurringId?.let { parentId -> transactionRepository.stopRecurringSeries(parentId) }
+                    } else {
+                        transactionRepository.saveTransaction(transaction, dbSplits)
+                        if (shouldPersistRecurringOnThisEntry) recurringTransactionManager.checkNow()
+                    }
+                    
+                    if (currentState.payee.isNotBlank() && dbSplits.isNotEmpty()) {
+                        categoryRecommendationRepository.upsertRecommendation(
+                            currentState.payee, currentState.type, dbSplits.first().categoryId, currentState.selectedAccountId
                         )
                     }
 
-                    if (validSplits.isEmpty() && existingTransaction != null && existingTransaction.splits.isNotEmpty()) {
-                        existingTransaction.splits.map { existing ->
-                            TransactionSplitEntity(
-                                id = existing.id,
-                                transactionId = transactionId,
-                                categoryId = existing.categoryId,
-                                amount = existing.amount,
-                                note = existing.note
-                            )
-                        }
-                    } else if (validSplits.isEmpty()) {
-                        throw IllegalStateException("Please select at least one valid category")
-                    } else {
-                        validSplits
+                    if (currentState.type == TransactionType.EXPENSE && dbSplits.isNotEmpty()) {
+                        val categoryMap = dbSplits.associate { it.categoryId to (currentState.categories.find { cat -> cat.id == it.categoryId }?.name ?: "") }
+                        budgetAlertManager.checkBudgets(currentState.date, categoryMap)
                     }
-                }
-
-                if (currentState.isSplitMode && splits.isNotEmpty()) {
-                    val splitTotal = splits.sumOf { it.amount }
-                    if (kotlin.math.abs(splitTotal - currentState.totalAmount) >= 0.01) {
-                        throw IllegalStateException("Split total must match the transaction amount")
-                    }
-                }
-
-                if (currentState.isEditMode) {
-                    transactionRepository.updateTransactionFull(transaction, splits)
-                    
-                    val wasParentTurnedOff = currentState.parentRecurringId == null && 
-                                             existingTransaction?.isRecurring == true && 
-                                             !currentState.isRecurring
-                                             
-                    val wasChildTurnedOff = currentState.parentRecurringId != null && 
-                                            !currentState.isRecurring
-
-                    if (wasParentTurnedOff) {
-                        transactionRepository.stopRecurringSeries(transactionId)
-                    } else if (wasChildTurnedOff) {
-                        currentState.parentRecurringId?.let { parentId ->
-                            transactionRepository.stopRecurringSeries(parentId)
-                        }
-                    }
-                } else {
-                    transactionRepository.saveTransaction(transaction, splits)
-                    if (shouldPersistRecurringOnThisEntry) {
-                        recurringTransactionManager.checkNow()
-                    }
-                }
-
-                // Train the recommendation algorithm!
-                // If a real payee exists, and a valid category is selected, upsert it using Payee + Type.
-                if (currentState.payee.isNotBlank() && splits.isNotEmpty()) {
-                    categoryRecommendationRepository.upsertRecommendation(
-                        currentState.payee, 
-                        currentState.type, 
-                        splits.first().categoryId,
-                        currentState.selectedAccountId
-                    )
-                }
-
-                // Check budgets and notify if exceeded!
-                if (currentState.type == TransactionType.EXPENSE) {
-                    val categoryMap = currentState.splits
-                        .filter { it.categoryId != null && (it.amount.toDoubleOrNull() ?: 0.0) > 0.0 }
-                        .associate { it.categoryId!! to it.categoryName }
-                    budgetAlertManager.checkBudgets(currentState.date, categoryMap)
                 }
 
                 _state.update { it.copy(isSaving = false) }
                 _navigateBack.trySend(Unit)
             } catch (e: Exception) {
                 android.util.Log.e("AddTxnVM", "Save failed", e)
-                _state.update {
-                    it.copy(
-                        isSaving = false,
-                        errorMessage = e.message ?: "Failed to save transaction"
-                    )
-                }
+                _state.update { it.copy(isSaving = false, errorMessage = e.message ?: "Failed to save transaction") }
             }
         }
     }
@@ -585,8 +629,5 @@ class AddTransactionViewModel @Inject constructor(
             _navigateBack.trySend(Unit)
         }
     }
-
-    fun clearError() {
-        _state.update { it.copy(errorMessage = null) }
-    }
+    fun clearError() { _state.update { it.copy(errorMessage = null) } }
 }

@@ -5,10 +5,12 @@ import com.moneytracker.app.data.local.database.entities.RecurringUnit
 import com.moneytracker.app.domain.model.Account
 import com.moneytracker.app.domain.model.Category
 
+enum class SplitTargetType { CATEGORY, PERSON }
+
 data class AddTransactionState(
     val amount: String = "",
     val note: String = "",
-    val payee: String = "", // Used to store the payee for learning algorithms
+    val payee: String = "",
     val date: Long = System.currentTimeMillis(),
     val type: TransactionType = TransactionType.EXPENSE,
     val selectedAccountId: String? = null,
@@ -17,6 +19,7 @@ data class AddTransactionState(
     val selectedCategoryIds: Set<String> = emptySet(),
     val splits: List<SplitState> = listOf(SplitState()),
     val accounts: List<Account> = emptyList(),
+    val peopleAccounts: List<Account> = emptyList(), // Added People Accounts
     val categories: List<Category> = emptyList(),
     val isEditMode: Boolean = false,
     val editTransactionId: String? = null,
@@ -51,20 +54,25 @@ data class AddTransactionState(
                 return toAccountId != null && toAccountId != selectedAccountId
             }
             if (isSplitMode) {
-                return splits.all { it.categoryId != null && (evaluateAmountExpression(it.amount) ?: 0.0) > 0 }
+                return splits.all { it.targetId != null && (evaluateAmountExpression(it.amount) ?: 0.0) > 0 }
                         && kotlin.math.abs(remaining) < 0.01
             }
             return selectedCategoryIds.isNotEmpty() &&
-                    splits.any { it.categoryId != null }
+                    splits.any { it.targetType == SplitTargetType.CATEGORY && it.targetId != null }
         }
 }
 
 data class SplitState(
     val id: String = java.util.UUID.randomUUID().toString(),
-    val categoryId: String? = null,
-    val categoryName: String = "",
+    val targetType: SplitTargetType = SplitTargetType.CATEGORY,
+    val targetId: String? = null,
+    val targetName: String = "",
     val amount: String = ""
-)
+) {
+    val categoryId: String? get() = if (targetType == SplitTargetType.CATEGORY) targetId else null
+    val categoryName: String get() = if (targetType == SplitTargetType.CATEGORY) targetName else ""
+    val personAccountId: String? get() = if (targetType == SplitTargetType.PERSON) targetId else null
+}
 
 fun evaluateAmountExpression(input: String): Double? {
     val trimmed = input.trim()

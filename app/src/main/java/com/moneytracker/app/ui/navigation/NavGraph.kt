@@ -127,7 +127,9 @@ fun NavGraph(
                 },
                 onAddAccount = { target ->
                     backStackEntry.savedStateHandle["createdAccountTarget"] = target.name
-                    navController.navigate(Screen.AddAccount.route)
+                    // Check if it's a Person target, and pass the explicit type!
+                    val accountType = if (target.name == "PERSON") "PEOPLE" else null
+                    navController.navigate(Screen.AddAccount.createRoute(accountType))
                 },
                 createdAccountId = createdAccountId,
                 createdAccountTarget = createdAccountTarget,
@@ -167,7 +169,12 @@ fun NavGraph(
             )
         }
 
-        composable(Screen.AddAccount.route) {
+        composable(
+            route = Screen.AddAccount.route,
+            arguments = listOf(
+                navArgument("accountType") { type = NavType.StringType; nullable = true; defaultValue = null }
+            )
+        ) {
             AddAccountScreen(
                 onNavigateBack = { createdAccountId ->
                     if (!createdAccountId.isNullOrBlank()) {
@@ -226,7 +233,8 @@ fun NavGraph(
                 ,
                 onAddAccount = { target ->
                     backStackEntry.savedStateHandle["createdAccountTarget"] = target.name
-                    navController.navigate(Screen.AddAccount.route)
+                    val accountType = if (target.name == "PERSON") "PEOPLE" else null
+                    navController.navigate(Screen.AddAccount.createRoute(accountType))
                 },
                 createdAccountId = createdAccountId,
                 createdAccountTarget = createdAccountTarget,
@@ -313,7 +321,7 @@ private fun MainTabsPager(
             Screen.Accounts -> {
                 AccountsScreen(
                     onAddAccount = {
-                        navController.navigate(Screen.AddAccount.route)
+                        navController.navigate(Screen.AddAccount.createRoute())
                     },
                     onAddTransaction = {
                         navController.navigate(Screen.AddTransaction.createRoute())

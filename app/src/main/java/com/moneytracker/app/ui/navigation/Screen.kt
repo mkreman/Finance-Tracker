@@ -78,9 +78,13 @@ sealed class Screen(
     }
 
     object AddAccount : Screen(
-        route = "add_account",
+        route = "add_account?accountType={accountType}",
         title = "Add Account"
-    )
+    ) {
+        fun createRoute(accountType: String? = null): String {
+            return if (accountType != null) "add_account?accountType=$accountType" else "add_account"
+        }
+    }
 
     object AddBudget : Screen(
         route = "add_budget?month={month}&year={year}",

@@ -30,6 +30,14 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            manifestPlaceholders["appName"] = "@string/app_name"
+        }
+        debug {
+            // This makes the ID com.moneytracker.app.debug (allowing side-by-side installation)
+            applicationIdSuffix = ".debug" 
+            versionNameSuffix = "-test"
+            // This sets a custom name for your home screen
+            manifestPlaceholders["appName"] = "Tracker (Test)"
         }
     }
     compileOptions {

@@ -73,8 +73,17 @@ class AddAccountViewModel @Inject constructor(
 
     init {
         val accountId = savedStateHandle.get<String>("accountId")
+        val preSelectedType = savedStateHandle.get<String>("accountType")
+        
         if (accountId != null) {
             loadAccount(accountId)
+        } else if (preSelectedType != null) {
+            // Automatically select the type passed via navigation (e.g. PEOPLE)
+            val type = runCatching { AccountType.valueOf(preSelectedType) }.getOrNull()
+            if (type != null) {
+                val icon = if (type == AccountType.PEOPLE) "person" else "bank"
+                _state.update { it.copy(type = type, iconKey = icon) }
+            }
         }
     }
 
