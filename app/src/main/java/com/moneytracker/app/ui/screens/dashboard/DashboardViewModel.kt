@@ -3,6 +3,7 @@ package com.moneytracker.app.ui.screens.dashboard
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.moneytracker.app.data.local.repository.TransactionRepository
+import com.moneytracker.app.domain.SharedMonthManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -11,11 +12,11 @@ import javax.inject.Inject
 
 @HiltViewModel
 class DashboardViewModel @Inject constructor(
-    private val transactionRepository: TransactionRepository
+    private val transactionRepository: TransactionRepository,
+    private val sharedMonthManager: SharedMonthManager
 ) : ViewModel() {
 
-    private val _currentMonth = MutableStateFlow(Calendar.getInstance())
-    val currentMonth: StateFlow<Calendar> = _currentMonth.asStateFlow()
+    val currentMonth: StateFlow<Calendar?> = sharedMonthManager.currentMonth
 
     private val _state = MutableStateFlow(DashboardState())
     val state: StateFlow<DashboardState> = _state.asStateFlow()
@@ -24,17 +25,9 @@ class DashboardViewModel @Inject constructor(
         observeMonthData()
     }
 
-    fun previousMonth() {
-        _currentMonth.update { cal ->
-            (cal.clone() as Calendar).apply { add(Calendar.MONTH, -1) }
-        }
-    }
+    fun previousMonth() = sharedMonthManager.previousMonth()
 
-    fun nextMonth() {
-        _currentMonth.update { cal ->
-            (cal.clone() as Calendar).apply { add(Calendar.MONTH, 1) }
-        }
-    }
+    fun nextMonth() = sharedMonthManager.nextMonth()
 
     fun selectOverview(type: OverviewType) {
         _state.update { it.copy(selectedOverview = type) }
@@ -42,7 +35,7 @@ class DashboardViewModel @Inject constructor(
 
     private fun observeMonthData() {
         viewModelScope.launch {
-            _currentMonth.collectLatest { calendar ->
+            currentMonth.filterNotNull().collectLatest { calendar ->
                 val (startDate, endDate) = getMonthRange(calendar)
 
                 // Observe expense

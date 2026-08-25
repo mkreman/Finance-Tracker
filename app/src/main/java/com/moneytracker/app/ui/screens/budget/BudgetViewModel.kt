@@ -3,6 +3,7 @@ package com.moneytracker.app.ui.screens.budget
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.moneytracker.app.data.local.repository.BudgetRepository
+import com.moneytracker.app.domain.SharedMonthManager
 import com.moneytracker.app.domain.model.Budget
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
@@ -20,11 +21,11 @@ data class BudgetState(
 
 @HiltViewModel
 class BudgetViewModel @Inject constructor(
-    private val budgetRepository: BudgetRepository
+    private val budgetRepository: BudgetRepository,
+    private val sharedMonthManager: SharedMonthManager
 ) : ViewModel() {
 
-    private val _currentMonth = MutableStateFlow(Calendar.getInstance())
-    val currentMonth: StateFlow<Calendar> = _currentMonth.asStateFlow()
+    val currentMonth: StateFlow<Calendar?> = sharedMonthManager.currentMonth
 
     private val _state = MutableStateFlow(BudgetState())
     val state: StateFlow<BudgetState> = _state.asStateFlow()
@@ -36,15 +37,11 @@ class BudgetViewModel @Inject constructor(
     }
 
     fun previousMonth() {
-        _currentMonth.update { cal ->
-            (cal.clone() as Calendar).apply { add(Calendar.MONTH, -1) }
-        }
+        sharedMonthManager.previousMonth()
     }
 
     fun nextMonth() {
-        _currentMonth.update { cal ->
-            (cal.clone() as Calendar).apply { add(Calendar.MONTH, 1) }
-        }
+        sharedMonthManager.nextMonth()
     }
 
     fun deleteBudget(id: String) {
@@ -70,7 +67,7 @@ class BudgetViewModel @Inject constructor(
 
     fun copyFromPreviousMonth() {
         viewModelScope.launch {
-            val calendar = _currentMonth.value
+            val calendar = currentMonth.value ?: return@launch
             val month = calendar.get(Calendar.MONTH) + 1
             val year = calendar.get(Calendar.YEAR)
             val copied = budgetRepository.copyMissingBudgetsFromPreviousMonth(month, year)
@@ -87,7 +84,7 @@ class BudgetViewModel @Inject constructor(
 
     private fun observeBudgets() {
         viewModelScope.launch {
-            _currentMonth.collectLatest { calendar ->
+            currentMonth.filterNotNull().collectLatest { calendar ->
                 val month = calendar.get(Calendar.MONTH) + 1
                 val year = calendar.get(Calendar.YEAR)
                 val (startDate, endDate) = getMonthRange(calendar)

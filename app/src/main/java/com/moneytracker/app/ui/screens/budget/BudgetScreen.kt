@@ -133,9 +133,11 @@ fun BudgetScreen(
 
                     FilledIconButton(
                         onClick = {
-                            val m = currentMonth.get(Calendar.MONTH) + 1
-                            val y = currentMonth.get(Calendar.YEAR)
-                            onAddBudget(m, y)
+                            currentMonth?.let { calendar ->
+                                val month = calendar.get(Calendar.MONTH) + 1
+                                val year = calendar.get(Calendar.YEAR)
+                                onAddBudget(month, year)
+                            }
                         },
                         modifier = Modifier.size(width = 56.dp, height = 35.dp),
                         shape = RoundedCornerShape(16.dp),
@@ -221,18 +223,18 @@ fun BudgetScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     state.budgets.forEach { budget ->
-                        val month = currentMonth.get(Calendar.MONTH) + 1
-                        val year = currentMonth.get(Calendar.YEAR)
-                        BudgetProgressBar(
-                            budget = budget,
-                            onClick = { onBudgetClick(budget.categoryId, budget.categoryName, month, year) },
-                            onEdit = { 
-                                val m = currentMonth.get(Calendar.MONTH) + 1
-                                val y = currentMonth.get(Calendar.YEAR)
-                                onEditBudget(budget.id, budget.categoryId, budget.categoryName, budget.limitAmount, m, y) 
-                            },
-                            onDelete = { showDeleteDialog = budget.id }
-                        )
+                        currentMonth?.let { calendar ->
+                            val month = calendar.get(Calendar.MONTH) + 1
+                            val year = calendar.get(Calendar.YEAR)
+                            BudgetProgressBar(
+                                budget = budget,
+                                onClick = { onBudgetClick(budget.categoryId, budget.categoryName, month, year) },
+                                onEdit = {
+                                    onEditBudget(budget.id, budget.categoryId, budget.categoryName, budget.limitAmount, month, year)
+                                },
+                                onDelete = { showDeleteDialog = budget.id }
+                            )
+                        }
                     }
                 }
             } else {

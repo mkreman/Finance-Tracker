@@ -144,7 +144,7 @@ fun DashboardScreen(
 @Composable
 private fun DashboardDonutSection(
     state: DashboardState,
-    currentMonth: Calendar,
+    currentMonth: Calendar?,
     onCategoryClick: (String, String, String, Int, Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -202,17 +202,19 @@ private fun DashboardDonutSection(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        ClickableLegend(
-            data = donutData,
-            type = when (state.selectedOverview) {
-                OverviewType.INCOME -> "INCOME"
-                OverviewType.TRANSFER -> "TRANSFER"
-                else -> "EXPENSE"
-            },
-            month = currentMonth.get(Calendar.MONTH) + 1,
-            year = currentMonth.get(Calendar.YEAR),
-            onCategoryClick = onCategoryClick
-        )
+        currentMonth?.let { calendar ->
+            ClickableLegend(
+                data = donutData,
+                type = when (state.selectedOverview) {
+                    OverviewType.INCOME -> "INCOME"
+                    OverviewType.TRANSFER -> "TRANSFER"
+                    else -> "EXPENSE"
+                },
+                month = calendar.get(Calendar.MONTH) + 1,
+                year = calendar.get(Calendar.YEAR),
+                onCategoryClick = onCategoryClick
+            )
+        }
     }
 }
 

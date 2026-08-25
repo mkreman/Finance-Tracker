@@ -3,26 +3,28 @@ package com.moneytracker.app.ui.screens.transactions
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.moneytracker.app.data.local.repository.TransactionRepository
+import com.moneytracker.app.domain.SharedMonthManager
 import com.moneytracker.app.domain.model.TransactionListItem
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.util.*
 import javax.inject.Inject
 
 @HiltViewModel
+@OptIn(ExperimentalCoroutinesApi::class)
 class TransactionsViewModel @Inject constructor(
-    private val transactionRepository: TransactionRepository
+    private val transactionRepository: TransactionRepository,
+    private val sharedMonthManager: SharedMonthManager // Inject the singleton
 ) : ViewModel() {
 
-    // Null represents "All Time"
-    private val _currentMonth = MutableStateFlow<Calendar?>(Calendar.getInstance())
-    val currentMonth: StateFlow<Calendar?> = _currentMonth.asStateFlow()
+    // Expose the shared state to the UI
+    val currentMonth: StateFlow<Calendar?> = sharedMonthManager.currentMonth
 
-    val transactions: StateFlow<List<TransactionListItem>> = _currentMonth
+    val transactions: StateFlow<List<TransactionListItem>> = currentMonth
         .flatMapLatest { calendar ->
             if (calendar == null) {
-                // If null, get everything
                 transactionRepository.getAllTransactions()
             } else {
                 val (startDate, endDate) = getMonthRange(calendar)
@@ -31,29 +33,10 @@ class TransactionsViewModel @Inject constructor(
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    fun previousMonth() {
-        _currentMonth.update { cal ->
-            if (cal == null) {
-                Calendar.getInstance().apply { add(Calendar.MONTH, -1) }
-            } else {
-                (cal.clone() as Calendar).apply { add(Calendar.MONTH, -1) }
-            }
-        }
-    }
-
-    fun nextMonth() {
-        _currentMonth.update { cal ->
-            if (cal == null) {
-                Calendar.getInstance().apply { add(Calendar.MONTH, 1) }
-            } else {
-                (cal.clone() as Calendar).apply { add(Calendar.MONTH, 1) }
-            }
-        }
-    }
-
-    fun selectAllTime() {
-        _currentMonth.value = null
-    }
+    // Delegate actions to the shared manager
+    fun previousMonth() = sharedMonthManager.previousMonth()
+    fun nextMonth() = sharedMonthManager.nextMonth()
+    fun selectAllTime() = sharedMonthManager.selectAllTime()
 
     fun deleteTransaction(id: String) {
         viewModelScope.launch {
