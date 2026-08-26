@@ -52,6 +52,7 @@ data class SettingsState(
     val passcodeEnabled: Boolean = false,
     val defaultNotifyForRecurringEntries: Boolean = true,
     val themeMode: Int = 0, // 0=system,1=light,2=dark
+    val appLockTimeout: Long = 5000L,
     val dailyReminderEnabled: Boolean = false,
     val budgetAlertsEnabled: Boolean = true,
     val autoCloudBackupEnabled: Boolean = false,
@@ -95,6 +96,7 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch { userPreferences.passcodeEnabled.collect { enabled -> _state.update { it.copy(passcodeEnabled = enabled) } } }
         viewModelScope.launch { userPreferences.passcode.collect { passcode -> currentPasscode = passcode } }
         viewModelScope.launch { userPreferences.themeMode.collect { mode -> _state.update { it.copy(themeMode = mode) } } }
+        viewModelScope.launch { userPreferences.appLockTimeout.collect { timeout -> _state.update { it.copy(appLockTimeout = timeout) } } }
         viewModelScope.launch { userPreferences.defaultNotifyForRecurringEntries.collect { enabled -> _state.update { it.copy(defaultNotifyForRecurringEntries = enabled) } } }
         viewModelScope.launch {
             userPreferences.dailyReminderEnabled.collect { enabled ->
@@ -126,6 +128,7 @@ class SettingsViewModel @Inject constructor(
         userPreferences.setThemeMode(mode)
         MoneyTrackerWidget().updateAll(context)
     }
+    fun setAppLockTimeout(timeoutMillis: Long) = viewModelScope.launch { userPreferences.setAppLockTimeout(timeoutMillis) }
     fun setDefaultNotifyForRecurringEntries(enabled: Boolean) = viewModelScope.launch { userPreferences.setDefaultNotifyForRecurringEntries(enabled) }
     fun setDefaultAccount(accountId: String?) = viewModelScope.launch { userPreferences.setDefaultAccountId(accountId) }
     fun setCurrency(code: String) = viewModelScope.launch { userPreferences.setCurrencyCode(code) }

@@ -96,7 +96,6 @@ class MainActivity : FragmentActivity() {
     private val intentState = MutableStateFlow<Intent?>(null)
 
     companion object {
-        private const val QUICK_BYPASS_WINDOW_MS = 5000L
         private var lastAppBackgroundAtMs: Long = 0L
     }
 
@@ -139,6 +138,7 @@ class MainActivity : FragmentActivity() {
             val storedPasscode by userPreferences.passcode.collectAsState(initial = null as String?)
             val passcodeLockoutEndTime by userPreferences.passcodeLockoutEndTime.collectAsState(initial = 0L)
             val passcodeLockoutLevel by userPreferences.passcodeLockoutLevel.collectAsState(initial = 0)
+            val appLockTimeout by userPreferences.appLockTimeout.collectAsState(initial = 5000L)
 
             val currentIntent by intentState.collectAsState()
             var showCloudRestorePrompt by rememberSaveable { mutableStateOf(false) }
@@ -198,7 +198,7 @@ class MainActivity : FragmentActivity() {
             val triggerAuth = trigger@{
                 val isWidgetTransactionLaunch = currentIntent?.getStringExtra("transaction_type") != null
                 val withinQuickBypassWindow = lastAppBackgroundAtMs > 0L &&
-                    System.currentTimeMillis() - lastAppBackgroundAtMs <= QUICK_BYPASS_WINDOW_MS
+                    System.currentTimeMillis() - lastAppBackgroundAtMs <= appLockTimeout
 
                 if (isWidgetTransactionLaunch || withinQuickBypassWindow) {
                     isAuthenticated = true

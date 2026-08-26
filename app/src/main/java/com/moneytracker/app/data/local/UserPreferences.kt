@@ -42,6 +42,7 @@ class UserPreferences @Inject constructor(
         val BUDGET_ALERTS_ENABLED = booleanPreferencesKey("budget_alerts_enabled")
         val AUTO_CLOUD_BACKUP_ENABLED = booleanPreferencesKey("auto_cloud_backup_enabled")
         val LAST_CLOUD_BACKUP_TIME = longPreferencesKey("last_cloud_backup_time")
+        val APP_LOCK_TIMEOUT = longPreferencesKey("app_lock_timeout")
 
         val defaultAccountOrder = listOf("WALLET", "BANK", "INVESTMENT", "PEOPLE")
 
@@ -84,6 +85,7 @@ class UserPreferences @Inject constructor(
     val passcodeLockoutEndTime: Flow<Long> = dataStore.data.map { it[PASSCODE_LOCKOUT_END_TIME] ?: 0L }
     val passcodeLockoutLevel: Flow<Int> = dataStore.data.map { it[PASSCODE_LOCKOUT_LEVEL] ?: 0 }
     val themeMode: Flow<Int> = dataStore.data.map { it[THEME_MODE] ?: 0 }
+    val appLockTimeout: Flow<Long> = dataStore.data.map { it[APP_LOCK_TIMEOUT] ?: 5000L }
     
     val expandedCash: Flow<Boolean> = dataStore.data.map { it[EXPANDED_CASH] ?: true }
     val expandedWallet: Flow<Boolean> = dataStore.data.map { it[EXPANDED_WALLET] ?: true }
@@ -141,6 +143,7 @@ class UserPreferences @Inject constructor(
         }
     }
     suspend fun setThemeMode(mode: Int) { dataStore.edit { it[THEME_MODE] = mode } }
+    suspend fun setAppLockTimeout(timeoutMillis: Long) { dataStore.edit { it[APP_LOCK_TIMEOUT] = timeoutMillis } }
     suspend fun setExpandedCash(expanded: Boolean) { dataStore.edit { it[EXPANDED_CASH] = expanded } }
     suspend fun setExpandedWallet(expanded: Boolean) { dataStore.edit { it[EXPANDED_WALLET] = expanded } }
     suspend fun setExpandedBank(expanded: Boolean) { dataStore.edit { it[EXPANDED_BANK] = expanded } }

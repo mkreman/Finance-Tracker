@@ -221,7 +221,7 @@ fun SettingsScreen(
             SettingsItem(
                 icon = Icons.Filled.Security,
                 title = "Security",
-                subtitle = "Biometric lock and passcode protection",
+                subtitle = "Biometric lock, passcode, and lock timeout",
                 iconTint = MaterialTheme.colorScheme.error,
                 onClick = { currentPage = SettingsPage.SECURITY }
             )
@@ -620,6 +620,63 @@ fun SettingsScreen(
             }
         )
 
+        // Lock Timeout Configuration
+        if (state.biometricEnabled || state.passcodeEnabled) {
+            var showLockTimeoutDialog by remember { mutableStateOf(false) }
+            val timeoutLabel = when (state.appLockTimeout) {
+                0L -> "Immediately"
+                5000L -> "5 sec"
+                10000L -> "10 sec"
+                15000L -> "15 sec"
+                20000L -> "20 sec"
+                else -> "${state.appLockTimeout / 1000} sec"
+            }
+
+            SettingsItem(
+                icon = Icons.Filled.Timer,
+                title = "Lock Timeout",
+                subtitle = timeoutLabel,
+                iconTint = MaterialTheme.colorScheme.primary,
+                onClick = { showLockTimeoutDialog = true }
+            )
+
+            if (showLockTimeoutDialog) {
+                AlertDialog(
+                    onDismissRequest = { showLockTimeoutDialog = false },
+                    title = { Text("Lock Timeout", color = MaterialTheme.colorScheme.onSurface) },
+                    text = {
+                        Column {
+                            listOf(
+                                0L to "Immediately",
+                                5000L to "5 sec",
+                                10000L to "10 sec",
+                                15000L to "15 sec",
+                                20000L to "20 sec"
+                            ).forEach { (value, label) ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(if (state.appLockTimeout == value) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f) else Color.Transparent)
+                                        .clickable {
+                                            viewModel.setAppLockTimeout(value)
+                                            showLockTimeoutDialog = false
+                                        }
+                                        .padding(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(label, color = MaterialTheme.colorScheme.onSurface)
+                                }
+                            }
+                        }
+                    },
+                    confirmButton = {},
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    shape = RoundedCornerShape(16.dp)
+                )
+            }
+        }
+
         if (showDisablePasscodeDialog) {
             var currentPasscodeInput by remember { mutableStateOf("") }
             AlertDialog(
@@ -923,7 +980,7 @@ fun SettingsScreen(
         SettingsItem(
             icon = Icons.Filled.Info,
             title = "Version",
-            subtitle = "1.2.0",
+            subtitle = "1.2.1",
             iconTint = MaterialTheme.colorScheme.onSurfaceVariant,
             onClick = { showVersionHistory = true }
         )
@@ -1207,6 +1264,13 @@ private fun VersionHistoryDialog(onDismiss: () -> Unit) {
                     .fillMaxWidth()
                     .verticalScroll(rememberScrollState())
             ) {
+                VersionItem(
+                    version = "1.2.1",
+                    features = listOf(
+                        "feat: Add app lock timeout configuration and update related settings",
+                        "feat: Introduce SharedMonthManager for centralized month handling and update related components"
+                    )
+                )
                 VersionItem(
                     version = "1.2.0",
                     features = listOf(
