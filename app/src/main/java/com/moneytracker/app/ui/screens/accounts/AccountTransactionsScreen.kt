@@ -22,6 +22,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.moneytracker.app.domain.model.TransactionListItem
 import com.moneytracker.app.ui.components.TransactionDateHeader
 import com.moneytracker.app.ui.components.TransactionItem
+import com.moneytracker.app.ui.components.formatAmount
+import com.moneytracker.app.ui.components.LocalCurrencySymbol
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
@@ -35,6 +37,7 @@ fun AccountTransactionsScreen(
 ) {
     val transactions by viewModel.transactions.collectAsState()
     val currentMonth by viewModel.currentMonth.collectAsState()
+    val summary by viewModel.summary.collectAsState()
 
     Column(
         modifier = Modifier
@@ -71,6 +74,13 @@ fun AccountTransactionsScreen(
             )
         }
         
+        // Unified Summary Card
+        AccountSummaryCard(
+            income = summary.income,
+            expense = summary.expense,
+            transfer = summary.transfer
+        )
+
         Spacer(modifier = Modifier.height(8.dp))
 
         if (transactions.isEmpty()) {
@@ -174,5 +184,98 @@ fun AccountMonthSelector(
         } else {
             Spacer(modifier = Modifier.height(32.dp))
         }
+    }
+}
+
+@Composable
+private fun AccountSummaryCard(
+    income: Double,
+    expense: Double,
+    transfer: Double,
+    modifier: Modifier = Modifier
+) {
+    val currency = LocalCurrencySymbol.current
+    val netFlow = income - expense
+
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        ),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = "Net Flow",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "$currency${formatAmount(netFlow)}",
+                style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
+                color = if (netFlow >= 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+            )
+
+            Spacer(modifier = Modifier.height(20.dp))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                SummaryColumn(
+                    title = "Income",
+                    amount = income,
+                    color = MaterialTheme.colorScheme.tertiary,
+                    modifier = Modifier.weight(1f)
+                )
+                SummaryColumn(
+                    title = "Spent",
+                    amount = expense,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.weight(1f)
+                )
+                SummaryColumn(
+                    title = "Transfer",
+                    amount = transfer,
+                    color = MaterialTheme.colorScheme.secondary,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SummaryColumn(
+    title: String,
+    amount: Double,
+    color: androidx.compose.ui.graphics.Color,
+    modifier: Modifier = Modifier
+) {
+    val currency = LocalCurrencySymbol.current
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = "$currency${formatAmount(amount)}",
+            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
+            color = color,
+            maxLines = 1
+        )
     }
 }
