@@ -188,14 +188,13 @@ Version - 1.3.0
 	- Add a button at the bottom of the budget page to copy the budgets from last month which should all the un-set budgets for the current month.
 	- Build calculator in amount section
 	- Create pages for every type of settings in settings
+	- Advanced Search & Filtering: As the database grows over the months, finding old entries gets difficult. A dedicated global search screen would be a lifesaver. Users should be able to type a keyword (like a friend's name, or a specific note like "wedding gift" or "lime sulfur dip") and filter the results by date range, category, or amount (e.g., "Show me all expenses over ₹5,000 last year").
 	
 Done  
 ___________________________________________________________________________________________________
 
 - Change the icon
-- Advanced Search & Filtering
-As the database grows over the months, finding old entries gets difficult. A dedicated global search screen would be a lifesaver. Users should be able to type a keyword (like a friend's name, or a specific note like "wedding gift" or "lime sulfur dip") and filter the results by date range, category, or amount (e.g., "Show me all expenses over ₹5,000 last year").
-- Quick Action Templates
-For frequent expenses that aren't necessarily scheduled on a strict recurring calendar, "Templates" are great. A user could save a template like "Morning Coffee - ₹150 - Food". They can then just tap this template from the dashboard to log the expense instantly without typing the amount or picking the category every time.
+- Quick Action Templates: For frequent expenses that aren't necessarily scheduled on a strict recurring calendar, "Templates" are great. A user could save a template like "Morning Coffee - ₹150 - Food". They can then just tap this template from the dashboard to log the expense instantly without typing the amount or picking the category every time.
 - Allow Google assistant to add the a transaction
- 
+- Subscription & Debt Forecasting: You have the recurring transaction logic built. You could create a "Future Look" dashboard that projects exactly how much cash will leave the default account in the next 30 days based on upcoming subscriptions and active Splitwise debts, giving a "safe to spend" balance rather than just the current bank balance.
+- Wealth & Portfolio Tracking: Cash flow is only half the picture. You could introduce a dedicated "Investments" or "Assets" module to track net worth over time. This would allow for monitoring specific asset classes like direct plan liquid funds, equity holdings in Demat accounts, or even commodities like physical silver. You could integrate a basic API to fetch daily NAVs or ticker prices to auto-update the portfolio balance without manual entry.
