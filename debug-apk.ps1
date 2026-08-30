@@ -22,15 +22,8 @@ if (-not (Test-Path $apkPath)) {
 
 & adb install -r -t -g $apkPath
 if ($LASTEXITCODE -ne 0) {
-    & adb uninstall com.moneytracker.app.debug
-    if ($LASTEXITCODE -ne 0) {
-        exit $LASTEXITCODE
-    }
-
-    & adb install -t -g $apkPath
-    if ($LASTEXITCODE -ne 0) {
-        exit $LASTEXITCODE
-    }
+    Write-Error "APK installation failed. The installed app and APK may be signed with different keys; keeping the installed app preserves its data."
+    exit $LASTEXITCODE
 }
 
 # powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\debug-apk.ps1

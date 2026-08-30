@@ -16,8 +16,12 @@ import javax.inject.Inject
 data class AccountSummary(
     val income: Double = 0.0,
     val expense: Double = 0.0,
-    val transfer: Double = 0.0
-)
+    val transferIn: Double = 0.0,
+    val transferOut: Double = 0.0
+) {
+    val netTransfer: Double get() = transferIn - transferOut
+    val netFlow: Double get() = income + transferIn - expense - transferOut
+}
 
 @HiltViewModel
 class AccountTransactionsViewModel @Inject constructor(
@@ -72,7 +76,8 @@ class AccountTransactionsViewModel @Inject constructor(
     val summary: StateFlow<AccountSummary> = transactions.map { list ->
         var inc = 0.0
         var exp = 0.0
-        var trf = 0.0
+        var trfIn = 0.0
+        var trfOut = 0.0
         
         list.forEach { item ->
             if (item is TransactionListItem.Entry) {
@@ -82,15 +87,15 @@ class AccountTransactionsViewModel @Inject constructor(
                     when (t.type) {
                         TransactionType.INCOME -> inc += t.totalAmount
                         TransactionType.EXPENSE -> exp += t.totalAmount
-                        TransactionType.TRANSFER -> trf += t.totalAmount // Outbound transfers
+                        TransactionType.TRANSFER -> trfOut += t.totalAmount // Outbound transfers
                     }
                 } else if (t.toAccountId == accountId && t.type == TransactionType.TRANSFER) {
-                    // Incoming transfers effectively act as income for this specific account's view
-                    inc += t.totalAmount
+                    // Incoming transfers targeted to this account
+                    trfIn += t.totalAmount
                 }
             }
         }
-        AccountSummary(inc, exp, trf)
+        AccountSummary(inc, exp, trfIn, trfOut)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AccountSummary())
 
     // Delegate month actions to the shared manager

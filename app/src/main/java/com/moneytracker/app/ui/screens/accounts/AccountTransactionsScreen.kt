@@ -27,6 +27,7 @@ import com.moneytracker.app.ui.components.LocalCurrencySymbol
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
+import kotlin.math.abs
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -74,12 +75,8 @@ fun AccountTransactionsScreen(
             )
         }
         
-        // Unified Summary Card
-        AccountSummaryCard(
-            income = summary.income,
-            expense = summary.expense,
-            transfer = summary.transfer
-        )
+        // Unified Summary Card handling all calculations cleanly
+        AccountSummaryCard(summary = summary)
 
         Spacer(modifier = Modifier.height(8.dp))
 
@@ -189,13 +186,14 @@ fun AccountMonthSelector(
 
 @Composable
 private fun AccountSummaryCard(
-    income: Double,
-    expense: Double,
-    transfer: Double,
+    summary: AccountSummary,
     modifier: Modifier = Modifier
 ) {
     val currency = LocalCurrencySymbol.current
-    val netFlow = income - expense
+    
+    // Determine signage cleanly for UI formatting
+    val signFlow = if (summary.netFlow < 0) "-" else ""
+    val displayNetFlow = abs(summary.netFlow)
 
     Card(
         modifier = modifier
@@ -217,9 +215,9 @@ private fun AccountSummaryCard(
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = "$currency${formatAmount(netFlow)}",
+                text = "$signFlow$currency${formatAmount(displayNetFlow)}",
                 style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
-                color = if (netFlow >= 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                color = if (summary.netFlow >= 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
             )
 
             Spacer(modifier = Modifier.height(20.dp))
@@ -232,20 +230,20 @@ private fun AccountSummaryCard(
             ) {
                 SummaryColumn(
                     title = "Income",
-                    amount = income,
+                    amount = summary.income,
                     color = MaterialTheme.colorScheme.tertiary,
                     modifier = Modifier.weight(1f)
                 )
                 SummaryColumn(
                     title = "Spent",
-                    amount = expense,
+                    amount = summary.expense,
                     color = MaterialTheme.colorScheme.error,
                     modifier = Modifier.weight(1f)
                 )
                 SummaryColumn(
-                    title = "Transfer",
-                    amount = transfer,
-                    color = MaterialTheme.colorScheme.secondary,
+                    title = "Net Transfer",
+                    amount = summary.netTransfer,
+                    color = if (summary.netTransfer >= 0) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.error,
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -261,6 +259,10 @@ private fun SummaryColumn(
     modifier: Modifier = Modifier
 ) {
     val currency = LocalCurrencySymbol.current
+    val isNegative = amount < 0
+    val displayAmount = abs(amount)
+    val sign = if (isNegative) "-" else ""
+
     Column(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally
@@ -272,7 +274,7 @@ private fun SummaryColumn(
         )
         Spacer(modifier = Modifier.height(4.dp))
         Text(
-            text = "$currency${formatAmount(amount)}",
+            text = "$sign$currency${formatAmount(displayAmount)}",
             style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
             color = color,
             maxLines = 1

@@ -9,6 +9,7 @@ import com.moneytracker.app.data.local.database.entities.SyncStatus
 import com.moneytracker.app.data.local.database.entities.TransactionEntity
 import com.moneytracker.app.data.local.database.entities.TransactionSplitEntity
 import com.moneytracker.app.data.local.database.entities.TransactionType
+import com.moneytracker.app.data.local.database.entities.AccountType
 import com.moneytracker.app.data.local.repository.AccountRepository
 import com.moneytracker.app.data.local.repository.CategoryRecommendationRepository
 import com.moneytracker.app.data.local.repository.CategoryRepository
@@ -59,11 +60,12 @@ class TransactionSuggestionActionReceiver : BroadcastReceiver() {
                         saveSuggestedTransaction(type, amount, payee, note, suggestedCatId, suggestedAccountId)
                         BankAlertSuggestionNotifier.cancel(context, suggestionId)
                         CoroutineScope(Dispatchers.Main).launch {
-                            Toast.makeText(context, "Transaction saved", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, "Transaction saved successfully", Toast.LENGTH_SHORT).show()
                         }
-                    } catch (_: Exception) {
+                    } catch (e: Exception) {
                         CoroutineScope(Dispatchers.Main).launch {
-                            Toast.makeText(context, "Failed to save suggestion", Toast.LENGTH_SHORT).show()
+                            // Prints the exact error reason now!
+                            Toast.makeText(context, "Failed to save: ${e.message}", Toast.LENGTH_LONG).show()
                         }
                     } finally {
                         pendingResult.finish()
@@ -82,37 +84,76 @@ class TransactionSuggestionActionReceiver : BroadcastReceiver() {
         suggestedAccountId: String?
     ) {
         val accounts = accountRepository.getAllAccountsOnce()
-        if (accounts.isEmpty()) return
+        if (accounts.isEmpty()) throw IllegalStateException("No accounts exist")
 
-        val defaultAccountId = userPreferences.defaultAccountId.first()
-        val recommendedAccountId = categoryRecommendationRepository.getRecommendedAccountId(payee, type)
-        val selectedAccount = accounts.find { it.id == suggestedAccountId }
-            ?: accounts.find { it.id == recommendedAccountId }
-            ?: accounts.find { it.id == defaultAccountId }
-            ?: accounts.first()
+        var finalAccountId = suggestedAccountId
+        var finalToAccountId: String? = null
+        
+        val isSplitwise = note?.contains("Splitwise", ignoreCase = true) == true
+        val myDefaultAccount = userPreferences.defaultAccountId.first() ?: accounts.first().id
 
-        val categories = categoryRepository.getCategoriesByType(type).first()
+        // Direct Save Account Auto-Creation and Routing for Splitwise
+        if (isSplitwise) {
+            var personAccountId: String? = null
+            val matchingAccount = accounts.find { it.name.equals(payee, ignoreCase = true) && it.type == AccountType.PEOPLE }
+            if (matchingAccount != null) {
+                personAccountId = matchingAccount.id
+            } else {
+                val newAccountId = UUID.randomUUID().toString()
+                val newAccount = com.moneytracker.app.domain.model.Account(
+                    id = newAccountId,
+                    name = payee,
+                    type = AccountType.PEOPLE,
+                    initialBalance = 0.0,
+                    currentBalance = 0.0,
+                    colorHex = "#4CAF50",
+                    iconKey = "person"
+                )
+                accountRepository.saveAccount(newAccount)
+                personAccountId = newAccountId
+            }
+
+            // Smart Routing
+            if (type == TransactionType.TRANSFER) {
+                // "You paid Kaku" -> Transfer FROM me TO Kaku
+                finalAccountId = myDefaultAccount
+                finalToAccountId = personAccountId
+            } else {
+                // "You owe Kaku" -> Expense sourced from Kaku's account
+                finalAccountId = personAccountId
+            }
+        }
+
+        // Standard Fallbacks if not caught by Splitwise router
+        if (finalAccountId == null) {
+            finalAccountId = categoryRecommendationRepository.getRecommendedAccountId(payee, type)
+                ?: myDefaultAccount
+        }
+        
+        // Final database failsafe: Transfers MUST have a destination
+        if (type == TransactionType.TRANSFER && finalToAccountId == null) {
+            finalToAccountId = accounts.firstOrNull { it.id != finalAccountId }?.id ?: myDefaultAccount
+        }
+
+        // Fetch categories safely (transfers don't inherently have categories)
+        val categories = categoryRepository.getCategoriesByType(if (type == TransactionType.TRANSFER) TransactionType.EXPENSE else type).first()
         var selectedCategory: com.moneytracker.app.domain.model.Category? = null
 
-        // 1. Try the smart recommendation ID if one was provided
         if (suggestedCatId != null) {
             selectedCategory = categories.firstOrNull { it.id == suggestedCatId }
         }
-
-        // 2. Fallbacks
         if (selectedCategory == null) {
             selectedCategory = categories.firstOrNull { it.name.equals("AutoDetected", ignoreCase = true) }
                 ?: categories.firstOrNull { it.name.equals("Other", ignoreCase = true) }
                 ?: categories.firstOrNull()
         }
 
-        // 3. Update the recommendation engine!
         if (selectedCategory != null) {
             categoryRecommendationRepository.upsertRecommendation(
                 payee = payee,
                 type = type,
                 categoryId = selectedCategory.id,
-                accountId = selectedAccount.id
+                accountId = finalAccountId
             )
         }
 
@@ -121,13 +162,13 @@ class TransactionSuggestionActionReceiver : BroadcastReceiver() {
 
         val transaction = TransactionEntity(
             id = transactionId,
-            accountId = selectedAccount.id,
+            accountId = finalAccountId,
             payee = payee,
             note = note,
             date = now,
             totalAmount = amount,
             type = type,
-            toAccountId = null,
+            toAccountId = finalToAccountId,
             createdAt = now,
             modifiedAt = now,
             syncStatus = SyncStatus.DIRTY,
@@ -139,7 +180,7 @@ class TransactionSuggestionActionReceiver : BroadcastReceiver() {
             notifyForRecurringEntries = true
         )
 
-        val splits = if (selectedCategory != null) {
+        val splits = if (selectedCategory != null && type != TransactionType.TRANSFER) {
             listOf(
                 TransactionSplitEntity(
                     id = UUID.randomUUID().toString(),
@@ -155,7 +196,6 @@ class TransactionSuggestionActionReceiver : BroadcastReceiver() {
 
         transactionRepository.saveTransaction(transaction, splits)
 
-        // Check budget and notify if exceeded!
         if (type == TransactionType.EXPENSE && selectedCategory != null) {
             budgetAlertManager.checkBudgets(now, mapOf(selectedCategory.id to selectedCategory.name))
         }

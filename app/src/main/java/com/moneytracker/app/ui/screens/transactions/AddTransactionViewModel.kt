@@ -64,6 +64,10 @@ class AddTransactionViewModel @Inject constructor(
     private val _navigateBack = Channel<Unit>(Channel.BUFFERED)
     val navigateBack = _navigateBack.receiveAsFlow()
 
+    // NEW: State for managing the Splitwise account creation prompt
+    private val _showCreateAccountPrompt = MutableStateFlow<String?>(null)
+    val showCreateAccountPrompt: StateFlow<String?> = _showCreateAccountPrompt.asStateFlow()
+
     private val editTransactionId: String? = savedStateHandle.get<String>("transactionId")
     private val initialType: String? = savedStateHandle.get<String>("type")
     private val initialAmount: String? = savedStateHandle.get<String>("amount")
@@ -163,6 +167,12 @@ class AddTransactionViewModel @Inject constructor(
                 }.thenBy { it.name })
 
                 val peopleAccounts = accounts.filter { it.type == AccountType.PEOPLE }
+                
+                // NEW: Trigger account creation prompt if Splitwise payee doesn't exist
+                val isPersonAccountFound = sortedAccounts.any { it.name.equals(initialPayee, ignoreCase = true) }
+                if (editTransactionId == null && !initialPayee.isNullOrBlank() && !isPersonAccountFound && initialNote?.contains("Splitwise") == true) {
+                    _showCreateAccountPrompt.value = initialPayee
+                }
 
                 _state.update { currentState ->
                     val accountId = when {
@@ -215,6 +225,31 @@ class AddTransactionViewModel @Inject constructor(
                 }
             }
         }
+    }
+    
+    // NEW: Handle the prompt response
+    fun confirmCreatePersonAccount(name: String) {
+        viewModelScope.launch {
+            val newAccountId = UUID.randomUUID().toString()
+            val newAccount = com.moneytracker.app.domain.model.Account(
+                id = newAccountId,
+                name = name,
+                type = AccountType.PEOPLE,
+                initialBalance = 0.0,
+                currentBalance = 0.0,
+                colorHex = "#4CAF50",
+                iconKey = "person"
+            )
+            accountRepository.saveAccount(newAccount)
+            _state.update { it.copy(selectedAccountId = newAccountId) }
+            _showCreateAccountPrompt.value = null
+        }
+    }
+
+    // NEW: Handle the prompt response
+    fun declineCreatePersonAccount() {
+        _showCreateAccountPrompt.value = null
+        // State naturally falls back to defaultAccount via loadData flow
     }
 
     fun onAmountChange(value: String) {
@@ -454,8 +489,6 @@ class AddTransactionViewModel @Inject constructor(
                         val amount = evaluateAmountExpression(split.amount) ?: return@forEachIndexed
                         if (amount <= 0.0) return@forEachIndexed
                         
-                        // We reuse the original ID for the very first split only if we are editing an existing transaction.
-                        // Every subsequent split gets a brand new UUID so it stands alone in the ledger.
                         val isFirst = index == 0
                         val transactionId = if (currentState.isEditMode && isFirst) {
                             currentState.editTransactionId!!
@@ -552,7 +585,6 @@ class AddTransactionViewModel @Inject constructor(
                     if (shouldPersistRecurringOnThisEntry) recurringTransactionManager.checkNow()
 
                 } else {
-                    // --- Normal (Non-Split) Transaction Processing ---
                     val transactionId = currentState.editTransactionId ?: UUID.randomUUID().toString()
                     val transaction = TransactionEntity(
                         id = transactionId,

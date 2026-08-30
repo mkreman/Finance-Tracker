@@ -6,7 +6,6 @@ import androidx.biometric.BiometricPrompt
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.input.ImeAction
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.BackHandler
@@ -248,419 +247,35 @@ fun SettingsScreen(
         if (currentPage == SettingsPage.GENERAL) {
             SettingsSectionHeader("General")
 
-        // Theme picker
-        var showThemePicker by remember { mutableStateOf(false) }
-        val themeSubtitle = when (state.themeMode) {
-            1 -> "Light"
-            2 -> "Dark"
-            else -> "System"
-        }
-        SettingsItem(
-            icon = Icons.Filled.Palette,
-            title = "Theme",
-            subtitle = themeSubtitle,
-            iconTint = MaterialTheme.colorScheme.primaryContainer,
-            onClick = { showThemePicker = true }
-        )
-
-        if (showThemePicker) {
-            AlertDialog(
-                onDismissRequest = { showThemePicker = false },
-                title = { Text("Theme", color = MaterialTheme.colorScheme.onSurface) },
-                text = {
-                    Column {
-                        listOf(0 to "Follow system", 1 to "Light", 2 to "Dark").forEach { (value, label) ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(if (state.themeMode == value) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f) else Color.Transparent)
-                                    .clickable {
-                                        viewModel.setThemeMode(value)
-                                        showThemePicker = false
-                                    }
-                                    .padding(12.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(label, color = MaterialTheme.colorScheme.onSurface)
-                            }
-                        }
-                    }
-                },
-                confirmButton = {},
-                containerColor = MaterialTheme.colorScheme.surface,
-                shape = RoundedCornerShape(16.dp)
-            )
-        }
-
-        // Currency picker
-        var showCurrencyPicker by remember { mutableStateOf(false) }
-        SettingsItem(
-            icon = Icons.Filled.Language,
-            title = "Currency",
-            subtitle = UserPreferences.displayForCode(state.currencyCode),
-            iconTint = MaterialTheme.colorScheme.secondary,
-            onClick = { showCurrencyPicker = true }
-        )
-
-        if (showCurrencyPicker) {
-            AlertDialog(
-                onDismissRequest = { showCurrencyPicker = false },
-                title = { Text("Currency", color = MaterialTheme.colorScheme.onSurface) },
-                text = {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(max = 400.dp)
-                            .verticalScroll(rememberScrollState()),
-                        verticalArrangement = Arrangement.spacedBy(2.dp)
-                    ) {
-                        UserPreferences.currencies.forEach { currency ->
-                            val isSelected = currency.code == state.currencyCode
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(if (isSelected) MaterialTheme.colorScheme.secondary.copy(alpha = 0.12f) else Color.Transparent)
-                                    .clickable {
-                                        viewModel.setCurrency(currency.code)
-                                        showCurrencyPicker = false
-                                    }
-                                    .padding(12.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(currency.symbol, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.width(36.dp))
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Column {
-                                    Text(currency.name, color = MaterialTheme.colorScheme.onSurface)
-                                    Text(currency.code, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                }
-                            }
-                        }
-                    }
-                },
-                confirmButton = {},
-                containerColor = MaterialTheme.colorScheme.surface,
-                shape = RoundedCornerShape(16.dp)
-            )
-        }
-
-        // First Day of Week picker
-        var showDayPicker by remember { mutableStateOf(false) }
-        val dayLabel = when (state.firstDayOfWeek) {
-            Calendar.SUNDAY -> "Sunday"
-            Calendar.MONDAY -> "Monday"
-            Calendar.SATURDAY -> "Saturday"
-            else -> "Monday"
-        }
-        SettingsItem(
-            icon = Icons.Filled.CalendarMonth,
-            title = "First Day of Week",
-            subtitle = dayLabel,
-            iconTint = MaterialTheme.colorScheme.tertiary,
-            onClick = { showDayPicker = true }
-        )
-
-        if (showDayPicker) {
-            AlertDialog(
-                onDismissRequest = { showDayPicker = false },
-                title = { Text("First Day of Week", color = MaterialTheme.colorScheme.onSurface) },
-                text = {
-                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        listOf(
-                            Calendar.MONDAY to "Monday",
-                            Calendar.SUNDAY to "Sunday",
-                            Calendar.SATURDAY to "Saturday"
-                        ).forEach { (value, label) ->
-                            val isSelected = value == state.firstDayOfWeek
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(if (isSelected) MaterialTheme.colorScheme.tertiary.copy(alpha = 0.12f) else Color.Transparent)
-                                    .clickable {
-                                        viewModel.setFirstDayOfWeek(value)
-                                        showDayPicker = false
-                                    }
-                                    .padding(12.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(label, color = MaterialTheme.colorScheme.onSurface)
-                            }
-                        }
-                    }
-                },
-                confirmButton = {},
-                containerColor = MaterialTheme.colorScheme.surface,
-                shape = RoundedCornerShape(16.dp)
-            )
-        }
-
-        // Default Account picker
-        val defaultAccount = state.accounts.find { it.id == state.defaultAccountId }
-        var showAccountPicker by remember { mutableStateOf(false) }
-
-        SettingsItem(
-            icon = Icons.Filled.AccountBalanceWallet,
-            title = "Default Account",
-            subtitle = defaultAccount?.name ?: "First available",
-            iconTint = MaterialTheme.colorScheme.primary,
-            onClick = { showAccountPicker = true }
-        )
-
-        if (showAccountPicker) {
-            AlertDialog(
-                onDismissRequest = { showAccountPicker = false },
-                title = { Text("Default Account", color = MaterialTheme.colorScheme.onSurface) },
-                text = {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(max = 400.dp)
-                            .verticalScroll(rememberScrollState()),
-                        verticalArrangement = Arrangement.spacedBy(2.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(if (state.defaultAccountId == null) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f) else Color.Transparent)
-                                .clickable {
-                                    viewModel.setDefaultAccount(null)
-                                    showAccountPicker = false
-                                }
-                                .padding(12.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(Icons.Filled.AutoAwesome, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Text("First available", color = MaterialTheme.colorScheme.onSurface)
-                        }
-                        state.accounts.forEach { account ->
-                            val isSelected = account.id == state.defaultAccountId
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f) else Color.Transparent)
-                                    .clickable {
-                                        viewModel.setDefaultAccount(account.id)
-                                        showAccountPicker = false
-                                    }
-                                    .padding(12.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    imageVector = CategoryIcons.getIcon(account.iconKey),
-                                    contentDescription = null,
-                                    tint = parseHexColor(account.colorHex),
-                                    modifier = Modifier.size(24.dp)
-                                )
-                                Spacer(modifier = Modifier.width(12.dp))
-                                Text(account.name, color = MaterialTheme.colorScheme.onSurface)
-                            }
-                        }
-                    }
-                },
-                confirmButton = {},
-                containerColor = MaterialTheme.colorScheme.surface,
-                shape = RoundedCornerShape(16.dp)
-            )
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        }
-
-        if (currentPage == SettingsPage.NOTIFICATIONS) {
-            SettingsSectionHeader("Notifications")
-
-        SettingsToggleItem(
-            icon = Icons.Filled.AccessTime,
-            title = "Daily Reminder",
-            subtitle = "Reminds you to add entries at 7:00 PM",
-            iconTint = MaterialTheme.colorScheme.primary,
-            isChecked = state.dailyReminderEnabled,
-            onCheckedChange = { viewModel.setDailyReminderEnabled(context, it) }
-        )
-
-        SettingsToggleItem(
-            icon = Icons.Filled.WarningAmber,
-            title = "Over Budget Alert",
-            subtitle = "Notify when you exceed a category limit",
-            iconTint = MaterialTheme.colorScheme.error,
-            isChecked = state.budgetAlertsEnabled,
-            onCheckedChange = viewModel::setBudgetAlertsEnabled
-        )
-
-        SettingsToggleItem(
-            icon = Icons.Filled.NotificationsActive,
-            title = "Recurring Notification",
-            subtitle = "Applied by default when creating recurring entries",
-            iconTint = MaterialTheme.colorScheme.secondary,
-            isChecked = state.defaultNotifyForRecurringEntries,
-            onCheckedChange = viewModel::setDefaultNotifyForRecurringEntries
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        }
-
-        if (currentPage == SettingsPage.SECURITY) {
-            SettingsSectionHeader("Security")
-
-        SettingsToggleItem(
-            icon = Icons.Filled.Fingerprint,
-            title = "Biometric Lock",
-            subtitle = "Require device biometric to open",
-            iconTint = MaterialTheme.colorScheme.primary,
-            isChecked = state.biometricEnabled,
-            onCheckedChange = { enable ->
-                val activity = context as? FragmentActivity
-                if (activity == null) {
-                    Toast.makeText(context, "Unable to verify biometric on this screen", Toast.LENGTH_SHORT).show()
-                    return@SettingsToggleItem
-                }
-
-                val biometricManager = BiometricManager.from(context)
-                val canAuth = biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG)
-
-                if (enable) {
-                    if (canAuth == BiometricManager.BIOMETRIC_SUCCESS) {
-                        val biometricPrompt = BiometricPrompt(
-                            activity,
-                            ContextCompat.getMainExecutor(context),
-                            object : BiometricPrompt.AuthenticationCallback() {
-                                override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
-                                    super.onAuthenticationSucceeded(result)
-                                    // Disable passcode when enabling biometric
-                                    if (state.passcodeEnabled) {
-                                        viewModel.setPasscodeEnabled(false)
-                                    }
-                                    viewModel.setBiometricEnabled(true)
-                                    Toast.makeText(context, "Biometric enabled", Toast.LENGTH_SHORT).show()
-                                }
-
-                                override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
-                                    super.onAuthenticationError(errorCode, errString)
-                                    if (errorCode != BiometricPrompt.ERROR_USER_CANCELED && errorCode != BiometricPrompt.ERROR_NEGATIVE_BUTTON) {
-                                        Toast.makeText(context, "Authentication failed: $errString", Toast.LENGTH_SHORT).show()
-                                    }
-                                }
-                            }
-                        )
-
-                        val promptInfo = BiometricPrompt.PromptInfo.Builder()
-                            .setTitle("Enable Biometric Lock")
-                            .setSubtitle("Verify your identity to enable biometric lock")
-                            .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG)
-                            .setNegativeButtonText("Cancel")
-                            .build()
-
-                        biometricPrompt.authenticate(promptInfo)
-                    } else {
-                        Toast.makeText(context, "Biometric not available or not set up on this device", Toast.LENGTH_SHORT).show()
-                    }
-                } else {
-                    if (canAuth != BiometricManager.BIOMETRIC_SUCCESS) {
-                        Toast.makeText(context, "Biometric authentication is required to disable", Toast.LENGTH_SHORT).show()
-                        return@SettingsToggleItem
-                    }
-
-                    val biometricPrompt = BiometricPrompt(
-                        activity,
-                        ContextCompat.getMainExecutor(context),
-                        object : BiometricPrompt.AuthenticationCallback() {
-                            override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
-                                super.onAuthenticationSucceeded(result)
-                                viewModel.setBiometricEnabled(false)
-                                Toast.makeText(context, "Biometric disabled", Toast.LENGTH_SHORT).show()
-                            }
-
-                            override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
-                                super.onAuthenticationError(errorCode, errString)
-                                if (errorCode != BiometricPrompt.ERROR_USER_CANCELED && errorCode != BiometricPrompt.ERROR_NEGATIVE_BUTTON) {
-                                    Toast.makeText(context, "Authentication failed: $errString", Toast.LENGTH_SHORT).show()
-                                }
-                            }
-                        }
-                    )
-
-                    val promptInfo = BiometricPrompt.PromptInfo.Builder()
-                        .setTitle("Disable Biometric Lock")
-                        .setSubtitle("Verify to disable biometric lock")
-                        .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG)
-                        .setNegativeButtonText("Cancel")
-                        .build()
-
-                    biometricPrompt.authenticate(promptInfo)
-                }
+            var showThemePicker by remember { mutableStateOf(false) }
+            val themeSubtitle = when (state.themeMode) {
+                1 -> "Light"
+                2 -> "Dark"
+                else -> "System"
             }
-        )
-
-        // Passcode protection (mutually exclusive with biometric)
-        var showPasscodeDialog by remember { mutableStateOf(false) }
-        var showDisablePasscodeDialog by remember { mutableStateOf(false) }
-        SettingsToggleItem(
-            icon = Icons.Filled.Lock,
-            title = "Passcode Protection",
-            subtitle = if (state.passcodeEnabled) "Enabled" else "Not set",
-            iconTint = MaterialTheme.colorScheme.error,
-            isChecked = state.passcodeEnabled,
-            onCheckedChange = { enable ->
-                if (enable) {
-                    // Disable biometric when enabling passcode
-                    if (state.biometricEnabled) {
-                        viewModel.setBiometricEnabled(false)
-                    }
-                    showPasscodeDialog = true
-                } else {
-                    showDisablePasscodeDialog = true
-                }
-            }
-        )
-
-        // Lock Timeout Configuration
-        if (state.biometricEnabled || state.passcodeEnabled) {
-            var showLockTimeoutDialog by remember { mutableStateOf(false) }
-            val timeoutLabel = when (state.appLockTimeout) {
-                0L -> "Immediately"
-                5000L -> "5 sec"
-                10000L -> "10 sec"
-                15000L -> "15 sec"
-                20000L -> "20 sec"
-                else -> "${state.appLockTimeout / 1000} sec"
-            }
-
             SettingsItem(
-                icon = Icons.Filled.Timer,
-                title = "Lock Timeout",
-                subtitle = timeoutLabel,
-                iconTint = MaterialTheme.colorScheme.primary,
-                onClick = { showLockTimeoutDialog = true }
+                icon = Icons.Filled.Palette,
+                title = "Theme",
+                subtitle = themeSubtitle,
+                iconTint = MaterialTheme.colorScheme.primaryContainer,
+                onClick = { showThemePicker = true }
             )
 
-            if (showLockTimeoutDialog) {
+            if (showThemePicker) {
                 AlertDialog(
-                    onDismissRequest = { showLockTimeoutDialog = false },
-                    title = { Text("Lock Timeout", color = MaterialTheme.colorScheme.onSurface) },
+                    onDismissRequest = { showThemePicker = false },
+                    title = { Text("Theme", color = MaterialTheme.colorScheme.onSurface) },
                     text = {
                         Column {
-                            listOf(
-                                0L to "Immediately",
-                                5000L to "5 sec",
-                                10000L to "10 sec",
-                                15000L to "15 sec",
-                                20000L to "20 sec"
-                            ).forEach { (value, label) ->
+                            listOf(0 to "Follow system", 1 to "Light", 2 to "Dark").forEach { (value, label) ->
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .clip(RoundedCornerShape(8.dp))
-                                        .background(if (state.appLockTimeout == value) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f) else Color.Transparent)
+                                        .background(if (state.themeMode == value) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f) else Color.Transparent)
                                         .clickable {
-                                            viewModel.setAppLockTimeout(value)
-                                            showLockTimeoutDialog = false
+                                            viewModel.setThemeMode(value)
+                                            showThemePicker = false
                                         }
                                         .padding(12.dp),
                                     verticalAlignment = Alignment.CenterVertically
@@ -675,324 +290,720 @@ fun SettingsScreen(
                     shape = RoundedCornerShape(16.dp)
                 )
             }
-        }
 
-        if (showDisablePasscodeDialog) {
-            var currentPasscodeInput by remember { mutableStateOf("") }
-            AlertDialog(
-                onDismissRequest = { showDisablePasscodeDialog = false },
-                title = { Text("Disable Passcode", color = MaterialTheme.colorScheme.onSurface) },
-                text = {
-                    OutlinedTextField(
-                        value = currentPasscodeInput,
-                        onValueChange = { currentPasscodeInput = it },
-                        label = { Text("Enter current passcode") },
-                        visualTransformation = PasswordVisualTransformation(),
-                        keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Done),
-                        singleLine = true
-                    )
-                },
-                confirmButton = {
-                    Button(onClick = {
-                        if (viewModel.verifyCurrentPasscode(currentPasscodeInput)) {
-                            viewModel.setPasscodeEnabled(false)
-                            Toast.makeText(context, "Passcode disabled", Toast.LENGTH_SHORT).show()
-                            showDisablePasscodeDialog = false
-                        } else {
-                            Toast.makeText(context, "Incorrect passcode", Toast.LENGTH_SHORT).show()
-                        }
-                    }) { Text("Disable") }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showDisablePasscodeDialog = false }) { Text("Cancel") }
-                },
-                containerColor = MaterialTheme.colorScheme.surface,
-                shape = RoundedCornerShape(16.dp)
+            var showCurrencyPicker by remember { mutableStateOf(false) }
+            SettingsItem(
+                icon = Icons.Filled.Language,
+                title = "Currency",
+                subtitle = UserPreferences.displayForCode(state.currencyCode),
+                iconTint = MaterialTheme.colorScheme.secondary,
+                onClick = { showCurrencyPicker = true }
             )
+
+            if (showCurrencyPicker) {
+                AlertDialog(
+                    onDismissRequest = { showCurrencyPicker = false },
+                    title = { Text("Currency", color = MaterialTheme.colorScheme.onSurface) },
+                    text = {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(max = 400.dp)
+                                .verticalScroll(rememberScrollState()),
+                            verticalArrangement = Arrangement.spacedBy(2.dp)
+                        ) {
+                            UserPreferences.currencies.forEach { currency ->
+                                val isSelected = currency.code == state.currencyCode
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(if (isSelected) MaterialTheme.colorScheme.secondary.copy(alpha = 0.12f) else Color.Transparent)
+                                        .clickable {
+                                            viewModel.setCurrency(currency.code)
+                                            showCurrencyPicker = false
+                                        }
+                                        .padding(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(currency.symbol, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.width(36.dp))
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Column {
+                                        Text(currency.name, color = MaterialTheme.colorScheme.onSurface)
+                                        Text(currency.code, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    confirmButton = {},
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    shape = RoundedCornerShape(16.dp)
+                )
+            }
+
+            var showDayPicker by remember { mutableStateOf(false) }
+            val dayLabel = when (state.firstDayOfWeek) {
+                Calendar.SUNDAY -> "Sunday"
+                Calendar.MONDAY -> "Monday"
+                Calendar.SATURDAY -> "Saturday"
+                else -> "Monday"
+            }
+            SettingsItem(
+                icon = Icons.Filled.CalendarMonth,
+                title = "First Day of Week",
+                subtitle = dayLabel,
+                iconTint = MaterialTheme.colorScheme.tertiary,
+                onClick = { showDayPicker = true }
+            )
+
+            if (showDayPicker) {
+                AlertDialog(
+                    onDismissRequest = { showDayPicker = false },
+                    title = { Text("First Day of Week", color = MaterialTheme.colorScheme.onSurface) },
+                    text = {
+                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            listOf(
+                                Calendar.MONDAY to "Monday",
+                                Calendar.SUNDAY to "Sunday",
+                                Calendar.SATURDAY to "Saturday"
+                            ).forEach { (value, label) ->
+                                val isSelected = value == state.firstDayOfWeek
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(if (isSelected) MaterialTheme.colorScheme.tertiary.copy(alpha = 0.12f) else Color.Transparent)
+                                        .clickable {
+                                            viewModel.setFirstDayOfWeek(value)
+                                            showDayPicker = false
+                                        }
+                                        .padding(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(label, color = MaterialTheme.colorScheme.onSurface)
+                                }
+                            }
+                        }
+                    },
+                    confirmButton = {},
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    shape = RoundedCornerShape(16.dp)
+                )
+            }
+
+            val defaultAccount = state.accounts.find { it.id == state.defaultAccountId }
+            var showAccountPicker by remember { mutableStateOf(false) }
+
+            SettingsItem(
+                icon = Icons.Filled.AccountBalanceWallet,
+                title = "Default Account",
+                subtitle = defaultAccount?.name ?: "First available",
+                iconTint = MaterialTheme.colorScheme.primary,
+                onClick = { showAccountPicker = true }
+            )
+
+            if (showAccountPicker) {
+                AlertDialog(
+                    onDismissRequest = { showAccountPicker = false },
+                    title = { Text("Default Account", color = MaterialTheme.colorScheme.onSurface) },
+                    text = {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(max = 400.dp)
+                                .verticalScroll(rememberScrollState()),
+                            verticalArrangement = Arrangement.spacedBy(2.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(if (state.defaultAccountId == null) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f) else Color.Transparent)
+                                    .clickable {
+                                        viewModel.setDefaultAccount(null)
+                                        showAccountPicker = false
+                                    }
+                                    .padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(Icons.Filled.AutoAwesome, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text("First available", color = MaterialTheme.colorScheme.onSurface)
+                            }
+                            state.accounts.forEach { account ->
+                                val isSelected = account.id == state.defaultAccountId
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f) else Color.Transparent)
+                                        .clickable {
+                                            viewModel.setDefaultAccount(account.id)
+                                            showAccountPicker = false
+                                        }
+                                        .padding(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = CategoryIcons.getIcon(account.iconKey),
+                                        contentDescription = null,
+                                        tint = parseHexColor(account.colorHex),
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Text(account.name, color = MaterialTheme.colorScheme.onSurface)
+                                }
+                            }
+                        }
+                    },
+                    confirmButton = {},
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    shape = RoundedCornerShape(16.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
         }
 
-        if (showPasscodeDialog) {
-            var pass1 by remember { mutableStateOf("") }
-            var pass2 by remember { mutableStateOf("") }
-            AlertDialog(
-                onDismissRequest = { showPasscodeDialog = false },
-                title = { Text("Set Passcode", color = MaterialTheme.colorScheme.onSurface) },
-                text = {
-                    Column {
-                        OutlinedTextField(
-                            value = pass1,
-                            onValueChange = { pass1 = it },
-                            label = { Text("Enter passcode") },
-                            visualTransformation = PasswordVisualTransformation(),
-                            keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Next)
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        OutlinedTextField(
-                            value = pass2,
-                            onValueChange = { pass2 = it },
-                            label = { Text("Confirm passcode") },
-                            visualTransformation = PasswordVisualTransformation(),
-                            keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Done)
-                        )
+        if (currentPage == SettingsPage.NOTIFICATIONS) {
+            SettingsSectionHeader("Notifications")
+
+            val lifecycleOwner = androidx.compose.ui.platform.LocalLifecycleOwner.current
+            var isNotificationAccessGranted by remember { mutableStateOf(false) }
+            
+            DisposableEffect(lifecycleOwner) {
+                val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+                    if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                        val enabledListeners = android.provider.Settings.Secure.getString(context.contentResolver, "enabled_notification_listeners")
+                        isNotificationAccessGranted = enabledListeners?.contains(context.packageName) == true
                     }
-                },
-                confirmButton = {
-                    Button(onClick = {
-                        if (pass1.isNotEmpty() && pass1 == pass2) {
-                            viewModel.setPasscode(pass1)
-                            viewModel.setPasscodeEnabled(true)
-                            Toast.makeText(context, "Passcode set", Toast.LENGTH_SHORT).show()
-                            showPasscodeDialog = false
-                        } else {
-                            Toast.makeText(context, "Passcodes do not match", Toast.LENGTH_SHORT).show()
-                        }
-                    }) { Text("Set") }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showPasscodeDialog = false }) { Text("Cancel") }
-                },
-                containerColor = MaterialTheme.colorScheme.surface,
-                shape = RoundedCornerShape(16.dp)
+                }
+                lifecycleOwner.lifecycle.addObserver(observer)
+                onDispose {
+                    lifecycleOwner.lifecycle.removeObserver(observer)
+                }
+            }
+
+            SettingsClickableItem(
+                icon = Icons.Filled.Message,
+                title = "App Notification Sync",
+                subtitle = if (isNotificationAccessGranted) "Listening for transactions" else "Tap to grant access to read notifications",
+                onClick = {
+                    context.startActivity(Intent(android.provider.Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+                }
             )
+
+            SettingsToggleItem(
+                icon = Icons.Filled.AccessTime,
+                title = "Daily Reminder",
+                subtitle = "Reminds you to add entries at 7:00 PM",
+                iconTint = MaterialTheme.colorScheme.primary,
+                isChecked = state.dailyReminderEnabled,
+                onCheckedChange = { viewModel.setDailyReminderEnabled(context, it) }
+            )
+
+            SettingsToggleItem(
+                icon = Icons.Filled.WarningAmber,
+                title = "Over Budget Alert",
+                subtitle = "Notify when you exceed a category limit",
+                iconTint = MaterialTheme.colorScheme.error,
+                isChecked = state.budgetAlertsEnabled,
+                onCheckedChange = viewModel::setBudgetAlertsEnabled
+            )
+
+            SettingsToggleItem(
+                icon = Icons.Filled.NotificationsActive,
+                title = "Recurring Notification",
+                subtitle = "Applied by default when creating recurring entries",
+                iconTint = MaterialTheme.colorScheme.secondary,
+                isChecked = state.defaultNotifyForRecurringEntries,
+                onCheckedChange = viewModel::setDefaultNotifyForRecurringEntries
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        if (currentPage == SettingsPage.SECURITY) {
+            SettingsSectionHeader("Security")
 
+            SettingsToggleItem(
+                icon = Icons.Filled.Fingerprint,
+                title = "Biometric Lock",
+                subtitle = "Require device biometric to open",
+                iconTint = MaterialTheme.colorScheme.primary,
+                isChecked = state.biometricEnabled,
+                onCheckedChange = { enable ->
+                    val activity = context as? FragmentActivity
+                    if (activity == null) {
+                        Toast.makeText(context, "Unable to verify biometric on this screen", Toast.LENGTH_SHORT).show()
+                        return@SettingsToggleItem
+                    }
+
+                    val biometricManager = BiometricManager.from(context)
+                    val canAuth = biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG)
+
+                    if (enable) {
+                        if (canAuth == BiometricManager.BIOMETRIC_SUCCESS) {
+                            val biometricPrompt = BiometricPrompt(
+                                activity,
+                                ContextCompat.getMainExecutor(context),
+                                object : BiometricPrompt.AuthenticationCallback() {
+                                    override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                                        super.onAuthenticationSucceeded(result)
+                                        if (state.passcodeEnabled) {
+                                            viewModel.setPasscodeEnabled(false)
+                                        }
+                                        viewModel.setBiometricEnabled(true)
+                                        Toast.makeText(context, "Biometric enabled", Toast.LENGTH_SHORT).show()
+                                    }
+
+                                    override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
+                                        super.onAuthenticationError(errorCode, errString)
+                                        if (errorCode != BiometricPrompt.ERROR_USER_CANCELED && errorCode != BiometricPrompt.ERROR_NEGATIVE_BUTTON) {
+                                            Toast.makeText(context, "Authentication failed: $errString", Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
+                                }
+                            )
+
+                            val promptInfo = BiometricPrompt.PromptInfo.Builder()
+                                .setTitle("Enable Biometric Lock")
+                                .setSubtitle("Verify your identity to enable biometric lock")
+                                .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG)
+                                .setNegativeButtonText("Cancel")
+                                .build()
+
+                            biometricPrompt.authenticate(promptInfo)
+                        } else {
+                            Toast.makeText(context, "Biometric not available or not set up on this device", Toast.LENGTH_SHORT).show()
+                        }
+                    } else {
+                        if (canAuth != BiometricManager.BIOMETRIC_SUCCESS) {
+                            Toast.makeText(context, "Biometric authentication is required to disable", Toast.LENGTH_SHORT).show()
+                            return@SettingsToggleItem
+                        }
+
+                        val biometricPrompt = BiometricPrompt(
+                            activity,
+                            ContextCompat.getMainExecutor(context),
+                            object : BiometricPrompt.AuthenticationCallback() {
+                                override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                                    super.onAuthenticationSucceeded(result)
+                                    viewModel.setBiometricEnabled(false)
+                                    Toast.makeText(context, "Biometric disabled", Toast.LENGTH_SHORT).show()
+                                }
+
+                                override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
+                                    super.onAuthenticationError(errorCode, errString)
+                                    if (errorCode != BiometricPrompt.ERROR_USER_CANCELED && errorCode != BiometricPrompt.ERROR_NEGATIVE_BUTTON) {
+                                        Toast.makeText(context, "Authentication failed: $errString", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            }
+                        )
+
+                        val promptInfo = BiometricPrompt.PromptInfo.Builder()
+                            .setTitle("Disable Biometric Lock")
+                            .setSubtitle("Verify to disable biometric lock")
+                            .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG)
+                            .setNegativeButtonText("Cancel")
+                            .build()
+
+                        biometricPrompt.authenticate(promptInfo)
+                    }
+                }
+            )
+
+            var showPasscodeDialog by remember { mutableStateOf(false) }
+            var showDisablePasscodeDialog by remember { mutableStateOf(false) }
+            SettingsToggleItem(
+                icon = Icons.Filled.Lock,
+                title = "Passcode Protection",
+                subtitle = if (state.passcodeEnabled) "Enabled" else "Not set",
+                iconTint = MaterialTheme.colorScheme.error,
+                isChecked = state.passcodeEnabled,
+                onCheckedChange = { enable ->
+                    if (enable) {
+                        if (state.biometricEnabled) {
+                            viewModel.setBiometricEnabled(false)
+                        }
+                        showPasscodeDialog = true
+                    } else {
+                        showDisablePasscodeDialog = true
+                    }
+                }
+            )
+
+            if (state.biometricEnabled || state.passcodeEnabled) {
+                var showLockTimeoutDialog by remember { mutableStateOf(false) }
+                val timeoutLabel = when (state.appLockTimeout) {
+                    0L -> "Immediately"
+                    5000L -> "5 sec"
+                    10000L -> "10 sec"
+                    15000L -> "15 sec"
+                    20000L -> "20 sec"
+                    else -> "${state.appLockTimeout / 1000} sec"
+                }
+
+                SettingsItem(
+                    icon = Icons.Filled.Timer,
+                    title = "Lock Timeout",
+                    subtitle = timeoutLabel,
+                    iconTint = MaterialTheme.colorScheme.primary,
+                    onClick = { showLockTimeoutDialog = true }
+                )
+
+                if (showLockTimeoutDialog) {
+                    AlertDialog(
+                        onDismissRequest = { showLockTimeoutDialog = false },
+                        title = { Text("Lock Timeout", color = MaterialTheme.colorScheme.onSurface) },
+                        text = {
+                            Column {
+                                listOf(
+                                    0L to "Immediately",
+                                    5000L to "5 sec",
+                                    10000L to "10 sec",
+                                    15000L to "15 sec",
+                                    20000L to "20 sec"
+                                ).forEach { (value, label) ->
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .background(if (state.appLockTimeout == value) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f) else Color.Transparent)
+                                            .clickable {
+                                                viewModel.setAppLockTimeout(value)
+                                                showLockTimeoutDialog = false
+                                            }
+                                            .padding(12.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(label, color = MaterialTheme.colorScheme.onSurface)
+                                    }
+                                }
+                            }
+                        },
+                        confirmButton = {},
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        shape = RoundedCornerShape(16.dp)
+                    )
+                }
+            }
+
+            if (showDisablePasscodeDialog) {
+                var currentPasscodeInput by remember { mutableStateOf("") }
+                AlertDialog(
+                    onDismissRequest = { showDisablePasscodeDialog = false },
+                    title = { Text("Disable Passcode", color = MaterialTheme.colorScheme.onSurface) },
+                    text = {
+                        OutlinedTextField(
+                            value = currentPasscodeInput,
+                            onValueChange = { currentPasscodeInput = it },
+                            label = { Text("Enter current passcode") },
+                            visualTransformation = PasswordVisualTransformation(),
+                            keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Done),
+                            singleLine = true
+                        )
+                    },
+                    confirmButton = {
+                        Button(onClick = {
+                            if (viewModel.verifyCurrentPasscode(currentPasscodeInput)) {
+                                viewModel.setPasscodeEnabled(false)
+                                Toast.makeText(context, "Passcode disabled", Toast.LENGTH_SHORT).show()
+                                showDisablePasscodeDialog = false
+                            } else {
+                                Toast.makeText(context, "Incorrect passcode", Toast.LENGTH_SHORT).show()
+                            }
+                        }) { Text("Disable") }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showDisablePasscodeDialog = false }) { Text("Cancel") }
+                    },
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    shape = RoundedCornerShape(16.dp)
+                )
+            }
+
+            if (showPasscodeDialog) {
+                var pass1 by remember { mutableStateOf("") }
+                var pass2 by remember { mutableStateOf("") }
+                AlertDialog(
+                    onDismissRequest = { showPasscodeDialog = false },
+                    title = { Text("Set Passcode", color = MaterialTheme.colorScheme.onSurface) },
+                    text = {
+                        Column {
+                            OutlinedTextField(
+                                value = pass1,
+                                onValueChange = { pass1 = it },
+                                label = { Text("Enter passcode") },
+                                visualTransformation = PasswordVisualTransformation(),
+                                keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Next)
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            OutlinedTextField(
+                                value = pass2,
+                                onValueChange = { pass2 = it },
+                                label = { Text("Confirm passcode") },
+                                visualTransformation = PasswordVisualTransformation(),
+                                keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Done)
+                            )
+                        }
+                    },
+                    confirmButton = {
+                        Button(onClick = {
+                            if (pass1.isNotEmpty() && pass1 == pass2) {
+                                viewModel.setPasscode(pass1)
+                                viewModel.setPasscodeEnabled(true)
+                                Toast.makeText(context, "Passcode set", Toast.LENGTH_SHORT).show()
+                                showPasscodeDialog = false
+                            } else {
+                                Toast.makeText(context, "Passcodes do not match", Toast.LENGTH_SHORT).show()
+                            }
+                        }) { Text("Set") }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showPasscodeDialog = false }) { Text("Cancel") }
+                    },
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    shape = RoundedCornerShape(16.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
         }
 
         if (currentPage == SettingsPage.DATA_SYNC) {
             SettingsSectionHeader("Data & Sync")
 
-        val hasDriveSignIn = GoogleSignIn.getLastSignedInAccount(context)
-            ?.grantedScopes
-            ?.contains(Scope(DriveScopes.DRIVE_APPDATA)) == true
+            val hasDriveSignIn = GoogleSignIn.getLastSignedInAccount(context)
+                ?.grantedScopes
+                ?.contains(Scope(DriveScopes.DRIVE_APPDATA)) == true
 
-        val backupSubtitle = if (state.lastCloudBackupTime > 0L) {
-            "Last backup: ${SimpleDateFormat("MMM dd, yyyy hh:mm a", Locale.getDefault()).format(java.util.Date(state.lastCloudBackupTime))}"
-        } else {
-            "Last backup: Never"
-        }
+            val backupSubtitle = if (state.lastCloudBackupTime > 0L) {
+                "Last backup: ${SimpleDateFormat("MMM dd, yyyy hh:mm a", Locale.getDefault()).format(java.util.Date(state.lastCloudBackupTime))}"
+            } else {
+                "Last backup: Never"
+            }
 
-        SettingsToggleItem(
-            icon = Icons.Filled.CloudSync,
-            title = "Auto Cloud Backup",
-            subtitle = if (hasDriveSignIn) "Backup to Google Drive daily" else "Sign in to Google to enable",
-            iconTint = MaterialTheme.colorScheme.secondary,
-            isChecked = state.autoCloudBackupEnabled,
-            onCheckedChange = { enabled ->
-                if (enabled) {
-                    if (hasDriveSignIn) {
-                        viewModel.setAutoCloudBackupEnabled(true)
+            SettingsToggleItem(
+                icon = Icons.Filled.CloudSync,
+                title = "Auto Cloud Backup",
+                subtitle = if (hasDriveSignIn) "Backup to Google Drive daily" else "Sign in to Google to enable",
+                iconTint = MaterialTheme.colorScheme.secondary,
+                isChecked = state.autoCloudBackupEnabled,
+                onCheckedChange = { enabled ->
+                    if (enabled) {
+                        if (hasDriveSignIn) {
+                            viewModel.setAutoCloudBackupEnabled(true)
+                        } else {
+                            pendingCloudAction = PendingCloudAction.ENABLE_AUTO_BACKUP
+                            cloudSignInLauncher.launch(GoogleSignIn.getClient(context, gso).signInIntent)
+                        }
                     } else {
-                        pendingCloudAction = PendingCloudAction.ENABLE_AUTO_BACKUP
+                        viewModel.setAutoCloudBackupEnabled(false)
+                    }
+                }
+            )
+
+            SettingsItem(
+                icon = Icons.Filled.Backup,
+                title = "Backup Now",
+                subtitle = backupSubtitle,
+                iconTint = MaterialTheme.colorScheme.tertiary,
+                onClick = {
+                    if (hasDriveSignIn) {
+                        viewModel.backupNowToCloud()
+                    } else {
+                        pendingCloudAction = PendingCloudAction.BACKUP_NOW
                         cloudSignInLauncher.launch(GoogleSignIn.getClient(context, gso).signInIntent)
                     }
-                } else {
-                    viewModel.setAutoCloudBackupEnabled(false)
                 }
-            }
-        )
-
-        SettingsItem(
-            icon = Icons.Filled.Backup,
-            title = "Backup Now",
-            subtitle = backupSubtitle,
-            iconTint = MaterialTheme.colorScheme.tertiary,
-            onClick = {
-                if (hasDriveSignIn) {
-                    viewModel.backupNowToCloud()
-                } else {
-                    pendingCloudAction = PendingCloudAction.BACKUP_NOW
-                    cloudSignInLauncher.launch(GoogleSignIn.getClient(context, gso).signInIntent)
-                }
-            }
-        )
-
-        SettingsItem(
-            icon = Icons.Filled.CloudDownload,
-            title = "Restore From Cloud",
-            subtitle = if (hasDriveSignIn) "Choose a backup to restore from Drive" else "Sign in to Google to restore",
-            iconTint = MaterialTheme.colorScheme.secondary,
-            onClick = {
-                if (hasDriveSignIn) {
-                    viewModel.loadCloudBackups()
-                } else {
-                    pendingCloudAction = PendingCloudAction.SHOW_BACKUP_LIST
-                    cloudSignInLauncher.launch(GoogleSignIn.getClient(context, gso).signInIntent)
-                }
-            }
-        )
-
-        SettingsItem(
-            icon = Icons.Filled.FileDownload,
-            title = "Export Data",
-            subtitle = "Export as JSON",
-            iconTint = MaterialTheme.colorScheme.primary,
-            onClick = {
-                val timestamp = java.text.SimpleDateFormat("yyyyMMdd_HHmm", java.util.Locale.getDefault())
-                    .format(java.util.Date())
-                exportLauncher.launch("MoneyTracker_$timestamp.json")
-            }
-        )
-
-        SettingsItem(
-            icon = Icons.Filled.TableChart,
-            title = "Export Monthly CSV",
-            subtitle = "Readable in Excel/Google Sheets",
-            iconTint = MaterialTheme.colorScheme.secondary,
-            onClick = {
-                monthlyExportFormat = "CSV"
-                selectedExportMonth = Calendar.getInstance()
-                showMonthlyExportDialog = true
-            }
-        )
-
-        SettingsItem(
-            icon = Icons.Filled.PictureAsPdf,
-            title = "Export Monthly PDF",
-            subtitle = "Clean report for sharing/taxes",
-            iconTint = MaterialTheme.colorScheme.tertiary,
-            onClick = {
-                monthlyExportFormat = "PDF"
-                selectedExportMonth = Calendar.getInstance()
-                showMonthlyExportDialog = true
-            }
-        )
-
-        SettingsItem(
-            icon = Icons.Filled.FileUpload,
-            title = "Import Data",
-            subtitle = "Import from JSON",
-            iconTint = MaterialTheme.colorScheme.secondary,
-            onClick = {
-                importLauncher.launch(arrayOf("application/json", "*/*"))
-            }
-        )
-
-        var showResetDialog by remember { mutableStateOf(false) }
-        SettingsItem(
-            icon = Icons.Filled.DeleteForever,
-            title = "Clear All Data",
-            subtitle = "This cannot be undone",
-            iconTint = MaterialTheme.colorScheme.error,
-            onClick = { showResetDialog = true }
-        )
-
-        if (showResetDialog) {
-            AlertDialog(
-                onDismissRequest = { showResetDialog = false },
-                title = { Text("Clear All Data?", color = MaterialTheme.colorScheme.onSurface) },
-                text = {
-                    Text(
-                        "This will permanently delete all accounts, transactions, and budgets. This action cannot be undone.",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                },
-                confirmButton = {
-                    Button(
-                        onClick = {
-                            viewModel.resetAllData()
-                            showResetDialog = false
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-                    ) {
-                        Text("Clear All")
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showResetDialog = false }) {
-                        Text("Cancel", color = MaterialTheme.colorScheme.onSurface)
-                    }
-                },
-                containerColor = MaterialTheme.colorScheme.surface,
-                shape = RoundedCornerShape(16.dp)
             )
-        }
 
-        if (showMonthlyExportDialog) {
-            AlertDialog(
-                onDismissRequest = { showMonthlyExportDialog = false },
-                title = {
-                    Text(
-                        text = "Select Month to Export",
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                },
-                text = {
-                    Column(
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        MonthSelector(
-                            currentMonth = selectedExportMonth,
-                            onPreviousMonth = {
-                                selectedExportMonth = (selectedExportMonth.clone() as Calendar).apply { add(Calendar.MONTH, -1) }
-                            },
-                            onNextMonth = {
-                                selectedExportMonth = (selectedExportMonth.clone() as Calendar).apply { add(Calendar.MONTH, 1) }
-                            }
-                        )
+            SettingsItem(
+                icon = Icons.Filled.CloudDownload,
+                title = "Restore From Cloud",
+                subtitle = if (hasDriveSignIn) "Choose a backup to restore from Drive" else "Sign in to Google to restore",
+                iconTint = MaterialTheme.colorScheme.secondary,
+                onClick = {
+                    if (hasDriveSignIn) {
+                        viewModel.loadCloudBackups()
+                    } else {
+                        pendingCloudAction = PendingCloudAction.SHOW_BACKUP_LIST
+                        cloudSignInLauncher.launch(GoogleSignIn.getClient(context, gso).signInIntent)
+                    }
+                }
+            )
+
+            SettingsItem(
+                icon = Icons.Filled.FileDownload,
+                title = "Export Data",
+                subtitle = "Export as JSON",
+                iconTint = MaterialTheme.colorScheme.primary,
+                onClick = {
+                    val timestamp = java.text.SimpleDateFormat("yyyyMMdd_HHmm", java.util.Locale.getDefault())
+                        .format(java.util.Date())
+                    exportLauncher.launch("MoneyTracker_$timestamp.json")
+                }
+            )
+
+            SettingsItem(
+                icon = Icons.Filled.TableChart,
+                title = "Export Monthly CSV",
+                subtitle = "Readable in Excel/Google Sheets",
+                iconTint = MaterialTheme.colorScheme.secondary,
+                onClick = {
+                    monthlyExportFormat = "CSV"
+                    selectedExportMonth = Calendar.getInstance()
+                    showMonthlyExportDialog = true
+                }
+            )
+
+            SettingsItem(
+                icon = Icons.Filled.PictureAsPdf,
+                title = "Export Monthly PDF",
+                subtitle = "Clean report for sharing/taxes",
+                iconTint = MaterialTheme.colorScheme.tertiary,
+                onClick = {
+                    monthlyExportFormat = "PDF"
+                    selectedExportMonth = Calendar.getInstance()
+                    showMonthlyExportDialog = true
+                }
+            )
+
+            SettingsItem(
+                icon = Icons.Filled.FileUpload,
+                title = "Import Data",
+                subtitle = "Import from JSON",
+                iconTint = MaterialTheme.colorScheme.secondary,
+                onClick = {
+                    importLauncher.launch(arrayOf("application/json", "*/*"))
+                }
+            )
+
+            var showResetDialog by remember { mutableStateOf(false) }
+            SettingsItem(
+                icon = Icons.Filled.DeleteForever,
+                title = "Clear All Data",
+                subtitle = "This cannot be undone",
+                iconTint = MaterialTheme.colorScheme.error,
+                onClick = { showResetDialog = true }
+            )
+
+            if (showResetDialog) {
+                AlertDialog(
+                    onDismissRequest = { showResetDialog = false },
+                    title = { Text("Clear All Data?", color = MaterialTheme.colorScheme.onSurface) },
+                    text = {
                         Text(
-                            text = if (monthlyExportFormat == "CSV")
-                                "CSV includes TIME, TYPE, AMOUNT, CATEGORY, ACCOUNT, NOTES"
-                            else
-                                "PDF includes TIME, TYPE, AMOUNT, CATEGORY, ACCOUNT, NOTES",
-                            style = MaterialTheme.typography.bodySmall,
+                            "This will permanently delete all accounts, transactions, and budgets. This action cannot be undone.",
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                    }
-                },
-                confirmButton = {
-                    Button(onClick = {
-                        val month = selectedExportMonth.get(Calendar.MONTH) + 1
-                        val year = selectedExportMonth.get(Calendar.YEAR)
-                        val stamp = String.format(java.util.Locale.US, "%04d_%02d", year, month)
-                        if (monthlyExportFormat == "CSV") {
-                            pendingCsvMonthYear = month to year
-                            csvExportLauncher.launch("MoneyTracker_Report_$stamp.csv")
-                        } else {
-                            pendingPdfMonthYear = month to year
-                            pdfExportLauncher.launch("MoneyTracker_Report_$stamp.pdf")
+                    },
+                    confirmButton = {
+                        Button(
+                            onClick = {
+                                viewModel.resetAllData()
+                                showResetDialog = false
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                        ) {
+                            Text("Clear All")
                         }
-                        showMonthlyExportDialog = false
-                    }) {
-                        Text("Export")
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showMonthlyExportDialog = false }) {
-                        Text("Cancel", color = MaterialTheme.colorScheme.onSurface)
-                    }
-                },
-                containerColor = MaterialTheme.colorScheme.surface,
-                shape = RoundedCornerShape(16.dp)
-            )
-        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showResetDialog = false }) {
+                            Text("Cancel", color = MaterialTheme.colorScheme.onSurface)
+                        }
+                    },
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    shape = RoundedCornerShape(16.dp)
+                )
+            }
 
-        Spacer(modifier = Modifier.height(16.dp))
+            if (showMonthlyExportDialog) {
+                AlertDialog(
+                    onDismissRequest = { showMonthlyExportDialog = false },
+                    title = {
+                        Text(
+                            text = "Select Month to Export",
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    },
+                    text = {
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            MonthSelector(
+                                currentMonth = selectedExportMonth,
+                                onPreviousMonth = {
+                                    selectedExportMonth = (selectedExportMonth.clone() as Calendar).apply { add(Calendar.MONTH, -1) }
+                                },
+                                onNextMonth = {
+                                    selectedExportMonth = (selectedExportMonth.clone() as Calendar).apply { add(Calendar.MONTH, 1) }
+                                }
+                            )
+                            Text(
+                                text = if (monthlyExportFormat == "CSV")
+                                    "CSV includes TIME, TYPE, AMOUNT, CATEGORY, ACCOUNT, NOTES"
+                                else
+                                    "PDF includes TIME, TYPE, AMOUNT, CATEGORY, ACCOUNT, NOTES",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    },
+                    confirmButton = {
+                        Button(onClick = {
+                            val month = selectedExportMonth.get(Calendar.MONTH) + 1
+                            val year = selectedExportMonth.get(Calendar.YEAR)
+                            val stamp = String.format(java.util.Locale.US, "%04d_%02d", year, month)
+                            if (monthlyExportFormat == "CSV") {
+                                pendingCsvMonthYear = month to year
+                                csvExportLauncher.launch("MoneyTracker_Report_$stamp.csv")
+                            } else {
+                                pendingPdfMonthYear = month to year
+                                pdfExportLauncher.launch("MoneyTracker_Report_$stamp.pdf")
+                            }
+                            showMonthlyExportDialog = false
+                        }) {
+                            Text("Export")
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showMonthlyExportDialog = false }) {
+                            Text("Cancel", color = MaterialTheme.colorScheme.onSurface)
+                        }
+                    },
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    shape = RoundedCornerShape(16.dp)
+                )
+            }
 
+            Spacer(modifier = Modifier.height(16.dp))
         }
 
         if (currentPage == SettingsPage.ABOUT) {
             SettingsSectionHeader("About")
 
-        SettingsItem(
-            icon = Icons.Filled.Info,
-            title = "Version",
-            subtitle = "1.2.1",
-            iconTint = MaterialTheme.colorScheme.onSurfaceVariant,
-            onClick = { showVersionHistory = true }
-        )
+            SettingsItem(
+                icon = Icons.Filled.Info,
+                title = "Version",
+                subtitle = "1.2.1",
+                iconTint = MaterialTheme.colorScheme.onSurfaceVariant,
+                onClick = { showVersionHistory = true }
+            )
 
-        // About entry
-        SettingsItem(
-            icon = Icons.Filled.Person,
-            title = "About",
-            subtitle = "App & developer information",
-            iconTint = MaterialTheme.colorScheme.onSurfaceVariant,
-            onClick = { showAbout = true }
-        )
+            SettingsItem(
+                icon = Icons.Filled.Person,
+                title = "About",
+                subtitle = "App & developer information",
+                iconTint = MaterialTheme.colorScheme.onSurfaceVariant,
+                onClick = { showAbout = true }
+            )
 
             Spacer(modifier = Modifier.height(100.dp))
         }
@@ -1008,7 +1019,6 @@ fun SettingsScreen(
         AboutDialog(onDismiss = { showAbout = false })
     }
 
-    // Cloud backup picker dialog
     if (showCloudBackupPicker || state.isLoadingCloudBackups) {
         AlertDialog(
             onDismissRequest = {
@@ -1083,6 +1093,56 @@ fun SettingsScreen(
                     Text("Cancel")
                 }
             }
+        )
+    }
+}
+
+@Composable
+fun SettingsClickableItem(
+    icon: ImageVector,
+    title: String,
+    subtitle: String,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.12f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(22.dp)
+            )
+        }
+        Spacer(modifier = Modifier.width(16.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        Icon(
+            imageVector = Icons.Filled.ChevronRight,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.outline,
+            modifier = Modifier.size(20.dp)
         )
     }
 }
