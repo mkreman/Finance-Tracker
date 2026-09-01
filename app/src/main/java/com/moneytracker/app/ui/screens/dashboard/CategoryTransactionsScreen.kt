@@ -2,9 +2,11 @@ package com.moneytracker.app.ui.screens.dashboard
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -12,6 +14,7 @@ import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.geometry.Offset
@@ -21,11 +24,13 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import kotlin.math.max
+import kotlin.math.ceil
 import com.moneytracker.app.domain.model.TransactionListItem
 import com.moneytracker.app.ui.components.LocalCurrencySymbol
 import com.moneytracker.app.ui.components.TransactionDateHeader
@@ -161,7 +166,7 @@ private fun CategoryTrendSection(
             .padding(16.dp)
     ) {
         Text(
-            text = if (isAllTime) "Trend (Last 12 Months)" else "Daily Trend",
+            text = if (isAllTime) "All Time Trend" else "Daily Trend",
             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
             color = MaterialTheme.colorScheme.onSurface
         )
@@ -184,48 +189,102 @@ private fun CategoryTrendSection(
             return
         }
 
-        val maxValue = max(1.0, points.maxOfOrNull { it.value } ?: 1.0)
+        val rawMax = max(1.0, points.maxOfOrNull { it.value } ?: 1.0)
+        // Round up small max values so fractional alignments match the int labels cleanly
+        val maxValue = if (rawMax < 10) ceil(rawMax) else rawMax
+        
+        // Base the number of intervals on the magnitude of the max value (up to 4 intervals for 5 labels)
+        val numSteps = if (maxValue >= 4) 4 else maxValue.toInt()
+        val yAxisLabels = (numSteps downTo 0).map { step ->
+            formatAxisAmount((maxValue * step) / numSteps)
+        }.distinct()
 
-        Canvas(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(160.dp)
-        ) {
-            val xStep = if (points.size > 1) size.width / (points.size - 1) else size.width
-            val path = Path()
-
-            points.forEachIndexed { index, point ->
-                val x = if (points.size == 1) size.width / 2f else index * xStep
-                val y = ((maxValue - point.value) / maxValue * size.height).toFloat()
-                if (index == 0) path.moveTo(x, y) else path.lineTo(x, y)
-                drawCircle(color = typeColor, radius = 2.5.dp.toPx(), center = Offset(x, y))
+        Row(modifier = Modifier.fillMaxWidth()) {
+            // Y-Axis (Fixed on the left)
+            Column(
+                modifier = Modifier
+                    .height(160.dp)
+                    .padding(end = 8.dp),
+                verticalArrangement = Arrangement.SpaceBetween,
+                horizontalAlignment = Alignment.End
+            ) {
+                yAxisLabels.forEach { label ->
+                    Text(
+                        text = label,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
 
-            drawPath(
-                path = path,
-                color = typeColor,
-                style = Stroke(width = 2.5.dp.toPx(), cap = StrokeCap.Round)
-            )
-        }
-
-        Spacer(modifier = Modifier.height(6.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            points.forEachIndexed { index, point ->
-                val showLabel = if (points.size <= 8) {
-                    true
+            // Canvas and X-Axis
+            BoxWithConstraints(modifier = Modifier.weight(1f)) {
+                val visiblePoints = 8
+                val isScrollable = isAllTime && points.size > visiblePoints
+                val chartWidth = if (isScrollable) {
+                    (maxWidth / visiblePoints) * points.size
                 } else {
-                    index == 0 || index == points.size / 2 || index == points.lastIndex
+                    maxWidth
+                }
+                
+                val scrollState = rememberScrollState()
+
+                // Auto-scroll to the end to show the latest points only if it's scrollable
+                LaunchedEffect(points.size, isAllTime) {
+                    if (isScrollable) {
+                        scrollState.scrollTo(scrollState.maxValue)
+                    }
                 }
 
-                Text(
-                    text = if (showLabel) point.label else "",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Column(
+                    modifier = Modifier
+                        .then(if (isScrollable) Modifier.horizontalScroll(scrollState) else Modifier)
+                        .width(chartWidth)
+                ) {
+                    Canvas(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(160.dp)
+                    ) {
+                        val xStep = if (points.size > 1) size.width / (points.size - 1) else size.width
+                        val path = Path()
+
+                        points.forEachIndexed { index, point ->
+                            val x = if (points.size == 1) size.width / 2f else index * xStep
+                            val y = ((maxValue - point.value) / maxValue * size.height).toFloat()
+                            if (index == 0) path.moveTo(x, y) else path.lineTo(x, y)
+                            drawCircle(color = typeColor, radius = 2.5.dp.toPx(), center = Offset(x, y))
+                        }
+
+                        drawPath(
+                            path = path,
+                            color = typeColor,
+                            style = Stroke(width = 2.5.dp.toPx(), cap = StrokeCap.Round)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        points.forEachIndexed { index, point ->
+                            val showLabel = if (isAllTime) {
+                                true
+                            } else {
+                                points.size <= 8 || index == 0 || index == points.size / 2 || index == points.lastIndex
+                            }
+
+                            Text(
+                                text = if (showLabel) point.label else "",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = if (isAllTime && showLabel) Modifier.rotate(-45f) else Modifier
+                            )
+                        }
+                    }
+                }
             }
         }
     }
@@ -390,5 +449,13 @@ private fun SummaryStatItem(
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
+    }
+}
+
+private fun formatAxisAmount(amount: Double): String {
+    return when {
+        amount >= 100_000 -> String.format(Locale.getDefault(), "%.1fL", amount / 100_000).replace(".0L", "L")
+        amount >= 1_000 -> String.format(Locale.getDefault(), "%.1fK", amount / 1_000).replace(".0K", "K")
+        else -> amount.toInt().toString()
     }
 }
