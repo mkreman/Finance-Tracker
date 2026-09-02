@@ -1,3 +1,4 @@
+// Source reference
 package com.moneytracker.app.domain
 
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -37,5 +38,10 @@ class SharedMonthManager @Inject constructor() {
 
     fun selectAllTime() {
         _currentMonth.value = null
+    }
+
+    // Resets the month tracker back to the current date
+    fun resetToCurrentMonth() {
+        _currentMonth.value = Calendar.getInstance()
     }
 }

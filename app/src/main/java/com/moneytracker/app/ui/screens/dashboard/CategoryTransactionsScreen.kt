@@ -190,10 +190,8 @@ private fun CategoryTrendSection(
         }
 
         val rawMax = max(1.0, points.maxOfOrNull { it.value } ?: 1.0)
-        // Round up small max values so fractional alignments match the int labels cleanly
         val maxValue = if (rawMax < 10) ceil(rawMax) else rawMax
         
-        // Base the number of intervals on the magnitude of the max value (up to 4 intervals for 5 labels)
         val numSteps = if (maxValue >= 4) 4 else maxValue.toInt()
         val yAxisLabels = (numSteps downTo 0).map { step ->
             formatAxisAmount((maxValue * step) / numSteps)
@@ -229,7 +227,6 @@ private fun CategoryTrendSection(
                 
                 val scrollState = rememberScrollState()
 
-                // Auto-scroll to the end to show the latest points only if it's scrollable
                 LaunchedEffect(points.size, isAllTime) {
                     if (isScrollable) {
                         scrollState.scrollTo(scrollState.maxValue)
@@ -265,6 +262,18 @@ private fun CategoryTrendSection(
 
                     Spacer(modifier = Modifier.height(12.dp))
 
+                    val targetMonthlyIndices = if (!isAllTime && points.size > 5) {
+                        listOf(
+                            0,
+                            points.lastIndex / 4,
+                            points.lastIndex / 2,
+                            (points.lastIndex * 3) / 4,
+                            points.lastIndex
+                        )
+                    } else {
+                        emptyList()
+                    }
+
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
@@ -273,7 +282,7 @@ private fun CategoryTrendSection(
                             val showLabel = if (isAllTime) {
                                 true
                             } else {
-                                points.size <= 8 || index == 0 || index == points.size / 2 || index == points.lastIndex
+                                points.size <= 5 || index in targetMonthlyIndices
                             }
 
                             Text(
@@ -372,7 +381,6 @@ private fun CategorySummaryCard(
             .padding(20.dp)
     ) {
         Column {
-            // Total Amount - prominent display
             Text(
                 text = "Total $typeName",
                 style = MaterialTheme.typography.bodyMedium,
@@ -403,7 +411,6 @@ private fun CategorySummaryCard(
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.5.dp)
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Stats row
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween

@@ -66,6 +66,7 @@ import com.google.api.services.drive.DriveScopes
 import com.moneytracker.app.data.backup.BackupResult
 import com.moneytracker.app.data.backup.GoogleDriveBackupService
 import com.moneytracker.app.data.local.UserPreferences
+import com.moneytracker.app.domain.SharedMonthManager
 import com.moneytracker.app.ui.components.LocalCurrencySymbol
 import com.moneytracker.app.ui.navigation.BottomNavBar
 import com.moneytracker.app.ui.navigation.LocalBottomTabReselect
@@ -90,6 +91,8 @@ class MainActivity : FragmentActivity() {
 
     @Inject lateinit var userPreferences: UserPreferences
     @Inject lateinit var googleDriveBackupService: GoogleDriveBackupService
+    @Inject lateinit var sharedMonthManager: SharedMonthManager
+    
     private lateinit var biometricAuthManager: BiometricAuthManager
     private var widgetLaunchSession: Boolean = false
     
@@ -552,6 +555,7 @@ class MainActivity : FragmentActivity() {
 
     override fun onResume() {
         super.onResume()
+        sharedMonthManager.resetToCurrentMonth()
         lifecycleScope.launch(Dispatchers.IO) {
             try {
                 MoneyTrackerWidget().updateAll(this@MainActivity)
