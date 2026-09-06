@@ -1327,6 +1327,9 @@ private fun VersionHistoryDialog(onDismiss: () -> Unit) {
                 VersionItem(
                     version = "1.2.1",
                     features = listOf(
+                        "feat: Integrate SharedMonthManager for month tracking and enhance SummaryCard with auto-resizing text",
+                        "feat: Enhance CategoryTrendSection with improved axis labeling and scrollable chart",
+                        "feat: Add Splitwise notification detection and search functionality",
                         "feat: Add account summary card and integrate summary calculations in AccountTransactionsViewModel",
                         "feat: Add app lock timeout configuration and update related settings",
                         "feat: Introduce SharedMonthManager for centralized month handling and update related components"
