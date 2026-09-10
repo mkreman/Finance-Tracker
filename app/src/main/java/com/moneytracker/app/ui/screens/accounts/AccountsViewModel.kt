@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.moneytracker.app.data.local.database.entities.AccountType
 import com.moneytracker.app.data.local.repository.AccountRepository
+import com.moneytracker.app.data.local.repository.InvestmentRepository
 import com.moneytracker.app.data.local.UserPreferences
 import com.moneytracker.app.domain.model.Account
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -21,6 +22,10 @@ data class AccountsState(
     val customSections: List<CustomSection> = emptyList(),
     val inactiveAccounts: List<Account> = emptyList(),
     val totalBalance: Double = 0.0,
+    val totalInvested: Double = 0.0, // Tracks actual Total Invested amount
+    val investmentCurrentValuation: Double = 0.0, // Tracks actual Current Market Valuation
+    val investmentTotalPnl: Double = 0.0,
+    val investmentTotalPnlPercent: Double = 0.0,
     val totalIncome: Double = 0.0,
     val totalExpense: Double = 0.0,
     val cashTotal: Double = 0.0,
@@ -52,7 +57,8 @@ data class CustomSection(
 @HiltViewModel
 class AccountsViewModel @Inject constructor(
     private val accountRepository: AccountRepository,
-    private val userPreferences: UserPreferences
+    private val userPreferences: UserPreferences,
+    private val investmentRepository: InvestmentRepository
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(AccountsState())
@@ -64,10 +70,14 @@ class AccountsViewModel @Inject constructor(
         loadTotals()
         observeSectionPreferences()
         observeAccountOrder()
+        viewModelScope.launch {
+            investmentRepository.refreshAllPrices(force = false)
+        }
     }
 
     private fun computeDisplayOrder(savedOrder: List<String>, customSections: List<CustomSection>): List<String> {
         val standardKeys = listOf("CASH", "WALLET", "BANK", "INVESTMENT", "PEOPLE")
+        val standardKeys = listOf("CASH", "WALLET", "BANK", "PEOPLE")
         val customKeys = customSections.map { "CUSTOM:${it.name}" }
         val validKeys = standardKeys + customKeys
 
@@ -134,7 +144,11 @@ class AccountsViewModel @Inject constructor(
                 val cashTotal = cashAccounts.sumOf { it.currentBalance }
                 val walletTotal = walletAccounts.sumOf { it.currentBalance }
                 val bankTotal = bankAccounts.sumOf { it.currentBalance }
-                val investmentTotal = investmentAccounts.sumOf { it.currentBalance }
+                val investmentTotal = if (_state.value.investmentCurrentValuation > 0) {
+                    _state.value.investmentCurrentValuation
+                } else {
+                    investmentAccounts.sumOf { it.currentBalance }
+                }
                 val peopleTotal = peopleAccounts.sumOf { it.currentBalance }
                 val peoplePositiveTotal = peopleAccounts.filter { it.currentBalance > 0 }.sumOf { it.currentBalance }
                 val peopleNegativeTotal = peopleAccounts.filter { it.currentBalance < 0 }.sumOf { it.currentBalance }
@@ -210,6 +224,34 @@ class AccountsViewModel @Inject constructor(
         viewModelScope.launch {
             accountRepository.getTotalExpenseAllTime().collect { expense ->
                 _state.update { it.copy(totalExpense = expense) }
+            }
+        }
+        viewModelScope.launch {
+            investmentRepository.getAllHoldings().collect { holdings ->
+                val currentVal = holdings.sumOf { it.currentValuation }
+                val invested = holdings.sumOf { it.totalInvestedAmount }
+                val pnl = currentVal - invested
+                val pnlPercent = if (invested > 0) (pnl / invested) * 100.0 else 0.0
+                _state.update { current ->
+                    val invTotal = if (currentVal > 0) currentVal else if (current.investmentAccounts.isNotEmpty()) current.investmentTotal else invested
+                    val updatedInvestmentAccounts = if (current.investmentAccounts.isNotEmpty() && currentVal > 0) {
+                        current.investmentAccounts.map { acc ->
+                            if (acc.currentBalance == 0.0 || current.investmentAccounts.size == 1) {
+                                acc.copy(currentBalance = currentVal)
+                            } else acc
+                        }
+                    } else {
+                        current.investmentAccounts
+                    }
+                    current.copy(
+                        totalInvested = invested,
+                        investmentCurrentValuation = currentVal,
+                        investmentTotal = invTotal,
+                        investmentTotalPnl = pnl,
+                        investmentTotalPnlPercent = pnlPercent,
+                        investmentAccounts = updatedInvestmentAccounts
+                    )
+                }
             }
         }
     }

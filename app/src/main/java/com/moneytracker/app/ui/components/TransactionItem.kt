@@ -65,19 +65,46 @@ fun TransactionItem(
 
     val currency = LocalCurrencySymbol.current
     val primarySplit = transaction.splits.firstOrNull()
-    val categoryColor = primarySplit?.categoryColor?.let { parseHexColor(it) } ?: MaterialTheme.colorScheme.onSurfaceVariant
+    val isInvestment = transaction.isInvestment
+    val investmentColor = parseHexColor("#FF9800")
+    val categoryColor = when {
+        isInvestment -> primarySplit?.categoryColor?.let { parseHexColor(it) } ?: investmentColor
+        else -> primarySplit?.categoryColor?.let { parseHexColor(it) } ?: MaterialTheme.colorScheme.onSurfaceVariant
+    }
     val displayAmount = when (transaction.type) {
         TransactionType.EXPENSE -> "-$currency${formatAmount(transaction.totalAmount)}"
         TransactionType.INCOME -> "+$currency${formatAmount(transaction.totalAmount)}"
-        TransactionType.TRANSFER -> "$currency${formatAmount(transaction.totalAmount)}"
+        TransactionType.TRANSFER -> {
+            if (isInvestment) {
+                if (transaction.note?.contains("Sold", ignoreCase = true) == true) {
+                    "+$currency${formatAmount(transaction.totalAmount)}"
+                } else {
+                    "-$currency${formatAmount(transaction.totalAmount)}"
+                }
+            } else {
+                "$currency${formatAmount(transaction.totalAmount)}"
+            }
+        }
     }
     val amountColor = when (transaction.type) {
         TransactionType.EXPENSE -> MaterialTheme.colorScheme.error
         TransactionType.INCOME -> MaterialTheme.colorScheme.tertiary
-        TransactionType.TRANSFER -> MaterialTheme.colorScheme.secondary
+        TransactionType.TRANSFER -> {
+            if (isInvestment) {
+                if (transaction.note?.contains("Sold", ignoreCase = true) == true) {
+                    MaterialTheme.colorScheme.tertiary
+                } else {
+                    investmentColor
+                }
+            } else {
+                MaterialTheme.colorScheme.secondary
+            }
+        }
     }
 
-    val categoryName = if (transaction.type == TransactionType.TRANSFER) {
+    val categoryName = if (isInvestment) {
+        "Investment"
+    } else if (transaction.type == TransactionType.TRANSFER) {
         "Transfer"
     } else if (transaction.splits.size > 1) {
         transaction.splits.joinToString(", ") { it.categoryName }
@@ -85,7 +112,10 @@ fun TransactionItem(
         primarySplit?.categoryName ?: "Unknown"
     }
 
-    val accountDisplay = if (transaction.type == TransactionType.TRANSFER && transaction.toAccountName != null) {
+    val accountDisplay = if (isInvestment) {
+        if (transaction.payee.isNotBlank()) "${transaction.accountName} → ${transaction.payee}"
+        else "${transaction.accountName} → Investment"
+    } else if (transaction.type == TransactionType.TRANSFER && transaction.toAccountName != null) {
         "${transaction.accountName} → ${transaction.toAccountName}"
     } else {
         transaction.accountName
@@ -107,7 +137,9 @@ fun TransactionItem(
                 .size(42.dp)
                 .clip(RoundedCornerShape(12.dp))
                 .background(
-                    if (transaction.type == TransactionType.TRANSFER)
+                    if (isInvestment)
+                        investmentColor.copy(alpha = 0.15f)
+                    else if (transaction.type == TransactionType.TRANSFER)
                         MaterialTheme.colorScheme.secondary.copy(alpha = 0.15f)
                     else categoryColor.copy(alpha = 0.15f)
                 ),
@@ -115,11 +147,12 @@ fun TransactionItem(
         ) {
             Icon(
                 imageVector = CategoryIcons.getIcon(
-                    if (transaction.type == TransactionType.TRANSFER) "swap_horiz"
+                    if (isInvestment) "trending_up"
+                    else if (transaction.type == TransactionType.TRANSFER) "swap_horiz"
                     else primarySplit?.categoryIcon ?: "more_horiz"
                 ),
                 contentDescription = null,
-                tint = if (transaction.type == TransactionType.TRANSFER) MaterialTheme.colorScheme.secondary else categoryColor,
+                tint = if (isInvestment) investmentColor else if (transaction.type == TransactionType.TRANSFER) MaterialTheme.colorScheme.secondary else categoryColor,
                 modifier = Modifier.size(22.dp)
             )
         }

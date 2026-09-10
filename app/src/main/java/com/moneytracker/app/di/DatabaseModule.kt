@@ -7,6 +7,7 @@ import com.moneytracker.app.data.local.database.dao.BudgetAlertDao
 import com.moneytracker.app.data.local.database.dao.BudgetDao
 import com.moneytracker.app.data.local.database.dao.CategoryDao
 import com.moneytracker.app.data.local.database.dao.CategoryRecommendationDao
+import com.moneytracker.app.data.local.database.dao.InvestmentDao
 import com.moneytracker.app.data.local.database.dao.TransactionDao
 import dagger.Module
 import dagger.Provides
@@ -53,5 +54,10 @@ object DatabaseModule {
     @Provides
     fun provideBudgetAlertDao(database: MoneyTrackerDatabase): BudgetAlertDao {
         return database.budgetAlertDao()
+    }
+
+    @Provides
+    fun provideInvestmentDao(database: MoneyTrackerDatabase): InvestmentDao {
+        return database.investmentDao()
     }
 }

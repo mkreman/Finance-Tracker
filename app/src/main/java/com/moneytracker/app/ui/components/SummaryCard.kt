@@ -37,55 +37,59 @@ fun SummaryCard(
         SummaryType.EXPENSE -> MaterialTheme.colorScheme.error
         SummaryType.INCOME -> MaterialTheme.colorScheme.tertiary
         SummaryType.TRANSFER -> MaterialTheme.colorScheme.secondary
+        SummaryType.INVESTMENT -> Color(0xFFFF9800)
     }
 
     Column(
         modifier = modifier
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(14.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant)
             .then(
-                if (isSelected) Modifier.border(1.5.dp, color, RoundedCornerShape(16.dp))
+                if (isSelected) Modifier.border(1.5.dp, color, RoundedCornerShape(14.dp))
                 else Modifier
             )
             .clickable(onClick = onClick)
-            .padding(16.dp),
+            .padding(horizontal = 8.dp, vertical = 10.dp),
         horizontalAlignment = Alignment.Start
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                modifier = Modifier
-                    .size(32.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(color.copy(alpha = if (isSelected) 0.25f else 0.15f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = CategoryIcons.getIcon(
-                        when (type) {
-                            SummaryType.EXPENSE -> "trending_down"
-                            SummaryType.INCOME -> "trending_up"
-                            SummaryType.TRANSFER -> "swap_horiz"
-                        }
-                    ),
-                    contentDescription = null,
-                    tint = color,
-                    modifier = Modifier.size(18.dp)
-                )
-            }
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = title,
-                style = MaterialTheme.typography.bodySmall,
-                color = if (isSelected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
+        Box(
+            modifier = Modifier
+                .size(28.dp)
+                .clip(RoundedCornerShape(7.dp))
+                .background(color.copy(alpha = if (isSelected) 0.25f else 0.15f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = CategoryIcons.getIcon(
+                    when (type) {
+                        SummaryType.EXPENSE -> "trending_down"
+                        SummaryType.INCOME -> "trending_up"
+                        SummaryType.TRANSFER -> "swap_horiz"
+                        SummaryType.INVESTMENT -> "trending_up"
+                    }
+                ),
+                contentDescription = null,
+                tint = color,
+                modifier = Modifier.size(16.dp)
             )
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(6.dp))
+
+        Text(
+            text = title,
+            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
+            color = if (isSelected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+
+        Spacer(modifier = Modifier.height(4.dp))
 
         AutoResizeText(
             text = "$currency${formatAmount(kotlin.math.abs(amount))}",
             color = color,
-            style = MaterialTheme.typography.titleMedium.copy(
+            style = MaterialTheme.typography.labelLarge.copy(
                 fontWeight = FontWeight.Bold
             ),
             modifier = Modifier.fillMaxWidth()
@@ -94,7 +98,7 @@ fun SummaryCard(
 }
 
 enum class SummaryType {
-    EXPENSE, INCOME, TRANSFER
+    EXPENSE, INCOME, TRANSFER, INVESTMENT
 }
 
 @Composable

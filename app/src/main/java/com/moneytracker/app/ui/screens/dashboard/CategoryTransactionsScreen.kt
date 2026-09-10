@@ -44,7 +44,7 @@ import java.util.Locale
 @Composable
 fun CategoryTransactionsScreen(
     onNavigateBack: () -> Unit,
-    onEditTransaction: (String) -> Unit = {},
+    onEditTransaction: (String, Boolean) -> Unit = { _, _ -> },
     viewModel: CategoryTransactionsViewModel = hiltViewModel()
 ) {
     val transactions by viewModel.transactions.collectAsState()
@@ -141,7 +141,7 @@ fun CategoryTransactionsScreen(
                         is TransactionListItem.Entry -> {
                             TransactionItem(
                                 transaction = item.transaction,
-                                onClick = { onEditTransaction(item.transaction.id) }
+                                onClick = { onEditTransaction(item.transaction.id, item.transaction.isInvestment) }
                             )
                         }
                     }

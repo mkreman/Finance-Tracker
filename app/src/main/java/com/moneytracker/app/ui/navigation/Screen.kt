@@ -86,6 +86,31 @@ sealed class Screen(
         }
     }
 
+    object Investments : Screen(
+        route = "investments",
+        title = "Investments"
+    )
+
+    object StockDetail : Screen(
+        route = "stock_detail/{symbol}",
+        title = "Stock Summary"
+    ) {
+        fun createRoute(symbol: String): String = "stock_detail/${Uri.encode(symbol)}"
+    }
+
+    object AddInvestment : Screen(
+        route = "add_investment?symbol={symbol}&type={type}&transactionId={transactionId}",
+        title = "Add Investment"
+    ) {
+        fun createRoute(symbol: String? = null, type: String? = null, transactionId: String? = null): String {
+            val parts = mutableListOf<String>()
+            if (symbol != null) parts.add("symbol=${Uri.encode(symbol)}")
+            if (type != null) parts.add("type=${Uri.encode(type)}")
+            if (transactionId != null) parts.add("transactionId=${Uri.encode(transactionId)}")
+            return if (parts.isEmpty()) "add_investment" else "add_investment?${parts.joinToString("&")}"
+        }
+    }
+
     object AddBudget : Screen(
         route = "add_budget?month={month}&year={year}",
         title = "Add Budget"

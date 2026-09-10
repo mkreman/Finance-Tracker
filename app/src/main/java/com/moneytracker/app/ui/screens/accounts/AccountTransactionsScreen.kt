@@ -33,7 +33,7 @@ import kotlin.math.abs
 @Composable
 fun AccountTransactionsScreen(
     onNavigateBack: () -> Unit,
-    onEditTransaction: (String) -> Unit = {},
+    onEditTransaction: (String, Boolean) -> Unit = { _, _ -> },
     viewModel: AccountTransactionsViewModel = hiltViewModel()
 ) {
     val transactions by viewModel.transactions.collectAsState()
@@ -112,7 +112,7 @@ fun AccountTransactionsScreen(
                         is TransactionListItem.Entry -> {
                             TransactionItem(
                                 transaction = item.transaction,
-                                onClick = { onEditTransaction(item.transaction.id) }
+                                onClick = { onEditTransaction(item.transaction.id, item.transaction.isInvestment) }
                             )
                         }
                     }

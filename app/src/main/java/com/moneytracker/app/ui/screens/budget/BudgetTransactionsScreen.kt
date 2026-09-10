@@ -29,7 +29,7 @@ import com.moneytracker.app.ui.components.formatAmount
 @Composable
 fun BudgetTransactionsScreen(
     onNavigateBack: () -> Unit,
-    onEditTransaction: (String) -> Unit = {},
+    onEditTransaction: (String, Boolean) -> Unit = { _, _ -> },
     viewModel: BudgetTransactionsViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsState()
@@ -107,7 +107,7 @@ fun BudgetTransactionsScreen(
                         is TransactionListItem.Entry -> {
                             TransactionItem(
                                 transaction = item.transaction,
-                                onClick = { onEditTransaction(item.transaction.id) }
+                                onClick = { onEditTransaction(item.transaction.id, item.transaction.isInvestment) }
                             )
                         }
                     }

@@ -13,6 +13,7 @@ import com.moneytracker.app.data.local.database.dao.BudgetAlertDao
 import com.moneytracker.app.data.local.database.dao.BudgetDao
 import com.moneytracker.app.data.local.database.dao.CategoryDao
 import com.moneytracker.app.data.local.database.dao.CategoryRecommendationDao
+import com.moneytracker.app.data.local.database.dao.InvestmentDao
 import com.moneytracker.app.data.local.database.dao.TransactionDao
 import com.moneytracker.app.data.local.database.entities.*
 import java.util.UUID
@@ -24,10 +25,12 @@ import java.util.UUID
         TransactionEntity::class,
         TransactionSplitEntity::class,
         BudgetEntity::class,
-        CategoryRecommendationEntity::class // Added new entity
+        CategoryRecommendationEntity::class,
+        InvestmentEntity::class,
+        InvestmentTransactionEntity::class
     ],
-    version = 11, // Bumped to 11
-    exportSchema = true
+    version = 13,
+    exportSchema = false
 )
 @TypeConverters(Converters::class)
 abstract class MoneyTrackerDatabase : RoomDatabase() {
@@ -38,6 +41,7 @@ abstract class MoneyTrackerDatabase : RoomDatabase() {
     abstract fun budgetDao(): BudgetDao
     abstract fun categoryRecommendationDao(): CategoryRecommendationDao
     abstract fun budgetAlertDao(): BudgetAlertDao
+    abstract fun investmentDao(): InvestmentDao
 
     companion object {
         const val DATABASE_NAME = "money_tracker_db"
@@ -97,6 +101,56 @@ abstract class MoneyTrackerDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_11_12 = object : Migration(11, 12) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `investments` (
+                        `symbol` TEXT NOT NULL,
+                        `name` TEXT NOT NULL,
+                        `type` TEXT NOT NULL,
+                        `exchange` TEXT NOT NULL,
+                        `totalUnits` REAL NOT NULL,
+                        `totalInvestedAmount` REAL NOT NULL,
+                        `createdAt` INTEGER NOT NULL,
+                        `modifiedAt` INTEGER NOT NULL,
+                        `isDeleted` INTEGER NOT NULL DEFAULT 0,
+                        PRIMARY KEY(`symbol`)
+                    )
+                """)
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `investment_transactions` (
+                        `id` TEXT NOT NULL,
+                        `symbol` TEXT NOT NULL,
+                        `transactionType` TEXT NOT NULL,
+                        `units` REAL NOT NULL,
+                        `amount` REAL NOT NULL,
+                        `date` INTEGER NOT NULL,
+                        `createdAt` INTEGER NOT NULL,
+                        PRIMARY KEY(`id`),
+                        FOREIGN KEY(`symbol`) REFERENCES `investments`(`symbol`) ON DELETE CASCADE
+                    )
+                """)
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_investment_transactions_symbol` ON `investment_transactions` (`symbol`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_investment_transactions_date` ON `investment_transactions` (`date`)")
+                db.execSQL("""
+                    INSERT OR IGNORE INTO `categories` (`id`, `name`, `iconKey`, `type`, `colorHex`, `sortOrder`, `isDeleted`, `createdAt`, `modifiedAt`)
+                    VALUES ('cat-investment-expense', 'Investment', 'trending_up', 'EXPENSE', '#FF9800', 12, 0, 0, 0)
+                """)
+                db.execSQL("""
+                    INSERT OR IGNORE INTO `categories` (`id`, `name`, `iconKey`, `type`, `colorHex`, `sortOrder`, `isDeleted`, `createdAt`, `modifiedAt`)
+                    VALUES ('cat-investment-income', 'Investment', 'trending_up', 'INCOME', '#FF9800', 2, 0, 0, 0)
+                """)
+            }
+        }
+
+        private val MIGRATION_12_13 = object : Migration(12, 13) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE investments ADD COLUMN currentPrice REAL")
+                db.execSQL("ALTER TABLE investments ADD COLUMN priceUpdatedAt INTEGER")
+                db.execSQL("ALTER TABLE investments ADD COLUMN dayChangePercent REAL")
+            }
+        }
+
         fun buildDatabase(context: Context): MoneyTrackerDatabase {
             return Room.databaseBuilder(
                 context.applicationContext,
@@ -111,6 +165,11 @@ abstract class MoneyTrackerDatabase : RoomDatabase() {
                     override fun onOpen(db: SupportSQLiteDatabase) {
                         super.onOpen(db)
                         try {
+                            val now = System.currentTimeMillis()
+                            db.execSQL("""
+                                INSERT OR IGNORE INTO `categories` (`id`, `name`, `iconKey`, `type`, `colorHex`, `sortOrder`, `isDeleted`, `createdAt`, `modifiedAt`)
+                                VALUES ('cat-investment-transfer', 'Investment', 'trending_up', 'TRANSFER', '#FF9800', 12, 0, $now, $now)
+                            """)
                             val cursor = db.query("SELECT COUNT(*) FROM categories")
                             cursor.use {
                                 if (it.moveToFirst()) {
@@ -123,7 +182,7 @@ abstract class MoneyTrackerDatabase : RoomDatabase() {
                         }
                     }
                 })
-                .addMigrations(MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11)
+                .addMigrations(MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13)
                 .fallbackToDestructiveMigration()
                 .build()
         }
@@ -160,6 +219,8 @@ abstract class MoneyTrackerDatabase : RoomDatabase() {
                 CatSeed("cat-cats", "Cats", "pets", "EXPENSE", "#FFEB3B", 9),
                 CatSeed("cat-other-expense", "Other", "more_horiz", "EXPENSE", "#9E9E9E", 10),
                 CatSeed("cat-auto-expense", "AutoDetected", "auto_awesome", "EXPENSE", "#607D8B", 11),
+                CatSeed("cat-investment-expense", "Investment", "trending_up", "EXPENSE", "#FF9800", 12),
+                CatSeed("cat-investment-transfer", "Investment", "trending_up", "TRANSFER", "#FF9800", 12),
                 CatSeed("cat-salary", "Salary", "work", "INCOME", "#4CAF50", 0),
                 CatSeed("cat-freelance", "Freelance", "laptop", "INCOME", "#2196F3", 1),
                 CatSeed("cat-investment-income", "Investment", "trending_up", "INCOME", "#FF9800", 2),

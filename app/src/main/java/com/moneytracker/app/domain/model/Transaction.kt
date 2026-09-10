@@ -22,7 +22,12 @@ data class Transaction(
     val toAccountId: String? = null,
     val toAccountName: String? = null,
     val splits: List<TransactionSplit>
-)
+) {
+    val isInvestment: Boolean
+        get() = splits.any {
+            it.categoryId.startsWith("cat-investment") || it.categoryName.equals("Investment", ignoreCase = true)
+        } || (type == TransactionType.TRANSFER && (note?.contains("Bought") == true || note?.contains("Sold") == true))
+}
 
 data class TransactionSplit(
     val id: String,

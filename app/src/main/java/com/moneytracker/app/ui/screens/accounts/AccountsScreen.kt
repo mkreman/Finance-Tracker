@@ -14,10 +14,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Sort
+import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -41,6 +43,7 @@ import com.moneytracker.app.ui.navigation.Screen
 fun AccountsScreen(
     onAddAccount: () -> Unit,
     onAddTransaction: () -> Unit,
+    onAddInvestment: () -> Unit, // NEW PARAMETER
     onAccountClick: (String, String) -> Unit,
     onEditAccount: (String) -> Unit,
     viewModel: AccountsViewModel = hiltViewModel()
@@ -120,11 +123,10 @@ fun AccountsScreen(
                 )
                 
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    // Sort Button (Styled like the soft-colored Delete button)
                     FilledIconButton(
                         onClick = { showReorderDialog = true },
                         modifier = Modifier.size(width = 56.dp, height = 35.dp),
-                        shape = RoundedCornerShape(16.dp),
+                        shape = RoundedCornerShape(18.dp),
                         colors = IconButtonDefaults.filledIconButtonColors(
                             containerColor = MaterialTheme.colorScheme.secondaryContainer,
                             contentColor = MaterialTheme.colorScheme.secondary
@@ -133,11 +135,10 @@ fun AccountsScreen(
                         Icon(Icons.Filled.Sort, contentDescription = "Rearrange Sections", modifier = Modifier.size(20.dp))
                     }
                     
-                    // Add Account Button (Styled like the solid Save/Done button)
                     FilledIconButton(
                         onClick = onAddAccount,
                         modifier = Modifier.size(width = 56.dp, height = 35.dp),
-                        shape = RoundedCornerShape(16.dp),
+                        shape = RoundedCornerShape(18.dp),
                         colors = IconButtonDefaults.filledIconButtonColors(
                             containerColor = MaterialTheme.colorScheme.primary,
                             contentColor = MaterialTheme.colorScheme.onPrimary
@@ -150,20 +151,20 @@ fun AccountsScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Overall Balance Card
+            // Compacted Overall Balance Card
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp)
                     .clip(RoundedCornerShape(20.dp))
                     .background(MaterialTheme.colorScheme.surfaceVariant)
-                    .padding(20.dp)
+                    .padding(16.dp)
             ) {
                 Column {
                     Text(
                         text = "Overall",
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     Row(
@@ -188,18 +189,105 @@ fun AccountsScreen(
                         }
                     }
                     Spacer(modifier = Modifier.height(12.dp))
-                    Divider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 1.dp)
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 1.dp)
                     Spacer(modifier = Modifier.height(12.dp))
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("Total Balance", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("Total Balance", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Text(
                             if (state.totalBalance < 0) "-$currency${formatAmount(kotlin.math.abs(state.totalBalance))}" else "$currency${formatAmount(state.totalBalance)}",
-                            style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
+                            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                             color = if (state.totalBalance >= 0) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Investment Summary Card (Clickable to navigate to Investments)
+            val currentValuation = if (state.investmentCurrentValuation > 0) state.investmentCurrentValuation else state.investmentTotal
+            val profitLoss = if (state.investmentCurrentValuation > 0) state.investmentTotalPnl else (state.investmentTotal - state.totalInvested)
+            val isProfit = profitLoss >= 0
+            val profitLossColor = if (isProfit) Color(0xFF00C853) else MaterialTheme.colorScheme.error
+            val profitLossPrefix = if (isProfit) "+" else ""
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .clickable { onAddInvestment() } // Navigates to Investments screen
+                    .padding(16.dp)
+            ) {
+                Column {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Investments",
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = "View Portfolio",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Icon(
+                                imageVector = Icons.Filled.ChevronRight,
+                                contentDescription = "View Portfolio",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column {
+                            Text("Invested", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(
+                                "$currency${formatAmount(state.totalInvested)}",
+                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                        Column(horizontalAlignment = Alignment.End) {
+                            Text("Current Value", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(
+                                text = "$currency${formatAmount(currentValuation)}",
+                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 1.dp)
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Overall P&L", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(
+                            text = if (state.totalInvested > 0) {
+                                "$profitLossPrefix$currency${formatAmount(kotlin.math.abs(profitLoss))} ($profitLossPrefix${String.format(java.util.Locale.US, "%.2f", state.investmentTotalPnlPercent)}%)"
+                            } else {
+                                "$currency 0.00"
+                            },
+                            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                            color = if (state.totalInvested > 0) profitLossColor else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -255,11 +343,12 @@ fun AccountsScreen(
                         }
                     }
                     type == "INVESTMENT" -> {
+                        val currentVal = if (state.investmentCurrentValuation > 0) state.investmentCurrentValuation else state.investmentTotal
                         if (state.investmentAccounts.isNotEmpty()) {
                             AccountSection(
                                 title = "Investments",
                                 accounts = state.investmentAccounts,
-                                sum = state.investmentTotal,
+                                sum = currentVal,
                                 expanded = state.investmentExpanded,
                                 onToggle = { viewModel.setSectionExpanded(AccountType.INVESTMENT, !state.investmentExpanded) },
                                 onAccountClick = onAccountClick,
@@ -267,6 +356,98 @@ fun AccountsScreen(
                                 onDeleteAccount = { showDeleteDialog = it },
                                 onDeactivateAccount = { viewModel.deactivateAccount(it.id) }
                             )
+                        } else if (currentVal > 0 || state.totalInvested > 0) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 4.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(if (!state.investmentExpanded) MaterialTheme.colorScheme.surfaceVariant else Color.Transparent)
+                                    .clickable { viewModel.setSectionExpanded(AccountType.INVESTMENT, !state.investmentExpanded) }
+                                    .padding(horizontal = if (!state.investmentExpanded) 16.dp else 0.dp, vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "Investments",
+                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Text(
+                                    text = "$currency${formatAmount(currentVal)}",
+                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                                    color = MaterialTheme.colorScheme.tertiary,
+                                    modifier = Modifier.padding(end = 8.dp)
+                                )
+                                Icon(
+                                    imageVector = if (state.investmentExpanded) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
+                                    contentDescription = if (state.investmentExpanded) "Collapse" else "Expand",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+
+                            AnimatedVisibility(visible = state.investmentExpanded) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp, vertical = 4.dp)
+                                        .clip(RoundedCornerShape(16.dp))
+                                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                                        .clickable { onAddInvestment() }
+                                        .padding(16.dp)
+                                ) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(42.dp)
+                                                .clip(RoundedCornerShape(12.dp))
+                                                .background(MaterialTheme.colorScheme.primaryContainer),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Filled.TrendingUp,
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.primary,
+                                                modifier = Modifier.size(24.dp)
+                                            )
+                                        }
+                                        Spacer(modifier = Modifier.width(12.dp))
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(
+                                                text = "Stock Portfolio",
+                                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                                                color = MaterialTheme.colorScheme.onSurface
+                                            )
+                                            val pnlSign = if (state.investmentTotalPnl >= 0) "+" else ""
+                                            val pnlCol = if (state.investmentTotalPnl >= 0) Color(0xFF00C853) else MaterialTheme.colorScheme.error
+                                            Text(
+                                                text = "Invested: $currency${formatAmount(state.totalInvested)} • P&L: $pnlSign$currency${formatAmount(state.investmentTotalPnl)}",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = pnlCol
+                                            )
+                                        }
+                                        Text(
+                                            text = "$currency${formatAmount(currentVal)}",
+                                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Icon(
+                                            Icons.Filled.ChevronRight,
+                                            contentDescription = "View details",
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
+                                }
+                            }
+
+                            if (state.investmentExpanded) {
+                                Spacer(modifier = Modifier.height(16.dp))
+                            }
                         }
                     }
                     type == "PEOPLE" -> {

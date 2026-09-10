@@ -28,6 +28,9 @@ import com.moneytracker.app.ui.screens.budget.BudgetScreen
 import com.moneytracker.app.ui.screens.budget.BudgetTransactionsScreen
 import com.moneytracker.app.ui.screens.dashboard.CategoryTransactionsScreen
 import com.moneytracker.app.ui.screens.dashboard.DashboardScreen
+import com.moneytracker.app.ui.screens.investments.AddInvestmentScreen
+import com.moneytracker.app.ui.screens.investments.InvestmentsScreen
+import com.moneytracker.app.ui.screens.investments.StockDetailScreen
 import com.moneytracker.app.ui.screens.settings.SettingsScreen
 import com.moneytracker.app.ui.screens.transactions.AccountSelectionTarget
 import com.moneytracker.app.ui.screens.transactions.AddTransactionScreen
@@ -48,6 +51,14 @@ fun NavGraph(
     pagerState: PagerState,
     onSelectTab: (Screen) -> Unit
 ) {
+    val onEditTransactionClick: (String, Boolean) -> Unit = { transactionId, isInvestment ->
+        if (isInvestment) {
+            navController.navigate(Screen.AddInvestment.createRoute(transactionId = transactionId))
+        } else {
+            navController.navigate(Screen.EditTransaction.createRoute(transactionId))
+        }
+    }
+
     NavHost(
         navController = navController,
         startDestination = Screen.MainTabs.route,
@@ -59,7 +70,8 @@ fun NavGraph(
         composable(Screen.MainTabs.route) {
             MainTabsPager(
                 navController = navController,
-                pagerState = pagerState
+                pagerState = pagerState,
+                onEditTransaction = onEditTransactionClick
             )
         }
 
@@ -203,9 +215,7 @@ fun NavGraph(
         ) {
             AccountTransactionsScreen(
                 onNavigateBack = { navController.popBackStack() },
-                onEditTransaction = { transactionId ->
-                    navController.navigate(Screen.EditTransaction.createRoute(transactionId))
-                }
+                onEditTransaction = onEditTransactionClick
             )
         }
 
@@ -223,14 +233,12 @@ fun NavGraph(
 
             AddTransactionScreen(
                 onNavigateBack = {
-                    onSelectTab(Screen.Transactions)
-                    if (!navController.popBackStack(Screen.MainTabs.route, inclusive = false)) {
+                    if (!navController.popBackStack()) {
                         navController.navigate(Screen.MainTabs.route) {
                             launchSingleTop = true
                         }
                     }
-                }
-                ,
+                },
                 onAddAccount = { target ->
                     backStackEntry.savedStateHandle["createdAccountTarget"] = target.name
                     val accountType = if (target.name == "PERSON") "PEOPLE" else null
@@ -258,9 +266,7 @@ fun NavGraph(
         ) {
             CategoryTransactionsScreen(
                 onNavigateBack = { navController.popBackStack() },
-                onEditTransaction = { transactionId ->
-                    navController.navigate(Screen.EditTransaction.createRoute(transactionId))
-                }
+                onEditTransaction = onEditTransactionClick
             )
         }
 
@@ -275,9 +281,61 @@ fun NavGraph(
         ) {
             BudgetTransactionsScreen(
                 onNavigateBack = { navController.popBackStack() },
+                onEditTransaction = onEditTransactionClick
+            )
+        }
+
+        // Investments Overview Screen Target
+        composable("investments") {
+            InvestmentsScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onAddInvestment = { navController.navigate("add_investment") },
+                onStockClick = { symbol -> navController.navigate(Screen.StockDetail.createRoute(symbol)) }
+            )
+        }
+
+        // Stock Summary / Details Screen Target
+        composable(
+            route = Screen.StockDetail.route,
+            arguments = listOf(navArgument("symbol") { type = NavType.StringType })
+        ) {
+            StockDetailScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onBuyMore = { symbol ->
+                    navController.navigate(Screen.AddInvestment.createRoute(symbol = symbol, type = "INVEST"))
+                },
+                onWithdraw = { symbol ->
+                    navController.navigate(Screen.AddInvestment.createRoute(symbol = symbol, type = "WITHDRAW"))
+                },
                 onEditTransaction = { transactionId ->
-                    navController.navigate(Screen.EditTransaction.createRoute(transactionId))
+                    navController.navigate(Screen.AddInvestment.createRoute(transactionId = transactionId))
                 }
+            )
+        }
+
+        // Add / Edit Investment Screen Target
+        composable(
+            route = "add_investment?symbol={symbol}&type={type}&transactionId={transactionId}",
+            arguments = listOf(
+                navArgument("symbol") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                },
+                navArgument("type") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                },
+                navArgument("transactionId") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                }
+            )
+        ) {
+            AddInvestmentScreen(
+                onNavigateBack = { navController.popBackStack() }
             )
         }
     }
@@ -287,7 +345,8 @@ fun NavGraph(
 @Composable
 private fun MainTabsPager(
     navController: NavHostController,
-    pagerState: PagerState
+    pagerState: PagerState,
+    onEditTransaction: (String, Boolean) -> Unit
 ) {
     val tabs = Screen.bottomNavItems
 
@@ -303,6 +362,10 @@ private fun MainTabsPager(
                             Screen.CategoryTransactions.createRoute(categoryId, categoryName, type, month, year)
                         )
                     },
+                    onStockClick = { symbol ->
+                        navController.navigate(Screen.StockDetail.createRoute(symbol))
+                    },
+                    onEditTransaction = onEditTransaction,
                     onAddTransaction = {
                         navController.navigate(Screen.AddTransaction.createRoute())
                     }
@@ -313,9 +376,7 @@ private fun MainTabsPager(
                     onAddTransaction = {
                         navController.navigate(Screen.AddTransaction.createRoute())
                     },
-                    onEditTransaction = { transactionId ->
-                        navController.navigate(Screen.EditTransaction.createRoute(transactionId))
-                    }
+                    onEditTransaction = onEditTransaction
                 )
             }
             Screen.Accounts -> {
@@ -325,6 +386,9 @@ private fun MainTabsPager(
                     },
                     onAddTransaction = {
                         navController.navigate(Screen.AddTransaction.createRoute())
+                    },
+                    onAddInvestment = {
+                        navController.navigate("investments")
                     },
                     onAccountClick = { accountId, accountName ->
                         navController.navigate(

@@ -32,7 +32,7 @@ import com.moneytracker.app.ui.navigation.Screen
 @Composable
 fun TransactionsScreen(
     onAddTransaction: () -> Unit,
-    onEditTransaction: (String) -> Unit = {},
+    onEditTransaction: (String, Boolean) -> Unit = { _, _ -> },
     viewModel: TransactionsViewModel = hiltViewModel()
 ) {
     val transactions by viewModel.transactions.collectAsState()
@@ -216,7 +216,7 @@ fun TransactionsScreen(
                                     transaction = item.transaction,
                                     onClick = { 
                                         focusManager.clearFocus() // Hide keyboard if navigating away
-                                        onEditTransaction(item.transaction.id) 
+                                        onEditTransaction(item.transaction.id, item.transaction.isInvestment) 
                                     }
                                 )
                             }

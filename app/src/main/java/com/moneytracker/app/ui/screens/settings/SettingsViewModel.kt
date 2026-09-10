@@ -23,6 +23,7 @@ import com.moneytracker.app.data.local.database.entities.TransactionType
 import com.moneytracker.app.data.local.repository.AccountRepository
 import com.moneytracker.app.data.local.repository.BudgetRepository
 import com.moneytracker.app.data.local.repository.CategoryRepository
+import com.moneytracker.app.data.local.repository.InvestmentRepository
 import com.moneytracker.app.data.local.repository.TransactionRepository
 import com.moneytracker.app.domain.model.Account
 import com.moneytracker.app.widget.MoneyTrackerWidget
@@ -59,6 +60,7 @@ data class SettingsState(
     val lastCloudBackupTime: Long = 0L,
     val cloudBackups: List<CloudBackupInfo> = emptyList(),
     val isLoadingCloudBackups: Boolean = false,
+    val stockAutoRefreshInterval: Int = 15,
 )
 
 @HiltViewModel
@@ -67,6 +69,7 @@ class SettingsViewModel @Inject constructor(
     private val accountRepository: AccountRepository,
     private val categoryRepository: CategoryRepository,
     private val budgetRepository: BudgetRepository,
+    private val investmentRepository: InvestmentRepository,
     private val cloudBackupScheduler: CloudBackupScheduler,
     private val googleDriveBackupService: GoogleDriveBackupService,
     private val userPreferences: UserPreferences,
@@ -118,6 +121,15 @@ class SettingsViewModel @Inject constructor(
                 _state.update { it.copy(lastCloudBackupTime = timestamp) }
             }
         }
+        viewModelScope.launch {
+            userPreferences.stockAutoRefreshInterval.collect { interval ->
+                _state.update { it.copy(stockAutoRefreshInterval = interval) }
+            }
+        }
+    }
+
+    fun setStockAutoRefreshInterval(minutes: Int) = viewModelScope.launch {
+        userPreferences.setStockAutoRefreshInterval(minutes)
     }
 
     fun setBiometricEnabled(enabled: Boolean) = viewModelScope.launch { userPreferences.setBiometricEnabled(enabled) }
@@ -141,6 +153,7 @@ class SettingsViewModel @Inject constructor(
                 transactionRepository.clearAllTransactions()
                 budgetRepository.clearAllBudgets()
                 accountRepository.clearAllAccounts()
+                investmentRepository.clearAllData()
                 accountRepository.seedDefaultAccounts()
                 categoryRepository.seedDefaultCategories()
                 _state.update { it.copy(importMessage = "All data has been cleared and defaults restored") }

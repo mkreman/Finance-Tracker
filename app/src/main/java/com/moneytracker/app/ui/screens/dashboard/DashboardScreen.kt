@@ -9,6 +9,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.TrendingDown
+import androidx.compose.material.icons.filled.TrendingUp
+import com.moneytracker.app.data.local.database.entities.InvestmentEntity
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -17,6 +20,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.moneytracker.app.data.local.repository.TransactionRepository.Companion.UNKNOWN_TRANSFER_TO_ACCOUNT_ID
@@ -30,6 +34,8 @@ import java.util.*
 @Composable
 fun DashboardScreen(
     onCategoryClick: (String, String, String, Int, Int) -> Unit = { _, _, _, _, _ -> },
+    onStockClick: (String) -> Unit = {},
+    onEditTransaction: (String, Boolean) -> Unit = { _, _ -> },
     onAddTransaction: () -> Unit = {},
     viewModel: DashboardViewModel = hiltViewModel()
 ) {
@@ -67,14 +73,54 @@ fun DashboardScreen(
                 )
             }
 
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-            // Summary Cards Row — clickable to change overview
+            // Top Balance Card
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text("Total Balance", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            val currency = LocalCurrencySymbol.current
+                            Text(
+                                if (state.totalAccountBalance < 0) "-$currency${formatAmount(kotlin.math.abs(state.totalAccountBalance))}" else "$currency${formatAmount(state.totalAccountBalance)}",
+                                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                                color = if (state.totalAccountBalance >= 0) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error
+                            )
+                        }
+                        Column(horizontalAlignment = Alignment.End) {
+                            Text("Net this month", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            val currency = LocalCurrencySymbol.current
+                            val net = state.totalIncome - state.totalExpense - state.totalInvestment
+                            val isNetPositive = net >= 0
+                            Text(
+                                "${if (isNetPositive) "+" else "-"}$currency${formatAmount(kotlin.math.abs(net))}",
+                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                color = if (isNetPositive) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error
+                            )
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Summary Cards Row — all 4 options in one row
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 SummaryCard(
                     title = "Expense",
@@ -90,6 +136,14 @@ fun DashboardScreen(
                     type = SummaryType.INCOME,
                     isSelected = state.selectedOverview == OverviewType.INCOME,
                     onClick = { viewModel.selectOverview(OverviewType.INCOME) },
+                    modifier = Modifier.weight(1f)
+                )
+                SummaryCard(
+                    title = "Invest",
+                    amount = state.totalInvestment,
+                    type = SummaryType.INVESTMENT,
+                    isSelected = state.selectedOverview == OverviewType.INVESTMENT,
+                    onClick = { viewModel.selectOverview(OverviewType.INVESTMENT) },
                     modifier = Modifier.weight(1f)
                 )
                 SummaryCard(
@@ -109,6 +163,7 @@ fun DashboardScreen(
                     OverviewType.EXPENSE -> "Expense Overview"
                     OverviewType.INCOME -> "Income Overview"
                     OverviewType.TRANSFER -> "Transfer Overview"
+                    OverviewType.INVESTMENT -> "Investment Overview"
                 },
                 style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                 color = MaterialTheme.colorScheme.onSurface,
@@ -121,6 +176,8 @@ fun DashboardScreen(
                 state = state,
                 currentMonth = currentMonth,
                 onCategoryClick = onCategoryClick,
+                onStockClick = onStockClick,
+                onEditTransaction = onEditTransaction,
                 modifier = Modifier.padding(horizontal = 16.dp)
             )
 
@@ -146,6 +203,8 @@ private fun DashboardDonutSection(
     state: DashboardState,
     currentMonth: Calendar?,
     onCategoryClick: (String, String, String, Int, Int) -> Unit,
+    onStockClick: (String) -> Unit,
+    onEditTransaction: (String, Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val transferPalette = listOf(
@@ -161,18 +220,21 @@ private fun DashboardDonutSection(
         OverviewType.EXPENSE -> state.categorySpending
         OverviewType.INCOME -> state.categoryIncome
         OverviewType.TRANSFER -> buildTransferDonutData(state, transferPalette)
+        OverviewType.INVESTMENT -> state.investmentSpending
     }
 
     val centerLabel = when (state.selectedOverview) {
         OverviewType.EXPENSE -> "Expense"
         OverviewType.INCOME -> "Income"
         OverviewType.TRANSFER -> "Transfer"
+        OverviewType.INVESTMENT -> "Investment"
     }
 
     val totalAmount = when (state.selectedOverview) {
         OverviewType.EXPENSE -> state.totalExpense
         OverviewType.INCOME -> state.totalIncome
         OverviewType.TRANSFER -> state.totalTransfer
+        OverviewType.INVESTMENT -> state.totalInvestment
     }
 
     if (donutData.isEmpty()) {
@@ -189,6 +251,64 @@ private fun DashboardDonutSection(
             )
         }
     } else {
+        if (state.selectedOverview == OverviewType.INVESTMENT && state.investmentHoldings.isNotEmpty()) {
+            val isProfit = state.investmentTotalPnl >= 0
+            val pnlColor = if (isProfit) Color(0xFF00C853) else MaterialTheme.colorScheme.error
+            val pnlSign = if (isProfit) "+" else ""
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 12.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(14.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            text = "Portfolio Valuation",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = "${LocalCurrencySymbol.current}${formatAmount(state.investmentCurrentValuation)}",
+                            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = pnlColor.copy(alpha = 0.15f)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = if (isProfit) Icons.Filled.TrendingUp else Icons.Filled.TrendingDown,
+                                contentDescription = null,
+                                tint = pnlColor,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "$pnlSign${LocalCurrencySymbol.current}${formatAmount(state.investmentTotalPnl)} ($pnlSign${String.format(Locale.US, "%.2f", state.investmentTotalPnlPercent)}%)",
+                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                color = pnlColor
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
         Box(
             modifier = modifier.fillMaxWidth(),
             contentAlignment = Alignment.Center
@@ -208,11 +328,14 @@ private fun DashboardDonutSection(
                 type = when (state.selectedOverview) {
                     OverviewType.INCOME -> "INCOME"
                     OverviewType.TRANSFER -> "TRANSFER"
+                    OverviewType.INVESTMENT -> "INVESTMENT"
                     else -> "EXPENSE"
                 },
                 month = calendar.get(Calendar.MONTH) + 1,
                 year = calendar.get(Calendar.YEAR),
-                onCategoryClick = onCategoryClick
+                holdings = state.investmentHoldings,
+                onCategoryClick = onCategoryClick,
+                onStockClick = onStockClick
             )
         }
     }
@@ -254,18 +377,28 @@ private fun ClickableLegend(
     type: String,
     month: Int,
     year: Int,
-    onCategoryClick: (String, String, String, Int, Int) -> Unit
+    holdings: List<InvestmentEntity> = emptyList(),
+    onCategoryClick: (String, String, String, Int, Int) -> Unit,
+    onStockClick: (String) -> Unit = {}
 ) {
+    val holdingsMap = remember(holdings) { holdings.associateBy { it.symbol } }
+
     Column(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(2.dp)
     ) {
         data.forEach { item ->
+            val stockHolding = if (type == "INVESTMENT") holdingsMap[item.categoryId] else null
+
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable {
-                        onCategoryClick(item.categoryId, item.categoryName, type, month, year)
+                        if (type == "INVESTMENT") {
+                            onStockClick(item.categoryId)
+                        } else {
+                            onCategoryClick(item.categoryId, item.categoryName, type, month, year)
+                        }
                     }
                     .padding(horizontal = 16.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically
@@ -280,14 +413,26 @@ private fun ClickableLegend(
                     color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.weight(1f)
                 )
-                Text(
-                    text = "${LocalCurrencySymbol.current}${formatAmount(item.amount)}",
-                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
-                    color = MaterialTheme.colorScheme.onSurface
-                )
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(
+                        text = "${LocalCurrencySymbol.current}${formatAmount(item.amount)}",
+                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    if (stockHolding?.currentPrice != null) {
+                        val isProf = stockHolding.totalPnl >= 0
+                        val col = if (isProf) Color(0xFF00C853) else MaterialTheme.colorScheme.error
+                        val sign = if (isProf) "+" else ""
+                        Text(
+                            text = "$sign${String.format(Locale.US, "%.1f", stockHolding.pnlPercentage)}%",
+                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                            color = col
+                        )
+                    }
+                }
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "${String.format("%.1f", item.percentage)}%",
+                    text = "${String.format(Locale.US, "%.1f", item.percentage)}%",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.width(48.dp),

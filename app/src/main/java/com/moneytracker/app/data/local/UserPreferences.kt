@@ -43,6 +43,7 @@ class UserPreferences @Inject constructor(
         val AUTO_CLOUD_BACKUP_ENABLED = booleanPreferencesKey("auto_cloud_backup_enabled")
         val LAST_CLOUD_BACKUP_TIME = longPreferencesKey("last_cloud_backup_time")
         val APP_LOCK_TIMEOUT = longPreferencesKey("app_lock_timeout")
+        val STOCK_AUTO_REFRESH_INTERVAL = intPreferencesKey("stock_auto_refresh_interval")
 
         val defaultAccountOrder = listOf("WALLET", "BANK", "INVESTMENT", "PEOPLE")
 
@@ -106,6 +107,7 @@ class UserPreferences @Inject constructor(
     val budgetAlertsEnabled: Flow<Boolean> = dataStore.data.map { it[BUDGET_ALERTS_ENABLED] ?: true }
     val autoCloudBackupEnabled: Flow<Boolean> = dataStore.data.map { it[AUTO_CLOUD_BACKUP_ENABLED] ?: false }
     val lastCloudBackupTime: Flow<Long> = dataStore.data.map { it[LAST_CLOUD_BACKUP_TIME] ?: 0L }
+    val stockAutoRefreshInterval: Flow<Int> = dataStore.data.map { it[STOCK_AUTO_REFRESH_INTERVAL] ?: 15 }
 
     fun expandedForCustom(name: String): Flow<Boolean> = dataStore.data.map { prefs ->
         prefs[booleanPreferencesKey("expanded_custom_" + name)] ?: true
@@ -162,4 +164,5 @@ class UserPreferences @Inject constructor(
     suspend fun setBudgetAlertsEnabled(enabled: Boolean) { dataStore.edit { it[BUDGET_ALERTS_ENABLED] = enabled } }
     suspend fun setAutoCloudBackupEnabled(enabled: Boolean) { dataStore.edit { it[AUTO_CLOUD_BACKUP_ENABLED] = enabled } }
     suspend fun setLastCloudBackupTime(timestamp: Long) { dataStore.edit { it[LAST_CLOUD_BACKUP_TIME] = timestamp } }
+    suspend fun setStockAutoRefreshInterval(minutes: Int) { dataStore.edit { it[STOCK_AUTO_REFRESH_INTERVAL] = minutes } }
 }

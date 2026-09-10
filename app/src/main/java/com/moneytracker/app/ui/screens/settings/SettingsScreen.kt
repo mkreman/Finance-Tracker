@@ -463,6 +463,70 @@ fun SettingsScreen(
                 )
             }
 
+            var showStockRefreshPicker by remember { mutableStateOf(false) }
+            val refreshIntervalSubtitle = when (state.stockAutoRefreshInterval) {
+                0 -> "Manual only"
+                5 -> "Every 5 minutes"
+                15 -> "Every 15 minutes"
+                30 -> "Every 30 minutes"
+                60 -> "Every 1 hour"
+                360 -> "Every 6 hours"
+                1440 -> "Once a day"
+                else -> "Every ${state.stockAutoRefreshInterval} minutes"
+            }
+            SettingsItem(
+                icon = Icons.Filled.TrendingUp,
+                title = "Stock Price Auto-Refresh",
+                subtitle = refreshIntervalSubtitle,
+                iconTint = Color(0xFFFF9800),
+                onClick = { showStockRefreshPicker = true }
+            )
+
+            if (showStockRefreshPicker) {
+                val options = listOf(
+                    0 to "Manual only",
+                    5 to "Every 5 minutes",
+                    15 to "Every 15 minutes",
+                    30 to "Every 30 minutes",
+                    60 to "Every 1 hour",
+                    360 to "Every 6 hours",
+                    1440 to "Once a day"
+                )
+                AlertDialog(
+                    onDismissRequest = { showStockRefreshPicker = false },
+                    title = { Text("Stock Price Auto-Refresh", color = MaterialTheme.colorScheme.onSurface) },
+                    text = {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .verticalScroll(rememberScrollState()),
+                            verticalArrangement = Arrangement.spacedBy(2.dp)
+                        ) {
+                            options.forEach { (minutes, label) ->
+                                val isSelected = state.stockAutoRefreshInterval == minutes
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f) else Color.Transparent)
+                                        .clickable {
+                                            viewModel.setStockAutoRefreshInterval(minutes)
+                                            showStockRefreshPicker = false
+                                        }
+                                        .padding(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(label, color = MaterialTheme.colorScheme.onSurface)
+                                }
+                            }
+                        }
+                    },
+                    confirmButton = {},
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    shape = RoundedCornerShape(16.dp)
+                )
+            }
+
             Spacer(modifier = Modifier.height(16.dp))
         }
 
@@ -897,7 +961,7 @@ fun SettingsScreen(
                     title = { Text("Clear All Data?", color = MaterialTheme.colorScheme.onSurface) },
                     text = {
                         Text(
-                            "This will permanently delete all accounts, transactions, and budgets. This action cannot be undone.",
+                            "This will permanently delete all accounts, transactions, budgets, and investments. This action cannot be undone.",
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     },

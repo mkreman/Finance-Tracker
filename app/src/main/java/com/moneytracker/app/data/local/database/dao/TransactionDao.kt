@@ -132,6 +132,7 @@ interface TransactionDao {
         SELECT SUM(t.totalAmount)
         FROM transactions t
         WHERE t.type = 'EXPENSE'
+        AND t.id NOT IN (SELECT id FROM investment_transactions)
         AND t.date BETWEEN :startDate AND :endDate
         AND t.isDeleted = 0
     """)
@@ -141,6 +142,7 @@ interface TransactionDao {
         SELECT SUM(t.totalAmount)
         FROM transactions t
         WHERE t.type = 'INCOME'
+        AND t.id NOT IN (SELECT id FROM investment_transactions)
         AND t.date BETWEEN :startDate AND :endDate
         AND t.isDeleted = 0
     """)
@@ -150,6 +152,7 @@ interface TransactionDao {
         SELECT SUM(t.totalAmount)
         FROM transactions t
         WHERE t.type = 'TRANSFER'
+        AND t.id NOT IN (SELECT id FROM investment_transactions)
         AND t.date BETWEEN :startDate AND :endDate
         AND t.isDeleted = 0
     """)
@@ -167,6 +170,7 @@ interface TransactionDao {
         JOIN transactions t ON s.transactionId = t.id
         WHERE t.date BETWEEN :startDate AND :endDate
         AND t.type = 'EXPENSE'
+        AND t.id NOT IN (SELECT id FROM investment_transactions)
         AND t.isDeleted = 0
         GROUP BY c.id
         ORDER BY total DESC
@@ -185,6 +189,7 @@ interface TransactionDao {
         JOIN transactions t ON s.transactionId = t.id
         WHERE t.date BETWEEN :startDate AND :endDate
         AND t.type = 'INCOME'
+        AND t.id NOT IN (SELECT id FROM investment_transactions)
         AND t.isDeleted = 0
         GROUP BY c.id
         ORDER BY total DESC
@@ -195,6 +200,7 @@ interface TransactionDao {
     @Query("""
         SELECT * FROM transactions
         WHERE type = 'TRANSFER'
+        AND id NOT IN (SELECT id FROM investment_transactions)
         AND date BETWEEN :startDate AND :endDate
         AND isDeleted = 0
         ORDER BY date DESC
@@ -294,4 +300,19 @@ interface TransactionDao {
         WHERE id = :seriesId OR parentRecurringId = :seriesId
     """)
     suspend fun removeRecurrenceFromSeries(seriesId: String, timestamp: Long = System.currentTimeMillis())
+
+    @Query("""
+        UPDATE transactions 
+        SET type = 'TRANSFER' 
+        WHERE (type = 'EXPENSE' OR type = 'INCOME') 
+        AND id IN (SELECT id FROM investment_transactions)
+    """)
+    suspend fun convertInvestmentExpensesToTransfers()
+
+    @Query("""
+        UPDATE transaction_splits
+        SET categoryId = 'cat-investment-transfer'
+        WHERE transactionId IN (SELECT id FROM investment_transactions)
+    """)
+    suspend fun convertInvestmentSplitsToTransfers()
 }
